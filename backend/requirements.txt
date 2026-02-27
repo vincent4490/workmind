@@ -1,0 +1,47 @@
+
+# Django相关依赖
+django==4.2.7
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+djangorestframework-simplejwt==5.5.1
+django-celery-beat==2.8.1
+django-celery-results==2.6.0
+django-simpleui==2026.1.13
+drf-yasg==1.21.14
+daphne==4.2.1
+channels==4.3.2
+channels-redis==4.3.0
+django-log-request-id==2.1.0
+
+# pytest相关依赖
+pytest==9.0.2
+allure-pytest==2.15.3
+
+# easyocr依赖,airtest依赖
+easyocr==1.7.2
+airtest==1.4.3
+opencv-contrib-python==4.13.0.90
+
+# 数据处理
+pandas==3.0.0
+openpyxl==3.1.5
+pydantic==2.12.5
+
+# 日志
+loguru==0.7.3
+
+# 数据库
+PyMySQL==1.1.2
+
+# 环境变量加载依赖
+python-dotenv==1.2.1
+
+# 颜色库
+colorlog==6.10.1
+
+# AI用例-文件解析
+python-docx==1.2.0
+pdfplumber==0.11.9
+PyMuPDF==1.27.1
+Pillow==11.3.0
+openai==2.20.0

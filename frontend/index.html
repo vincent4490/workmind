@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <!-- 允许 unload 事件，修复 webpack-dev-server 的 Permissions Policy 警告 -->
+        <meta http-equiv="Permissions-Policy" content="unload=*" />
+        <link
+            rel="shortcut icon"
+            type="image/x-icon"
+            href="/static/logo.png"
+        />
+        <title>WorkMind 智能体平台</title>
+    </head>
+    <body>
+        <div id="app"></div>
+        <script type="module" src="/src/main.js"></script>
+    </body>
+</html>

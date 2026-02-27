@@ -1,0 +1,409 @@
+[32m2026-02-13 14:49:54,284 [none] django.utils.autoreload [37mINFO [pid:14000] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 14:50:32,208 [434edb69715d41989dd25e6ff857024e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/user/login HTTP/1.1" 200 348[0m
+[32m2026-02-13 14:50:32,292 [910db53d0d06416c8dd970706aacb9d9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:50:43,463 [7f2fcc9c172a4c4e9c64eb2e7ea84729] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/ui_test/devices/refresh/ HTTP/1.1" 200 41[0m
+[32m2026-02-13 14:51:03,024 [30ec0382b8264c12bd8134bde1677e7f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:51:33,342 [cdda75170e3a4c02a0d59d921bb0657b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:52:03,038 [d4b4598b7b214939aa8011dc1b5fbd5a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:52:33,330 [4e74d332484c4c27b9235f32a7fda4b6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:53:03,024 [61e806cfd83b4abfb98d40ade552f866] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:53:19,029 [aff2a95d05034b4e8e0e33bcee3efed8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/ui_test/devices/refresh/ HTTP/1.1" 200 356[0m
+[32m2026-02-13 14:53:24,059 [5e29e6d86dc34af0bee64efdc1004ad8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:53:24,068 [c0392bf43a35484f823a17ead2302d83] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 14:53:24,070 [4c2b3966e6ac4f67bf9bc791c5e131b0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 349[0m
+[32m2026-02-13 14:53:29,829 [edce83dc75c34cb3899cf640303731dd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:53:29,836 [a619117f551c4b038c8dfda04bbf7717] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 14:53:29,840 [313e318c2a4b4261aab9f8a9419c69f0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 339[0m
+[32m2026-02-13 14:53:34,713 [6aa8443e1ac2406480ae7460416a346a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 325[0m
+[32m2026-02-13 14:53:36,228 [e4bac310112d4d52bde88ba86ddf6070] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:53:47,245 [e3af649eb52040609e5959f842b09ee8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:53:48,968 [08ab342543b94abe9ca988b9756a7312] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:53:48,971 [cbf24971143d46f296358312cab0e284] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 348[0m
+[32m2026-02-13 14:53:48,975 [7386c9456bca4e4797543ce551ff5cff] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 14:53:51,109 [830698b2d4f04943a372c1d00bbaf663] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 282[0m
+[32m2026-02-13 14:53:53,975 [26e318e538e14f89ad92af545c0a6cde] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/?page=1&size=20&element_type=&keyword= HTTP/1.1" 200 58[0m
+[32m2026-02-13 14:53:53,976 [782f30e301bc4d38a2a69ccea55ad823] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:53:56,069 [7065500537784545a0f68c964cbe623f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-custom-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:53:56,069 [950cc26511c8481ca6f7de5585b934b8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:53:56,070 [34325d7a897a4965b23c64f339b43762] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:54:06,032 [875467dd70b64bc893fd91d6b2fe274c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:54:06,038 [231adecb338142469de5deb2d346fa37] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/cases/?ui_flow_only=1&page=1&size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:54:06,050 [ecb4b8811c76448fa3f73f94a4bc773e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=10&ui_flow_only=1 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:54:06,058 [8cf93fcd698c4e2a93383494b20f7548] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 322[0m
+[32m2026-02-13 14:54:09,978 [cc682beb68694497a1e34c42291cefec] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:54:09,978 [c61d298e189643eaa33ca7d3bc094455] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:54:09,985 [73e254b213fc4c3e9fba17eedf695b3a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-custom-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:55:10,449 [bc5e899bdda94f72b64819e95e503468] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/user/logout HTTP/1.1" 200 46[0m
+[32m2026-02-13 14:56:27,033 [3fd8b8de13e44533abfedd6be64eec75] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/user/login HTTP/1.1" 200 304[0m
+[32m2026-02-13 14:56:27,095 [469de1ab38bd4e029d52ab3c16350b4f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 313[0m
+[32m2026-02-13 14:56:29,427 [3628577b04a94adcaf72eed997b55556] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 311[0m
+[32m2026-02-13 14:56:29,437 [5a33e5683b6d40289541cd9037960f02] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:56:29,438 [1578fa25e1524f36a532219d253541ff] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 14:56:32,840 [01df205b07884eb4840d75cd16546d8b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:56:33,480 [c1ebb804ac7e4c839d204c05cca98dc2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/?page=1&size=20&element_type=&keyword= HTTP/1.1" 200 58[0m
+[32m2026-02-13 14:56:33,492 [5022d47786b74faa96aa707ba6e4397f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:56:34,232 [221a550079f140bfabb1b6acdb33015b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:56:34,246 [74047400f3f54822945cdb542c518a93] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:56:34,247 [42528f82a8a04accb1ed3f3c0abba7c2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-custom-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:56:34,398 [1141ee95aec546c58d6be03a4b80de05] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/cases/?ui_flow_only=1&page=1&size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:56:34,399 [f3d12b4e6a0b4c45b75e7401635aed63] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:56:34,412 [8ab08d8201ae4fe68163c07e3ace4d0d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=10&ui_flow_only=1 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:56:34,415 [ca9625aeae6e4e3d92d34991f3a12e91] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 272[0m
+[32m2026-02-13 14:56:37,393 [dc43055d880f4d3cac3c065cf401923c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 14:56:37,396 [198053634b2e4f24bfd8b56a3d5085dc] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:56:39,367 [06a1ce4f649b42309d9c86f0042718cd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 14:56:39,367 [f0fc4bf325d14dbabce03c9734db8d9b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:56:52,856 [dbd91a5fee074431832a4410fdef5c4a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/user/logout HTTP/1.1" 200 46[0m
+[32m2026-02-13 14:57:04,664 [479b1b5409d945fe8ffa8eb5c9c7eaa2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/user/login HTTP/1.1" 200 345[0m
+[32m2026-02-13 14:57:04,733 [8453a3c328a946b288c19bc63f7c7c31] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 305[0m
+[32m2026-02-13 14:57:08,903 [78df96cce0854409bc70b6a5f6ee0610] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:08,910 [c2abc4f16265415288c00bcd3d0d16aa] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 14:57:08,914 [53ca02042d75422da4d6903af6850e6a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 264[0m
+[32m2026-02-13 14:57:11,510 [739fa42540394d2e95f87b96de7ea9d7] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:57:20,169 [08a771d460d44456abc59bbf618ee210] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:57:20,184 [ea1ed3fc4e2149fbb4e8581c3d987c98] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/?page=1&size=20&element_type=&keyword= HTTP/1.1" 200 58[0m
+[32m2026-02-13 14:57:20,722 [a195fab924e84b1585fb08f52a3522ec] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-custom-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:57:20,724 [0894b0d3ea044598a07bdaef790b65f8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:57:20,733 [fa3570a906c94963a5d3562b1162053d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 14:57:21,650 [24cd20f9bdbe42ba86c5fbc0e4b7d5d9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:57:21,651 [2a6a0cadb7704637be93a25efc7e621b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 342[0m
+[32m2026-02-13 14:57:21,651 [ff88c35ab8304092a1d01ef307e1dae4] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/cases/?ui_flow_only=1&page=1&size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:21,661 [d01e404d434140cab7bcc01aa633516d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=10&ui_flow_only=1 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:23,454 [38bbd2bc555f4c4bb24c7d8acf38f67e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:23,454 [f52e8383f6034c429db092bba7faeba0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:24,325 [12c16e0fb6ef4c9696549d1ef39e7d05] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:24,325 [9943834168d246678e4e9e4d16fede6b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-cases/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:25,646 [b6ffe334fe094314be26925b1aea7be8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/test-plans/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:57:27,503 [a4a3cbbbdea24f1a9aaf1ccf62a99216] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 14:57:27,504 [e909131f139c407e8437f9218339d74e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:57:34,724 [216f47e0c29b4bfd93afc8b9ae76d66a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 342[0m
+[32m2026-02-13 14:57:50,355 [0ed0b58e8583427caba28b31b95561af] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 14:57:50,365 [7a528f058b6a4de080b5d01978552cb6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 14:58:06,446 [555d44f22af9465b98de31cdc70b274f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:58:06,446 [19b6f8db05d742979d50b65b4a9f3a70] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:58:40,631 [88224af1954a4b20acc53ec96a6ae1ff] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:58:40,642 [cacef239a4e54435b3528241e0acaafd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:58:47,447 [ad6be724cd774934a88f069e8f8c05e9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:58:47,454 [a01037f654744c3e98eb23994a80c0a4] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 314[0m
+[32m2026-02-13 14:58:47,461 [46568e994e63409080702ad886e90c29] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 14:58:52,240 [8612d55e68e94131b52125f196f13ec0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 341[0m
+[32m2026-02-13 14:58:54,996 [b603d2d1a0224582aa6919f904f37857] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:58:58,522 [4c50fbd0a972441ea4405dbab6ca4163] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 14:59:02,738 [1da496246f2845aba77015bbda41c4c8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 14:59:02,743 [989102da474b462cb342c86eb76681c8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 263[0m
+[32m2026-02-13 14:59:02,750 [c5b1319fcf9f445aaf36946a5bd6a82b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 15:00:39,039 [8ff907155cc648a88b6ed7657f044ad6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:00:39,041 [1f9aea3419274cb8b04df64b3bf8c59e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:00:46,710 [6c2887e78f014788a7aefce5c4fa3f30] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:00:46,711 [4b32af00e6fa443a991459903c69fdd7] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:01:01,414 [9fcbc8da3ff54f408c3e78b4b57e9554] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:01:01,418 [db99df0d56274098b5c8844ba91b9b10] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 330[0m
+[32m2026-02-13 15:01:01,423 [aae5c6f64afd406d809434630fcd4c66] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 15:01:32,607 [1fdf57ee130b4b5eaa82006df47f50b2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:01:32,611 [9082cfb8e4044496a26788a34e68aa61] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 293[0m
+[32m2026-02-13 15:01:32,622 [59ba91abc9f9473e9f3c7aa907f20c48] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 15:01:37,627 [81cefbf919f64b9f862acca3c7ae7757] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=5 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:01:37,627 [736936cc733a44f6bc594570b5462452] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 315[0m
+[32m2026-02-13 15:01:37,634 [f7aade29652645c8a36a24848a81c63a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/dashboard/stats/ HTTP/1.1" 200 171[0m
+[32m2026-02-13 15:01:39,767 [ecd1b60514b54ae6a18b48c2ebb3629c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 358[0m
+[32m2026-02-13 15:01:47,296 [2ec4e9c9a94746e28822ad1c7d8ccc72] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 15:01:52,257 [3db78a0eb2b64256b6543a63f84d67cb] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 15:01:52,258 [42193ad052424dbc97cb169b6b49a044] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/?page=1&size=20&element_type=&keyword= HTTP/1.1" 200 58[0m
+[32m2026-02-13 15:01:52,436 [1a401c4011ac4e5cb2f5c745d89dcbea] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-custom-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 15:01:52,437 [57b59c70d0034481af77c41c3e9bbac9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 15:01:52,457 [84f33b2698e84eb3b7b327219974bc58] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 15:01:53,132 [38785ae49e9e43d4a17040078f1a0b8e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 266[0m
+[32m2026-02-13 15:01:53,132 [394ec14abb7643789d3b0d77c46649b7] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 15:01:53,140 [2075c48d855a4f3290811e1ed92df7fe] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/cases/?ui_flow_only=1&page=1&size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:01:53,159 [7bedad1e49b548b9a2aa4ea811417e84] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=10&ui_flow_only=1 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:02:09,766 [599e521e88e44c2ab165d00a4ffb1015] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 350[0m
+[32m2026-02-13 15:02:40,067 [ed785ad7ebc646b3a4ad78fe66c9ffda] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 306[0m
+[32m2026-02-13 15:03:09,765 [83526899c1fb4fa68050ec3d973fe74a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 357[0m
+[32m2026-02-13 15:03:27,663 [ff9cad36cc4a4eb0a53bc6e890dd5ae5] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"POST /api/user/login HTTP/1.1" 200 348[0m
+[32m2026-02-13 15:03:27,735 [1e904d85d519483fa240e242fbb983cf] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 302[0m
+[32m2026-02-13 15:03:40,438 [c24739466645460391013f484acb4f89] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 15:03:40,439 [d2ea999334b94b0eb628fcbbe3494396] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-custom-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 15:03:40,449 [6dcc3ed70ac2432a90ce07241584fdb6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/ui-components/?enabled=1&size=100 HTTP/1.1" 200 52[0m
+[32m2026-02-13 15:03:57,728 [65aa37c725304690abfe4715ff26a706] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 334[0m
+[32m2026-02-13 15:04:08,023 [e9f09b9ee75d42259974d5e80e762a2e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 15:04:11,335 [c3347212e9614c839fa07346d67b2b4d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/?page=1&size=20&element_type=&keyword= HTTP/1.1" 200 58[0m
+[32m2026-02-13 15:04:11,336 [45a5b1dacadf4db485af477da097fef0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/elements/image_categories/ HTTP/1.1" 200 37[0m
+[32m2026-02-13 15:04:16,219 [4205c9245ddc434babf49beeaf2b2e1b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 333[0m
+[32m2026-02-13 15:04:16,220 [658eddf9060e482c83e2555d93a0f178] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/app-packages/ HTTP/1.1" 200 36[0m
+[32m2026-02-13 15:04:16,239 [213ee143277241aebe0eba9e04ad5dd9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/executions/?page=1&size=10&ui_flow_only=1 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:04:16,241 [1e154db96cab4a69b2abd43e633b5488] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/cases/?ui_flow_only=1&page=1&size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:04:27,728 [fcec5564de354341b39571ab77096804] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 270[0m
+[32m2026-02-13 15:04:57,735 [dd5995a0ed43462db050ad59ab7d8405] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 319[0m
+[32m2026-02-13 15:05:28,031 [1b2192e1824c430894c78bbb2f0ef146] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 291[0m
+[32m2026-02-13 15:05:57,729 [4a042514ac2a4a4ab8d6755c34a3a132] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 300[0m
+[32m2026-02-13 15:06:28,027 [cc4cc6e8716a4518a775acb70a1915f1] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 319[0m
+[32m2026-02-13 15:06:57,735 [1cee5cb269f74118a92b98cca298d2db] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 310[0m
+[32m2026-02-13 15:07:28,026 [502a65d6e7f24b8b9578f624adc28abc] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 292[0m
+[32m2026-02-13 15:07:57,735 [bf69a4d4c5be4394bf799b5c05036c70] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 299[0m
+[32m2026-02-13 15:08:28,027 [e9db2ff1e77d4859b41bfec139efaced] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 325[0m
+[32m2026-02-13 15:08:57,726 [c46faa6cc5e043e0b0ad0a7b98dbb40e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 341[0m
+[32m2026-02-13 15:09:28,027 [9d0f3efec0304beb9f93f90232f9a163] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 280[0m
+[32m2026-02-13 15:09:57,740 [c59611af2b584e5ca7dc1ff481668570] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 305[0m
+[32m2026-02-13 15:10:28,027 [ed87a9178cb9446394274a1eabc8fabb] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 312[0m
+[32m2026-02-13 15:10:57,728 [2eb403a981e24b8783db27365081418f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 281[0m
+[32m2026-02-13 15:11:28,026 [c7e4a5a37d45479886f86bd5e7d5feae] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 280[0m
+[32m2026-02-13 15:11:57,726 [1b65a860dff94da98a9336595fc02338] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 286[0m
+[32m2026-02-13 15:12:28,036 [c54f9cdd2d7b429198570edb259275c6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 279[0m
+[32m2026-02-13 15:12:57,731 [cd10d287dba64001bed408c80ff7b3b9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 298[0m
+[32m2026-02-13 15:13:28,037 [596f58be14ff4283b13121bab98e31cc] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 355[0m
+[32m2026-02-13 15:13:45,483 [84f8fb0b3f0b46af9de606cf9bb28fd4] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:13:45,499 [aa6a9c4bc18a48a19afc5b9e3144cc72] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:13:47,085 [6a8076d2d91345d280046dfc69b24b7f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-cases/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:13:47,095 [78979ff92fb64668b5c5cbc0c580c4a6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/functional-requirements/?page=1&page_size=1000 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:13:48,429 [95df9034e5cf41f88417642c3fa831f3] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/test-plans/?page=1&page_size=10 HTTP/1.1" 200 86[0m
+[32m2026-02-13 15:13:58,039 [67d77b4ca3de4cd1bf07dbabc022a42e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 306[0m
+[32m2026-02-13 15:14:27,730 [9fb3d946a90e45e5a1aa11d61d3754b1] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 307[0m
+[32m2026-02-13 15:14:58,029 [222605b6296d46ee82cc167794cd334b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 312[0m
+[32m2026-02-13 15:15:27,077 [5d12315aaf294d9898bf179d7b5377d9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 15:15:27,082 [8f2b807df1bc4dca9ca4040ca201c87c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 15:15:27,732 [a3a79c73eae649568ba846e7e1e17268] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 315[0m
+[32m2026-02-13 15:15:57,731 [809ead801db74ded9bb491882257a45b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 274[0m
+[32m2026-02-13 15:16:28,029 [fcd95bfd8b65498682540a7b30c9e73d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 346[0m
+[32m2026-02-13 15:16:57,733 [565ff5612dfb4b7bb7ec48fef9bbc11e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 321[0m
+[32m2026-02-13 15:17:28,031 [e8b94edc3b634ca39756a861607995bc] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 335[0m
+[32m2026-02-13 15:17:57,729 [2582d6f2820a4c0e9cb46add150b28ca] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 265[0m
+[32m2026-02-13 15:18:28,024 [4ba71f8e206c4ed197c0f6897a069b28] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 303[0m
+[32m2026-02-13 15:18:57,724 [d36f4bfe602243b9a2385577636468cd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 265[0m
+[32m2026-02-13 15:19:25,311 [eabe8175a60c4851907f8e5f25a4a819] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 15:19:27,728 [9628f59bf1414283b0dbc34ce7b17d8f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 312[0m
+[32m2026-02-13 15:19:57,721 [bec3b7de40764d0dba9bcd00ebf5dbdd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 267[0m
+[32m2026-02-13 15:20:28,034 [67c56664ffa445389e6383802da0e67b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 329[0m
+[32m2026-02-13 15:20:57,724 [7b4c4e1fa6454258a63eaa06d6821dac] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 357[0m
+[32m2026-02-13 15:21:28,030 [109b2a4648c44200981071e5b327fc79] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 336[0m
+[32m2026-02-13 15:21:57,723 [4f779495e57548abb22eed48d9ee657a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 356[0m
+[32m2026-02-13 15:22:28,031 [a260b050a8bd48c687e1733a25096e91] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 356[0m
+[32m2026-02-13 15:22:57,721 [d5eed09824aa441dac5a7cc3f5b81204] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 358[0m
+[32m2026-02-13 15:23:28,020 [ceae19ebaced4788aded73ed76fa21da] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 270[0m
+[32m2026-02-13 15:23:57,723 [14c233ff3de94093a3416e1159d16dd7] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 306[0m
+[32m2026-02-13 15:24:28,033 [4a8c4c5f12e84377afad0185c6a75efd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 282[0m
+[32m2026-02-13 15:24:57,725 [b5fbc512008d4835b681b3e65d1454d8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 293[0m
+[32m2026-02-13 15:25:28,027 [736cf188060049caabbe8e9eff94c0c0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 331[0m
+[32m2026-02-13 15:25:57,725 [1bba9ee06aed49fb9615f709bb57d9e5] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 275[0m
+[32m2026-02-13 15:26:28,038 [2570c1a45cf14360b6356bdd6030b0b4] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 313[0m
+[32m2026-02-13 15:26:57,729 [0cad847b58844b8aa4bb3637950f8be8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 341[0m
+[32m2026-02-13 15:27:28,040 [7e7ecd5ab0114826b5170eacc8357dec] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 289[0m
+[32m2026-02-13 15:27:57,724 [851583c950124a9591b88c9ce52f831c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 276[0m
+[32m2026-02-13 15:28:28,039 [1e9a63ef342e448eb43a00219242b720] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 296[0m
+[32m2026-02-13 15:28:57,721 [b0a072e952a04f75bb9d6399d062a6cf] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 312[0m
+[32m2026-02-13 15:29:28,031 [7857d447a5494bd8b60a94a6c0dbb650] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 344[0m
+[32m2026-02-13 15:29:57,730 [b4723d9f6eab4e2f80f5f58054d54a5d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 342[0m
+[32m2026-02-13 15:30:28,023 [d06f953c7a3a4bb59ec98c60ba980414] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 263[0m
+[32m2026-02-13 15:30:58,028 [ee7ccc7e002b4bee9fb1e368b3227520] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 279[0m
+[32m2026-02-13 15:31:28,023 [5901a8be1a0d493c883ed96805cab279] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 269[0m
+[32m2026-02-13 15:31:57,721 [8728993dbec84f3b8fa41b3d3a501c89] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 279[0m
+[32m2026-02-13 15:32:28,030 [74226cfa5661404e8d7f4248966d2033] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 362[0m
+[32m2026-02-13 15:32:57,721 [e72f8f8186c740238c023009c3360b1b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 312[0m
+[32m2026-02-13 15:33:28,033 [017fb6eae6ea4987926345e2c6c8f4d2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 272[0m
+[32m2026-02-13 15:33:57,726 [cadfb2e8db5c433893e9d23864af4ea2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 280[0m
+[32m2026-02-13 15:34:28,025 [6b82e1b1cdf245c7b64a4910dbaa35f9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 268[0m
+[32m2026-02-13 15:34:57,730 [b6a1b7a0babf4d73a3422bcca0cf6219] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 344[0m
+[32m2026-02-13 15:35:28,031 [fbe2eab306454ca49d9ed3070fe1a8cf] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 294[0m
+[32m2026-02-13 15:35:57,734 [2057a47091734b67bb149e17a131f57e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 291[0m
+[32m2026-02-13 15:36:28,022 [21e2377cface413aac2be4d9494bf9dd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 326[0m
+[32m2026-02-13 15:36:57,731 [65645cd7c8e5470d9a3b93e7bb38f8e1] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 295[0m
+[32m2026-02-13 15:37:28,022 [ca43352ae4734623bd67f3ebf21ca2c3] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 298[0m
+[32m2026-02-13 15:37:57,727 [39982b5b50e6496d868a7dcb39b31365] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 307[0m
+[32m2026-02-13 15:38:28,028 [2c898f339923498ba9e9a4db6ca89117] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 318[0m
+[32m2026-02-13 15:38:57,732 [e30076a4c99240f08b2bde0b1838005e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 358[0m
+[32m2026-02-13 15:39:28,034 [bd9726c91223426987906c0f6caa2e6a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 327[0m
+[32m2026-02-13 15:39:57,720 [ec20f4dcfe2a48eea18172a071bdb9d8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 283[0m
+[32m2026-02-13 15:40:28,026 [4aa0a237ad1244cf90879dfc008abffa] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 277[0m
+[32m2026-02-13 15:40:57,733 [77878dd5114049fead98fe9866e4787a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 322[0m
+[32m2026-02-13 15:41:28,021 [1299f2736ba04d34bf9448ae962fbeff] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 320[0m
+[32m2026-02-13 15:41:57,728 [4acfee2889024bd19f68eb03a30b4fbd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 358[0m
+[32m2026-02-13 15:42:28,022 [3a10daa91fd84e218613ec3db438b1fd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 355[0m
+[32m2026-02-13 15:42:57,730 [6341f9d31fd84f96b84b9b6b2a7b48e6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 286[0m
+[32m2026-02-13 15:43:28,034 [a14535a7afde4a9abecdc46a677ad027] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 267[0m
+[32m2026-02-13 15:43:57,729 [43a11dd02e554fd0b817d8a051c87a9e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 317[0m
+[32m2026-02-13 15:44:28,032 [34ad21a3da124ee7adf7189556acb9ca] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 347[0m
+[32m2026-02-13 15:44:57,721 [b9e75948d806483da6bc7c56c0cc31cd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 315[0m
+[32m2026-02-13 15:45:28,023 [a88bccb9853741798c810e0e3ad39ae0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 276[0m
+[32m2026-02-13 15:45:57,723 [270294b6f20743d4ae04e501471c46e9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 274[0m
+[32m2026-02-13 15:46:28,032 [76711d42727343d9afbcf9f483273afd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 266[0m
+[32m2026-02-13 15:46:57,730 [94549e317e1c4aac9f052eb9b95e47a9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 307[0m
+[32m2026-02-13 15:47:28,038 [c0ebd6ccfe0c4e98953ba462e30fa75f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 271[0m
+[32m2026-02-13 15:47:57,721 [a7b0f15cc2ab4ea398adc955f9f09f83] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 288[0m
+[32m2026-02-13 15:48:28,034 [5a400daf9d074a80aed34d627134c625] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 286[0m
+[32m2026-02-13 15:48:57,745 [9161f4d2ed0945358fb9fdd00278e390] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 335[0m
+[32m2026-02-13 15:49:28,024 [c5cc9d235b534f04b1b989d4b1b4cc2b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 360[0m
+[32m2026-02-13 15:49:57,731 [17142e14b89f46a49564a3eb754cf97e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 349[0m
+[32m2026-02-13 15:50:28,049 [2d01339a224b471593f0f1b9c4abe61d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 305[0m
+[32m2026-02-13 15:50:57,733 [3d0fd2c4d99e4990a7c540cb00e2352a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 332[0m
+[32m2026-02-13 15:51:28,034 [a2b2b64a331f495a85c18302d93ed1ba] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 339[0m
+[32m2026-02-13 15:51:57,730 [c7d50275800b4b589017f36702f6dff9] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 358[0m
+[32m2026-02-13 15:52:28,023 [08a727a38e4c4ce989fda1aa64e39058] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 344[0m
+[32m2026-02-13 15:52:57,732 [fa91b0f342784bc681588818fcf18e84] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 318[0m
+[32m2026-02-13 15:53:28,037 [de9dc18e342e436a97c0413bace80686] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 266[0m
+[32m2026-02-13 15:53:57,721 [0a478ad76ce048ad81dbe2464083794d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 297[0m
+[32m2026-02-13 15:54:28,034 [2da45b0d65ae4e32948cf514c585a73f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 318[0m
+[32m2026-02-13 15:54:57,729 [1f412db18e6c42219e42d614cc1aae57] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 349[0m
+[32m2026-02-13 15:55:28,030 [823e0cb250d64898ada573e5c437ab9b] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 346[0m
+[32m2026-02-13 15:55:57,730 [6a6e2a6b276b430d8eca17193b466d3e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 328[0m
+[32m2026-02-13 15:56:28,026 [4331f6f0a2184684b08a474c9d95cc4c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 340[0m
+[32m2026-02-13 15:56:57,732 [46e9eb312a504d218d2cf850ba20368f] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 293[0m
+[32m2026-02-13 15:57:28,024 [60b7b9b7330045a0bb7540447c7cf973] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 341[0m
+[32m2026-02-13 15:57:57,731 [7eddfdec2d0348988ca660b499b9da63] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 303[0m
+[32m2026-02-13 15:58:28,025 [1677f6cf962241abb60ddcf0e9950e91] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 274[0m
+[32m2026-02-13 15:58:57,735 [932fcf55cc8a4ebe8379256113a293b0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 338[0m
+[32m2026-02-13 15:59:28,029 [90b27b4ae0f04561adaed13e6693a8cf] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 320[0m
+[32m2026-02-13 15:59:57,722 [3d7ff5be88cc4c4887fe9a3a9df28066] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 357[0m
+[32m2026-02-13 16:00:28,031 [1a9e03c9c5144b4eb4e69866da74c8d1] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 287[0m
+[32m2026-02-13 16:00:57,721 [bbb2a5971e14411483d59d30c782fdce] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 324[0m
+[32m2026-02-13 16:01:28,031 [f9a83bbb818a4b5ebefac783832fdde1] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 305[0m
+[32m2026-02-13 16:01:57,721 [278a14b64e104a8ca5738d202351b767] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 317[0m
+[32m2026-02-13 16:02:28,023 [58d7ddd8ebe04e409235af9b1236a938] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 339[0m
+[32m2026-02-13 16:02:57,731 [93fc490d04294366a17f4592459dd7cd] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 350[0m
+[32m2026-02-13 16:03:28,023 [6342f855cd4543b1aea95bb9b78ff49c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 330[0m
+[32m2026-02-13 16:03:57,731 [4db3647deb144d17926f3cb7d776435a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 334[0m
+[32m2026-02-13 16:04:28,033 [141213ef3bf74a23bd0078d2e0595298] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 332[0m
+[32m2026-02-13 16:04:57,727 [18cd8b845a3147c79fd6faffbd6b5948] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 293[0m
+[32m2026-02-13 16:05:28,027 [48982dff3b8d46c2972801662dc230d2] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 359[0m
+[32m2026-02-13 16:05:57,723 [2f42458012ef435a8911fb73171f8398] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 356[0m
+[32m2026-02-13 16:06:28,035 [e275982f743e4b9c8b5d6dfa083cefd8] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 268[0m
+[32m2026-02-13 16:06:57,731 [869d511afab64861a1d7a81d56ff2360] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 301[0m
+[32m2026-02-13 16:07:28,034 [b42c56f644554b178abd1a998a62a753] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 358[0m
+[32m2026-02-13 16:07:57,734 [439eff24054d47dd89b4b1747bbd458a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 284[0m
+[32m2026-02-13 16:08:28,031 [75e0e6417e964fb39d020d69f241d38e] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 298[0m
+[32m2026-02-13 16:08:57,734 [6447c641758d43ecbec7ac300fec41d6] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 323[0m
+[32m2026-02-13 16:09:28,026 [fc959df077c845a9869ebc4cce372c7c] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 349[0m
+[32m2026-02-13 16:09:57,720 [b26b7898a13242c5801959b8751b9057] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 331[0m
+[32m2026-02-13 16:10:28,029 [a2add7792077428fb8fc3d79020a65f0] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 268[0m
+[32m2026-02-13 16:10:57,724 [9d81f6c4f6ab4e348e4f148fcc706e7a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 309[0m
+[32m2026-02-13 16:11:28,031 [970d61406dd64dcaa1a377ae08b8ae52] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 347[0m
+[32m2026-02-13 16:11:57,729 [371b1d9009334c34914b44c1698db55d] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 286[0m
+[32m2026-02-13 16:12:28,026 [cfab05858c2b4aa9891a5e909852af27] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 328[0m
+[32m2026-02-13 16:12:57,720 [ea09333523f34e028d9e1285f1fa2139] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 293[0m
+[32m2026-02-13 16:13:28,029 [082572a53ec549e7ba0550dc6d5edbad] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 267[0m
+[32m2026-02-13 16:13:57,734 [f0f0ab2bf49e49658bede5ebcef7471a] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 343[0m
+[32m2026-02-13 16:14:28,045 [a1a10582a9ed434b8ebb27bbc88b98ce] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 328[0m
+[32m2026-02-13 16:14:57,724 [a20cbf2364874f5da8df08be005de1d7] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 305[0m
+[32m2026-02-13 16:15:28,024 [cf2d5c58fa6f4990a97b28f45761f125] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 336[0m
+[32m2026-02-13 16:15:57,727 [ad3400d087604a5e947905d3b8d07dff] django.server [37mINFO [pid:14000] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 325[0m
+[32m2026-02-13 16:16:08,391 [none] django.utils.autoreload [37mINFO [pid:14000] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\models.py changed, reloading.[0m
+[32m2026-02-13 16:16:09,807 [none] django.utils.autoreload [37mINFO [pid:29368] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:16:26,559 [none] django.utils.autoreload [37mINFO [pid:29368] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\services\file_processor.py changed, reloading.[0m
+[32m2026-02-13 16:16:27,607 [none] django.utils.autoreload [37mINFO [pid:26956] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:16:34,878 [none] django.utils.autoreload [37mINFO [pid:26956] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\services\file_processor.py changed, reloading.[0m
+[32m2026-02-13 16:16:35,938 [none] django.utils.autoreload [37mINFO [pid:26132] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:16:57,742 [9c4e3d0f780342e482839fa111f5d91f] django.server [37mINFO [pid:26132] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 309[0m
+[32m2026-02-13 16:17:11,706 [none] django.utils.autoreload [37mINFO [pid:26132] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\services\prompts.py changed, reloading.[0m
+[32m2026-02-13 16:17:12,783 [none] django.utils.autoreload [37mINFO [pid:18652] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:17:20,039 [none] django.utils.autoreload [37mINFO [pid:18652] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\services\kimi_client.py changed, reloading.[0m
+[32m2026-02-13 16:17:21,054 [none] django.utils.autoreload [37mINFO [pid:11240] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:17:28,036 [0d648c8e3a164ed9b236ecea021d525b] django.server [37mINFO [pid:11240] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 295[0m
+[32m2026-02-13 16:17:33,813 [none] django.utils.autoreload [37mINFO [pid:11240] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\services\kimi_client.py changed, reloading.[0m
+[32m2026-02-13 16:17:35,015 [none] django.utils.autoreload [37mINFO [pid:15136] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:17:46,482 [none] django.utils.autoreload [37mINFO [pid:15136] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\serializers.py changed, reloading.[0m
+[32m2026-02-13 16:17:47,517 [none] django.utils.autoreload [37mINFO [pid:1640] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:17:57,738 [5ec6167709694a999f9d29b491354d90] django.server [37mINFO [pid:1640] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 338[0m
+[32m2026-02-13 16:18:08,373 [none] django.utils.autoreload [37mINFO [pid:1640] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:18:09,404 [none] django.utils.autoreload [37mINFO [pid:26692] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:18:19,517 [none] django.utils.autoreload [37mINFO [pid:26692] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:18:20,643 [none] django.utils.autoreload [37mINFO [pid:19688] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:18:28,036 [b67c4ad5977747e6af5831597c6efb59] django.server [37mINFO [pid:19688] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 313[0m
+[32m2026-02-13 16:18:35,398 [none] django.utils.autoreload [37mINFO [pid:19688] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:18:36,499 [none] django.utils.autoreload [37mINFO [pid:20432] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:18:58,042 [df99afdb8263483e8e68c67a0ca8af97] django.server [37mINFO [pid:20432] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 313[0m
+[32m2026-02-13 16:19:09,172 [none] django.utils.autoreload [37mINFO [pid:20432] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:19:10,579 [none] django.utils.autoreload [37mINFO [pid:22796] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:19:23,039 [none] django.utils.autoreload [37mINFO [pid:22796] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\urls.py changed, reloading.[0m
+[32m2026-02-13 16:19:23,539 [none] django.utils.autoreload [37mINFO [pid:11320] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:19:28,336 [9eceb690af6e453084d8ca9305462bc7] django.server [37mINFO [pid:11320] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 359[0m
+[32m2026-02-13 16:20:29,342 [395fe8d653da44d992e999e456e4a624] django.server [37mINFO [pid:11320] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 343[0m
+[32m2026-02-13 16:21:30,330 [10c6ba04449d4a90afee5fbb55568d39] django.server [37mINFO [pid:11320] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 357[0m
+[32m2026-02-13 16:22:31,333 [f16665743eaa4ed7a8de3de94548427e] django.server [37mINFO [pid:11320] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 302[0m
+[32m2026-02-13 16:22:50,014 [none] django.utils.autoreload [37mINFO [pid:22656] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:23:08,005 [48292a2e11f74428bf30566fb3e4dd8f] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"POST /api/user/login HTTP/1.1" 200 322[0m
+[32m2026-02-13 16:23:08,069 [065bd7b9c6d34d26b2e0eafd9f28c73b] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 274[0m
+[32m2026-02-13 16:23:11,066 [f4232a4ed84144e9a4801f48bbbda295] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:23:11,069 [26b54980c8a7442e9bedd8baa0337701] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 16:23:32,029 [a1d81085a0dc40aa9b0c703d7e4273ee] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 282[0m
+[32m2026-02-13 16:23:38,056 [01fe6783baa1446a85fe76942f906cc0] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 361[0m
+[32m2026-02-13 16:24:09,332 [4b9279c3e148413c9a5659d3c0f38be0] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 328[0m
+[32m2026-02-13 16:24:33,022 [e0fff6d9e4a6435b8b917868a3641602] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 323[0m
+[32m2026-02-13 16:24:39,032 [abc416697e2040d5b5cb0ab55ddcbef5] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 314[0m
+[32m2026-02-13 16:25:09,324 [83ab06d80bff4c13a1098e97e5f52f95] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 342[0m
+[32m2026-02-13 16:25:12,126 [623d859bb4804beaa298f5632cb04533] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 342[0m
+[32m2026-02-13 16:25:12,280 [c69c6375f1d842ce98c59428fd56bcf4] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:25:12,281 [8d24aa63d78f45148b38f36403398b2d] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 16:25:23,376 [none] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"OPTIONS /api/ai_testcase/generate-stream/ HTTP/1.1" 200 0[0m
+[32m2026-02-13 16:25:23,396 [782e13d41b02403e8338c52b7aa3ffff] django.request [31mERROR [pid:22656] [log.py->log_response:241] [36mInternal Server Error: /api/ai_testcase/generate-stream/[0m
+Traceback (most recent call last):
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\exception.py"[0m, line [35m55[0m, in [35minner[0m
+    response = get_response(request)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m204[0m, in [35m_get_response[0m
+    [31mself.check_response[0m[1;31m(response, callback)[0m
+    [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m337[0m, in [35mcheck_response[0m
+    raise ValueError(
+    ...<3 lines>...
+    )
+[1;35mValueError[0m: [35mThe view apps.ai_testcase.views.generate_stream_view didn't return an HttpResponse object. It returned an unawaited coroutine instead. You may need to add an 'await' into your view.[0m
+[32m2026-02-13 16:25:23,400 [782e13d41b02403e8338c52b7aa3ffff] django.server [31mERROR [pid:22656] [basehttp.py->log_message:212] [36m"POST /api/ai_testcase/generate-stream/ HTTP/1.1" 500 13997[0m
+[32m2026-02-13 16:25:23,419 [7405c4f355a8438ba76df42c190c0a26] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 16:25:34,126 [65b27fd1ec4048b4800b2e4bc91a73e8] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:25:34,129 [4dfd5eb12b984ff29c552b88c2fb5061] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 16:25:39,034 [290107e59b4f4d8ea79b75ca458cdd16] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 350[0m
+[32m2026-02-13 16:25:46,100 [91e66578397447bf89019d57ad20d057] django.request [31mERROR [pid:22656] [log.py->log_response:241] [36mInternal Server Error: /api/ai_testcase/generate-stream/[0m
+Traceback (most recent call last):
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\exception.py"[0m, line [35m55[0m, in [35minner[0m
+    response = get_response(request)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m204[0m, in [35m_get_response[0m
+    [31mself.check_response[0m[1;31m(response, callback)[0m
+    [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m337[0m, in [35mcheck_response[0m
+    raise ValueError(
+    ...<3 lines>...
+    )
+[1;35mValueError[0m: [35mThe view apps.ai_testcase.views.generate_stream_view didn't return an HttpResponse object. It returned an unawaited coroutine instead. You may need to add an 'await' into your view.[0m
+[32m2026-02-13 16:25:46,102 [91e66578397447bf89019d57ad20d057] django.server [31mERROR [pid:22656] [basehttp.py->log_message:212] [36m"POST /api/ai_testcase/generate-stream/ HTTP/1.1" 500 13921[0m
+[32m2026-02-13 16:25:46,114 [e25ed861e07346688afd64ccd4428e04] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 16:25:52,058 [c04fb2a47cd14ceeaba079914f07a3de] django.request [31mERROR [pid:22656] [log.py->log_response:241] [36mInternal Server Error: /api/ai_testcase/generate-stream/[0m
+Traceback (most recent call last):
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\exception.py"[0m, line [35m55[0m, in [35minner[0m
+    response = get_response(request)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m204[0m, in [35m_get_response[0m
+    [31mself.check_response[0m[1;31m(response, callback)[0m
+    [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m337[0m, in [35mcheck_response[0m
+    raise ValueError(
+    ...<3 lines>...
+    )
+[1;35mValueError[0m: [35mThe view apps.ai_testcase.views.generate_stream_view didn't return an HttpResponse object. It returned an unawaited coroutine instead. You may need to add an 'await' into your view.[0m
+[32m2026-02-13 16:25:52,060 [c04fb2a47cd14ceeaba079914f07a3de] django.server [31mERROR [pid:22656] [basehttp.py->log_message:212] [36m"POST /api/ai_testcase/generate-stream/ HTTP/1.1" 500 14008[0m
+[32m2026-02-13 16:25:52,073 [8e40e3e64e554f8083bab971c92030ea] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 52[0m
+[32m2026-02-13 16:26:09,025 [48afa885b7b3490e88c48b493e77b5a1] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 355[0m
+[32m2026-02-13 16:26:40,063 [20ee454467f048a996b2c7539a74cf03] django.server [37mINFO [pid:22656] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 294[0m
+[32m2026-02-13 16:27:08,093 [none] django.utils.autoreload [37mINFO [pid:22656] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:27:09,426 [none] django.utils.autoreload [37mINFO [pid:20572] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:27:14,408 [none] django.utils.autoreload [37mINFO [pid:20572] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:27:15,568 [none] django.utils.autoreload [37mINFO [pid:29252] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:27:20,513 [none] django.utils.autoreload [37mINFO [pid:29252] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:27:21,747 [none] django.utils.autoreload [37mINFO [pid:8392] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:27:30,106 [none] django.utils.autoreload [37mINFO [pid:8392] [autoreload.py->trigger_reload:266] [36mD:\workmind\backend\apps\ai_testcase\views.py changed, reloading.[0m
+[32m2026-02-13 16:27:31,412 [none] django.utils.autoreload [37mINFO [pid:14960] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:27:39,342 [d0bdb8a206ae41489550001d4ed3778c] django.server [37mINFO [pid:14960] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 274[0m
+[32m2026-02-13 16:27:52,881 [none] django.utils.autoreload [37mINFO [pid:22592] [autoreload.py->run_with_reloader:668] [36mWatching for file changes with StatReloader[0m
+[32m2026-02-13 16:28:40,330 [dcd967ebdf1446cba067af59fdf81bde] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 325[0m
+[32m2026-02-13 16:28:46,365 [92d32b6cfc4643b7a33ad84ae1ec1b08] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 736[0m
+[32m2026-02-13 16:28:46,374 [f2f7d85ac80e4d6baab21ca1ede64c3a] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:28:50,016 [925c4bc0a86a4be59c10e24692a778e3] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:28:50,019 [04768c2f0e404e0bb35bd5c4f69c4a24] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 732[0m
+[32m2026-02-13 16:28:51,323 [052f74eeacb149a2996a522e96a33d93] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 750[0m
+[32m2026-02-13 16:28:52,092 [e39b81f5c8874c6481e7c4cb1ed7fd9e] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 759[0m
+[32m2026-02-13 16:28:52,282 [012658d12b144d2289dcfea19130cdf6] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 802[0m
+[32m2026-02-13 16:28:52,500 [cebaf7b59cf245ea8fc98567d9e2f4d7] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 799[0m
+[32m2026-02-13 16:28:52,717 [a97e4203333c48c09c3eefc4ab0af2de] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 729[0m
+[32m2026-02-13 16:28:52,917 [d4da854f1675445381814d2dc4e259c6] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 712[0m
+[32m2026-02-13 16:28:53,117 [a144926b78c14537b65eae2ff5ed8e8c] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 768[0m
+[32m2026-02-13 16:29:16,142 [57f74a11dafc4c19b9fda795f05e34e8] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:29:16,146 [7bff782add094ec394ced7664418ab66] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 3528[0m
+[32m2026-02-13 16:29:21,214 [7c90001ce05144099e7dfd91e93db8a9] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/1/download/ HTTP/1.1" 200 5569[0m
+[32m2026-02-13 16:29:41,033 [16cbce207fc8411ea2138db80a702989] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 359[0m
+[32m2026-02-13 16:30:00,631 [9e4deec1fcb84d5c960afac95abe815a] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
+[32m2026-02-13 16:30:00,636 [3e746481ed2c490c8589126d7563c683] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 3583[0m
