@@ -332,7 +332,12 @@ const refreshDevices = async () => {
 
         if (response.code === 0) {
             devices.value = response.data
-            ElMessage.success('设备列表已刷新')
+            const msg = response.msg && response.msg !== '刷新成功' ? response.msg : '设备列表已刷新'
+            if (msg.includes('ADB') || msg.includes('已返回已有设备列表')) {
+                ElMessage.warning(msg)
+            } else {
+                ElMessage.success(msg)
+            }
         } else {
             ElMessage.error(response.msg || '刷新设备列表失败')
         }

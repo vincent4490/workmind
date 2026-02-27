@@ -2,6 +2,7 @@
 """
 设备管理视图
 """
+import subprocess
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -59,7 +60,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
             adb_path = 'adb'
             logger.warning(f"获取配置失败: {e}，使用默认ADB路径: {adb_path}")
         
-        # 使用 DeviceManager 获取设备列表
+        # 使用 DeviceManager 获取设备列表（ADB 可能未安装或不可用，此时返回已有列表并提示）
         try:
             from ..managers.device_manager import DeviceManager
             logger.info("初始化DeviceManager")
@@ -141,7 +142,37 @@ class DeviceViewSet(viewsets.ModelViewSet):
                 'data': serializer.data
             })
             
+        except FileNotFoundError as e:
+            # ADB 未安装或路径错误：返回 200 + 已有设备列表，避免 500
+            logger.warning(f"ADB 不可用: {e}，返回已有设备列表")
+            devices = Device.objects.all()  # type: ignore[attr-defined]
+            serializer = DeviceSerializer(devices, many=True)
+            return Response({
+                'code': 0,
+                'msg': 'ADB 未安装或路径不可用，已返回已有设备列表。请在「Android 版本」等配置中设置正确的 ADB 路径。',
+                'data': serializer.data
+            })
+        except subprocess.TimeoutExpired as e:
+            logger.warning(f"ADB 执行超时: {e}，返回已有设备列表")
+            devices = Device.objects.all()  # type: ignore[attr-defined]
+            serializer = DeviceSerializer(devices, many=True)
+            return Response({
+                'code': 0,
+                'msg': 'ADB 执行超时，已返回已有设备列表。请检查 ADB 与设备连接。',
+                'data': serializer.data
+            })
         except Exception as e:
+            err_msg = str(e)
+            # ADB 相关错误（找不到命令、执行失败等）统一返回 200 + 已有列表，避免 500
+            if '找不到' in err_msg or 'ADB' in err_msg or 'adb' in err_msg or '超时' in err_msg or '执行失败' in err_msg:
+                logger.warning(f"ADB 相关错误: {e}，返回已有设备列表")
+                devices = Device.objects.all()  # type: ignore[attr-defined]
+                serializer = DeviceSerializer(devices, many=True)
+                return Response({
+                    'code': 0,
+                    'msg': f'刷新时出错（{err_msg}），已返回已有设备列表。请检查 ADB 配置。',
+                    'data': serializer.data
+                })
             logger.error(f"刷新设备列表失败: {str(e)}", exc_info=True)
             return Response({
                 'code': 1,
