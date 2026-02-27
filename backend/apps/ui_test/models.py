@@ -177,6 +177,7 @@ class FunctionalRequirement(models.Model):
     dev_man_days = models.CharField(max_length=50, blank=True, default='', verbose_name='开发人日')
     dev_time = models.CharField(max_length=50, blank=True, default='', verbose_name='开发时间')
     testers = models.CharField(max_length=200, blank=True, default='', verbose_name='测试人员')
+    test_team = models.CharField(max_length=200, blank=True, default='', verbose_name='测试团队')
     test_man_days = models.CharField(max_length=50, blank=True, default='', verbose_name='测试人日')
     submit_test_time = models.CharField(max_length=50, blank=True, default='', verbose_name='提测时间')
     test_time = models.CharField(max_length=50, blank=True, default='', verbose_name='测试时间')

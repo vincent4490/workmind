@@ -88,6 +88,7 @@
                 </template>
             </el-table-column>
             <el-table-column prop="testers" label="测试人员" min-width="100" />
+            <el-table-column prop="test_team" label="测试团队" min-width="120" />
             <el-table-column prop="test_man_days" label="测试人日" width="90" />
             <el-table-column prop="submit_test_time" label="提测时间" width="120">
                 <template #default="scope">
@@ -100,6 +101,11 @@
                 </template>
             </el-table-column>
             <el-table-column prop="created_by_username" label="创建人" width="100" />
+            <el-table-column prop="created_at" label="创建时间" width="160">
+                <template #default="scope">
+                    {{ formatDate(scope.row.created_at) }}
+                </template>
+            </el-table-column>
             <el-table-column prop="updated_at" label="更新时间" width="160">
                 <template #default="scope">
                     {{ formatDate(scope.row.updated_at) }}
@@ -226,6 +232,12 @@
                         placeholder="请输入测试人员"
                     />
                 </el-form-item>
+                <el-form-item label="测试团队" prop="test_team">
+                    <el-input
+                        v-model="requirementFormData.test_team"
+                        placeholder="请输入测试团队"
+                    />
+                </el-form-item>
                 <el-form-item label="测试人日" prop="test_man_days">
                     <el-input
                         v-model="requirementFormData.test_man_days"
@@ -301,6 +313,7 @@ const requirementFormData = ref({
     dev_man_days: '',
     dev_time: [],
     testers: '',
+    test_team: '',
     test_man_days: '',
     submit_test_time: '',
     test_time: []
@@ -329,6 +342,7 @@ const getDefaultForm = () => ({
     dev_man_days: '',
     dev_time: [],
     testers: '',
+    test_team: '',
     test_man_days: '',
     submit_test_time: '',
     test_time: []
@@ -420,6 +434,7 @@ const editRequirement = (row) => {
         dev_man_days: row.dev_man_days || '',
         dev_time: parseTimeRange(row.dev_time),
         testers: row.testers || '',
+        test_team: row.test_team || '',
         test_man_days: row.test_man_days || '',
         submit_test_time: parseSingleDate(row.submit_test_time),
         test_time: parseTimeRange(row.test_time)
@@ -462,6 +477,7 @@ const saveRequirement = () => {
             dev_man_days: requirementFormData.value.dev_man_days || '',
             dev_time: formatTimeRange(requirementFormData.value.dev_time),
             testers: requirementFormData.value.testers || '',
+            test_team: requirementFormData.value.test_team || '',
             test_man_days: requirementFormData.value.test_man_days || '',
             submit_test_time: formatSingleDateToString(requirementFormData.value.submit_test_time),
             test_time: formatTimeRange(requirementFormData.value.test_time)
