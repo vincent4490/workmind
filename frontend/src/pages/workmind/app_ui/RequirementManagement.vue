@@ -29,6 +29,7 @@
                     filterable
                     clearable
                     style="width: 220px;"
+                    @change="loadRequirements"
                 >
                     <el-option
                         v-for="item in requirementOptions"
@@ -44,6 +45,7 @@
                     placeholder="请选择测试团队"
                     clearable
                     style="width: 140px;"
+                    @change="loadRequirements"
                 >
                     <el-option label="slots" value="slots" />
                     <el-option label="大厅" value="大厅" />
@@ -58,6 +60,7 @@
                     placeholder="请输入测试人员"
                     clearable
                     style="width: 140px;"
+                    @change="loadRequirements"
                 />
             </el-form-item>
             <el-form-item label="创建时间">
@@ -69,6 +72,7 @@
                     end-placeholder="结束日期"
                     value-format="YYYY-MM-DD"
                     style="width: 240px;"
+                    @change="loadRequirements"
                 />
             </el-form-item>
             <el-form-item>
@@ -88,7 +92,7 @@
             <el-table-column type="index" label="序号" width="60" />
             <el-table-column prop="name" label="需求名称" min-width="160" />
             <el-table-column prop="link" label="需求链接" min-width="240" />
-            <el-table-column prop="product_owner" label="产品负责人" width="100" />
+            <el-table-column prop="product_owner" label="产品负责人" width="100" show-overflow-tooltip />
             <el-table-column prop="status" label="状态" width="80">
                 <template #default="scope">
                     <el-tag :type="getStatusType(scope.row.status)" size="small">
@@ -96,7 +100,7 @@
                     </el-tag>
                 </template>
             </el-table-column>
-            <el-table-column prop="tags" label="标签" width="100">
+            <el-table-column prop="tags" label="标签" width="80">
                 <template #default="scope">
                     <span v-if="scope.row.tags">
                         <el-tag
@@ -112,36 +116,31 @@
                     <span v-else>-</span>
                 </template>
             </el-table-column>
-            <el-table-column prop="remark" label="备注" min-width="200" />
-            <el-table-column prop="developers" label="开发人员" min-width="100" />
-            <el-table-column prop="dev_man_days" label="开发人日" width="90" />
-            <el-table-column prop="dev_time" label="开发时间" min-width="180">
+            <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="developers" label="开发人员" width="80" show-overflow-tooltip />
+            <el-table-column prop="dev_man_days" label="开发人日" width="80" />
+            <el-table-column prop="dev_time" label="开发时间" min-width="140">
                 <template #default="scope">
                     {{ formatDisplayDate(scope.row.dev_time) }}
                 </template>
             </el-table-column>
-            <el-table-column prop="testers" label="测试人员" min-width="100" />
-            <el-table-column prop="test_team" label="测试团队" min-width="120" />
-            <el-table-column prop="test_man_days" label="测试人日" width="90" />
-            <el-table-column prop="submit_test_time" label="提测时间" width="120">
+            <el-table-column prop="testers" label="测试人员" width="80" show-overflow-tooltip />
+            <el-table-column prop="test_team" label="测试团队" width="80" />
+            <el-table-column prop="test_man_days" label="测试人日" width="80" />
+            <el-table-column prop="submit_test_time" label="提测时间" width="100">
                 <template #default="scope">
                     {{ formatDisplayDate(scope.row.submit_test_time) }}
                 </template>
             </el-table-column>
-            <el-table-column prop="test_time" label="测试时间" min-width="180">
+            <el-table-column prop="test_time" label="测试时间" min-width="140">
                 <template #default="scope">
                     {{ formatDisplayDate(scope.row.test_time) }}
                 </template>
             </el-table-column>
-            <el-table-column prop="created_by_username" label="创建人" width="100" />
+            <el-table-column prop="created_by_username" label="创建人" width="80" show-overflow-tooltip />
             <el-table-column prop="created_at" label="创建时间" width="160">
                 <template #default="scope">
                     {{ formatDate(scope.row.created_at) }}
-                </template>
-            </el-table-column>
-            <el-table-column prop="updated_at" label="更新时间" width="160">
-                <template #default="scope">
-                    {{ formatDate(scope.row.updated_at) }}
                 </template>
             </el-table-column>
             <el-table-column label="操作" width="180" fixed="right">
@@ -763,39 +762,30 @@ const formatDisplayDate = (dateStr) => {
     return formatSingleDate(str)
 }
 
+// 显示用：统一为 YYYY/M/D（如 2026/2/27）
 const formatSingleDate = (dateStr) => {
     if (!dateStr) return '-'
-    
     const str = String(dateStr).trim()
-    
-
     if (str.includes('/')) {
         const parts = str.split('/').map(item => item.trim())
         if (parts.length === 3) {
-            const [year, month, day] = parts
-            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+            const [y, m, d] = parts
+            return `${y}/${Number(m)}/${Number(d)}`
         }
     }
-
     if (str.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
-        const parts = str.split('-')
-        const [year, month, day] = parts
-        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+        const [year, month, day] = str.split('-')
+        return `${year}/${Number(month)}/${Number(day)}`
     }
-    
-    // 尝试使用 Date 对象解析
     try {
         const date = new Date(str)
         if (!isNaN(date.getTime())) {
             const year = date.getFullYear()
-            const month = String(date.getMonth() + 1).padStart(2, '0')
-            const day = String(date.getDate()).padStart(2, '0')
-            return `${year}-${month}-${day}`
+            const month = date.getMonth() + 1
+            const day = date.getDate()
+            return `${year}/${month}/${day}`
         }
-    } catch (e) {
-        // 解析失败，返回原始字符串
-    }
-    
+    } catch (e) {}
     return str
 }
 

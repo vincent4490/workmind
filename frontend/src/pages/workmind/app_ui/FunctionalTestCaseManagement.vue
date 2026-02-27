@@ -61,6 +61,7 @@
                         filterable
                         clearable
                         style="width: 200px;"
+                        @change="loadCases"
                     >
                         <el-option
                             v-for="item in requirementOptions"
@@ -76,6 +77,7 @@
                         placeholder="请选择标签"
                         clearable
                         style="width: 150px;"
+                        @change="loadCases"
                     >
                         <el-option label="回归" value="回归" />
                         <el-option label="冒烟" value="冒烟" />
@@ -87,6 +89,7 @@
                         placeholder="请选择优先级"
                         clearable
                         style="width: 150px;"
+                        @change="loadCases"
                     >
                         <el-option label="P0" value="P0" />
                         <el-option label="P1" value="P1" />

@@ -407,3 +407,170 @@ Traceback (most recent call last):
 [32m2026-02-13 16:29:41,033 [16cbce207fc8411ea2138db80a702989] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ui_test/devices/ HTTP/1.1" 200 359[0m
 [32m2026-02-13 16:30:00,631 [9e4deec1fcb84d5c960afac95abe815a] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/config-status/ HTTP/1.1" 200 110[0m
 [32m2026-02-13 16:30:00,636 [3e746481ed2c490c8589126d7563c683] django.server [37mINFO [pid:22592] [basehttp.py->log_message:212] [36m"GET /api/ai_testcase/generations/?page=1&page_size=10&ordering=-created_at HTTP/1.1" 200 3583[0m
+[32m2026-02-27 14:41:14,461 [668148153c4a437ebef246f82bcf9d01] django.request [31mERROR [pid:29204] [log.py->log_response:241] [36mInternal Server Error: /api/ui_test/functional-requirements/[0m
+Traceback (most recent call last):
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\utils.py"[0m, line [35m89[0m, in [35m_execute[0m
+    return [31mself.cursor.execute[0m[1;31m(sql, params)[0m
+           [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\mysql\base.py"[0m, line [35m75[0m, in [35mexecute[0m
+    return [31mself.cursor.execute[0m[1;31m(query, args)[0m
+           [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\cursors.py"[0m, line [35m153[0m, in [35mexecute[0m
+    result = self._query(query)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\cursors.py"[0m, line [35m322[0m, in [35m_query[0m
+    [31mconn.query[0m[1;31m(q)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m575[0m, in [35mquery[0m
+    self._affected_rows = [31mself._read_query_result[0m[1;31m(unbuffered=unbuffered)[0m
+                          [31m~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m826[0m, in [35m_read_query_result[0m
+    [31mresult.read[0m[1;31m()[0m
+    [31m~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m1203[0m, in [35mread[0m
+    first_packet = self.connection._read_packet()
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m782[0m, in [35m_read_packet[0m
+    [31mpacket.raise_for_error[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\protocol.py"[0m, line [35m219[0m, in [35mraise_for_error[0m
+    [31merr.raise_mysql_exception[0m[1;31m(self._data)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\err.py"[0m, line [35m150[0m, in [35mraise_mysql_exception[0m
+    raise errorclass(errno, errval)
+[1;35mpymysql.err.OperationalError[0m: [35m(1054, "Unknown column 'test_team' in 'field list'")[0m
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\asgiref\sync.py"[0m, line [35m557[0m, in [35mthread_handler[0m
+    raise exc_info[1]
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\exception.py"[0m, line [35m42[0m, in [35minner[0m
+    response = [1;31mawait get_response(request)[0m
+               [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\asgiref\sync.py"[0m, line [35m557[0m, in [35mthread_handler[0m
+    raise exc_info[1]
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\core\handlers\base.py"[0m, line [35m253[0m, in [35m_get_response_async[0m
+    response = [1;31mawait wrapped_callback([0m
+               [1;31m^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mrequest, *callback_args, **callback_kwargs[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\asgiref\sync.py"[0m, line [35m506[0m, in [35m__call__[0m
+    ret = [1;31mawait asyncio.shield(exec_coro)[0m
+          [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\python\Lib\concurrent\futures\thread.py"[0m, line [35m59[0m, in [35mrun[0m
+    result = self.fn(*self.args, **self.kwargs)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\asgiref\sync.py"[0m, line [35m561[0m, in [35mthread_handler[0m
+    return func(*args, **kwargs)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\views\decorators\csrf.py"[0m, line [35m56[0m, in [35mwrapper_view[0m
+    return view_func(*args, **kwargs)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\viewsets.py"[0m, line [35m125[0m, in [35mview[0m
+    return [31mself.dispatch[0m[1;31m(request, *args, **kwargs)[0m
+           [31m~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\views.py"[0m, line [35m515[0m, in [35mdispatch[0m
+    response = self.handle_exception(exc)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\views.py"[0m, line [35m475[0m, in [35mhandle_exception[0m
+    [31mself.raise_uncaught_exception[0m[1;31m(exc)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\views.py"[0m, line [35m486[0m, in [35mraise_uncaught_exception[0m
+    raise exc
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\views.py"[0m, line [35m512[0m, in [35mdispatch[0m
+    response = handler(request, *args, **kwargs)
+  File [35m"D:\workmind\backend\apps\ui_test\views\functional_test_views.py"[0m, line [35m87[0m, in [35mcreate[0m
+    [31mserializer.save[0m[1;31m(created_by=request.user)[0m
+    [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\serializers.py"[0m, line [35m210[0m, in [35msave[0m
+    self.instance = [31mself.create[0m[1;31m(validated_data)[0m
+                    [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\rest_framework\serializers.py"[0m, line [35m991[0m, in [35mcreate[0m
+    instance = ModelClass._default_manager.create(**validated_data)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\manager.py"[0m, line [35m87[0m, in [35mmanager_method[0m
+    return [31mgetattr(self.get_queryset(), name)[0m[1;31m(*args, **kwargs)[0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\query.py"[0m, line [35m658[0m, in [35mcreate[0m
+    [31mobj.save[0m[1;31m(force_insert=True, using=self.db)[0m
+    [31m~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\base.py"[0m, line [35m814[0m, in [35msave[0m
+    [31mself.save_base[0m[1;31m([0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31musing=using,[0m
+        [1;31m^^^^^^^^^^^^[0m
+    ...<2 lines>...
+        [1;31mupdate_fields=update_fields,[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\base.py"[0m, line [35m877[0m, in [35msave_base[0m
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\base.py"[0m, line [35m1020[0m, in [35m_save_table[0m
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\base.py"[0m, line [35m1061[0m, in [35m_do_insert[0m
+    return [31mmanager._insert[0m[1;31m([0m
+           [31m~~~~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31m[self],[0m
+        [1;31m^^^^^^^[0m
+    ...<3 lines>...
+        [1;31mraw=raw,[0m
+        [1;31m^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\manager.py"[0m, line [35m87[0m, in [35mmanager_method[0m
+    return [31mgetattr(self.get_queryset(), name)[0m[1;31m(*args, **kwargs)[0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\query.py"[0m, line [35m1805[0m, in [35m_insert[0m
+    return [31mquery.get_compiler(using=using).execute_sql[0m[1;31m(returning_fields)[0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\models\sql\compiler.py"[0m, line [35m1822[0m, in [35mexecute_sql[0m
+    [31mcursor.execute[0m[1;31m(sql, params)[0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\utils.py"[0m, line [35m102[0m, in [35mexecute[0m
+    return [31msuper().execute[0m[1;31m(sql, params)[0m
+           [31m~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\utils.py"[0m, line [35m67[0m, in [35mexecute[0m
+    return [31mself._execute_with_wrappers[0m[1;31m([0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31msql, params, many=False, executor=self._execute[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\utils.py"[0m, line [35m80[0m, in [35m_execute_with_wrappers[0m
+    return executor(sql, params, many, context)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\utils.py"[0m, line [35m84[0m, in [35m_execute[0m
+    with [1;31mself.db.wrap_database_errors[0m:
+         [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\utils.py"[0m, line [35m91[0m, in [35m__exit__[0m
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\utils.py"[0m, line [35m89[0m, in [35m_execute[0m
+    return [31mself.cursor.execute[0m[1;31m(sql, params)[0m
+           [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\django\db\backends\mysql\base.py"[0m, line [35m75[0m, in [35mexecute[0m
+    return [31mself.cursor.execute[0m[1;31m(query, args)[0m
+           [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\cursors.py"[0m, line [35m153[0m, in [35mexecute[0m
+    result = self._query(query)
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\cursors.py"[0m, line [35m322[0m, in [35m_query[0m
+    [31mconn.query[0m[1;31m(q)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m575[0m, in [35mquery[0m
+    self._affected_rows = [31mself._read_query_result[0m[1;31m(unbuffered=unbuffered)[0m
+                          [31m~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m826[0m, in [35m_read_query_result[0m
+    [31mresult.read[0m[1;31m()[0m
+    [31m~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m1203[0m, in [35mread[0m
+    first_packet = self.connection._read_packet()
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\connections.py"[0m, line [35m782[0m, in [35m_read_packet[0m
+    [31mpacket.raise_for_error[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\protocol.py"[0m, line [35m219[0m, in [35mraise_for_error[0m
+    [31merr.raise_mysql_exception[0m[1;31m(self._data)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^[0m
+  File [35m"D:\workmind\backend\venv\Lib\site-packages\pymysql\err.py"[0m, line [35m150[0m, in [35mraise_mysql_exception[0m
+    raise errorclass(errno, errval)
+[1;35mdjango.db.utils.OperationalError[0m: [35m(1054, "Unknown column 'test_team' in 'field list'")[0m
