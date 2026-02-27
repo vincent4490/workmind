@@ -45,6 +45,6 @@ colorlog==6.10.1
 # AI用例-文件解析
 python-docx==1.2.0
 pdfplumber==0.11.9
-PyMuPDF==1.27.1
+PyMuPDF==1.24.0
 Pillow==11.3.0
 openai==2.20.0

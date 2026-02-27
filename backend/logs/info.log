@@ -52,3 +52,5 @@
 2026-02-13 21:16:01.635 [pid:11316 -> thread:MainThread] INFO [backend.settings:<module>:398] ✅ Channel Layer: Redis 连接成功 (127.0.0.1:6379)
 2026-02-13 21:34:33.430 [pid:5656 -> thread:MainThread] INFO [backend.settings:<module>:398] ✅ Channel Layer: Redis 连接成功 (127.0.0.1:6379)
 2026-02-26 16:08:13.097 [pid:11992 -> thread:MainThread] INFO [backend.settings:<module>:398] ✅ Channel Layer: Redis 连接成功 (127.0.0.1:6379)
+2026-02-27 12:11:56.275 [pid:25852 -> thread:MainThread] INFO [backend.settings:<module>:398] ✅ Channel Layer: Redis 连接成功 (127.0.0.1:6379)
+2026-02-27 12:12:30.754 [pid:8444 -> thread:MainThread] INFO [backend.settings:<module>:398] ✅ Channel Layer: Redis 连接成功 (127.0.0.1:6379)
