@@ -37,14 +37,26 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
     pagination_class = pagination.MyPageNumberPagination
     
     def get_queryset(self):
-        """根据需求名称过滤"""
+        """根据需求名称、测试团队、测试人员、创建时间过滤"""
         name = self.request.query_params.get('name', '').strip()
         requirement_name = self.request.query_params.get('requirement_name', '').strip()
         keyword = name or requirement_name
-        
+        test_team = self.request.query_params.get('test_team', '').strip()
+        testers = self.request.query_params.get('testers', '').strip()
+        created_at_after = self.request.query_params.get('created_at_after', '').strip()
+        created_at_before = self.request.query_params.get('created_at_before', '').strip()
+
         queryset = FunctionalRequirement.objects.all().select_related('created_by')  # type: ignore[attr-defined]
         if keyword:
             queryset = queryset.filter(name__icontains=keyword)
+        if test_team:
+            queryset = queryset.filter(test_team=test_team)
+        if testers:
+            queryset = queryset.filter(testers__icontains=testers)
+        if created_at_after:
+            queryset = queryset.filter(created_at__date__gte=created_at_after)
+        if created_at_before:
+            queryset = queryset.filter(created_at__date__lte=created_at_before)
         return queryset.order_by('-updated_at')
     
     def list(self, request, *args, **kwargs):

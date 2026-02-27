@@ -38,6 +38,39 @@
                     />
                 </el-select>
             </el-form-item>
+            <el-form-item label="测试团队">
+                <el-select
+                    v-model="searchForm.test_team"
+                    placeholder="请选择测试团队"
+                    clearable
+                    style="width: 140px;"
+                >
+                    <el-option label="slots" value="slots" />
+                    <el-option label="大厅" value="大厅" />
+                    <el-option label="捕鱼" value="捕鱼" />
+                    <el-option label="本地棋牌" value="本地棋牌" />
+                    <el-option label="国际棋牌" value="国际棋牌" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="测试人员">
+                <el-input
+                    v-model="searchForm.testers"
+                    placeholder="请输入测试人员"
+                    clearable
+                    style="width: 140px;"
+                />
+            </el-form-item>
+            <el-form-item label="创建时间">
+                <el-date-picker
+                    v-model="searchForm.created_at"
+                    type="daterange"
+                    range-separator="-"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="YYYY-MM-DD"
+                    style="width: 240px;"
+                />
+            </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" @click="loadRequirements">搜索</el-button>
                 <el-button :icon="Refresh" @click="resetSearch">重置</el-button>
@@ -233,10 +266,18 @@
                     />
                 </el-form-item>
                 <el-form-item label="测试团队" prop="test_team">
-                    <el-input
+                    <el-select
                         v-model="requirementFormData.test_team"
-                        placeholder="请输入测试团队"
-                    />
+                        placeholder="请选择测试团队"
+                        clearable
+                        style="width: 100%;"
+                    >
+                        <el-option label="slots" value="slots" />
+                        <el-option label="大厅" value="大厅" />
+                        <el-option label="捕鱼" value="捕鱼" />
+                        <el-option label="本地棋牌" value="本地棋牌" />
+                        <el-option label="国际棋牌" value="国际棋牌" />
+                    </el-select>
                 </el-form-item>
                 <el-form-item label="测试人日" prop="test_man_days">
                     <el-input
@@ -326,7 +367,10 @@ const requirementRules = {
 }
 
 const searchForm = ref({
-    name: ''
+    name: '',
+    test_team: '',
+    testers: '',
+    created_at: null
 })
 
 // 方法
@@ -374,6 +418,16 @@ const loadRequirements = () => {
     if (searchForm.value.name) {
         params.name = searchForm.value.name
     }
+    if (searchForm.value.test_team) {
+        params.test_team = searchForm.value.test_team
+    }
+    if (searchForm.value.testers) {
+        params.testers = searchForm.value.testers
+    }
+    if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
+        params.created_at_after = searchForm.value.created_at[0]
+        params.created_at_before = searchForm.value.created_at[1]
+    }
     getFunctionalRequirements(params).then(res => {
         if (res.code === 0) {
             if (res.data.results) {
@@ -399,6 +453,9 @@ const loadRequirements = () => {
 
 const resetSearch = () => {
     searchForm.value.name = ''
+    searchForm.value.test_team = ''
+    searchForm.value.testers = ''
+    searchForm.value.created_at = null
     loadRequirements()
 }
 
