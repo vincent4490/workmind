@@ -30,6 +30,7 @@ htmlcov/
 # Django
 *.log
 backend/logs/
+backend/.adb_home/
 backend/db.sqlite3
 backend/media/
 backend/static_root/
