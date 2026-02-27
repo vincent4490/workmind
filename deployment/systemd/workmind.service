@@ -1,0 +1,22 @@
+# Workmind 后端服务（Daphne ASGI，HTTP + WebSocket）
+# 安装：cp /data/workmind/deployment/systemd/workmind.service /etc/systemd/system/
+#       systemctl daemon-reload && systemctl enable workmind && systemctl start workmind
+# Ubuntu/Debian 用 www-data；CentOS 用 nginx，请按系统修改下面 User/Group
+
+[Unit]
+Description=Workmind Daphne ASGI Server
+After=network.target mysql.service redis.service mariadb.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/data/workmind/backend
+Environment="PATH=/data/workmind/backend/venv/bin"
+EnvironmentFile=/data/workmind/.env
+ExecStart=/data/workmind/backend/venv/bin/daphne -b 0.0.0.0 -p 8009 backend.asgi:application
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

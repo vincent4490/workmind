@@ -22,7 +22,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api/ai_testcase/generate-stream': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8009',
         changeOrigin: true,
         // SSE 流式响应：禁用代理缓冲
         configure: (proxy) => {
@@ -35,7 +35,7 @@ export default defineConfig({
         }
       },
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'http://127.0.0.1:8009',
         changeOrigin: true,
         rewrite: (path) => path
       }

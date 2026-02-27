@@ -479,7 +479,7 @@ export const getAiTestcaseConfigStatus = () => {
 // 模块级重新生成测试用例（SSE 流式）
 export const aiRegenerateModuleStream = async (data, onChunk, onDone, onError, onStart) => {
     const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/regenerate-module-stream/', {
@@ -538,7 +538,7 @@ export const aiRegenerateModuleStream = async (data, onChunk, onDone, onError, o
 // 流式用例评审（SSE）
 export const aiReviewTestcaseStream = async (data, onChunk, onDone, onError, onStart) => {
     const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/review-stream/', {
@@ -595,7 +595,7 @@ export const aiReviewTestcaseStream = async (data, onChunk, onDone, onError, onS
 // 流式采纳评审意见（SSE）
 export const aiApplyReviewStream = async (data, onChunk, onDone, onError, onStart) => {
     const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/apply-review-stream/', {
@@ -650,12 +650,12 @@ export const aiApplyReviewStream = async (data, onChunk, onDone, onError, onStar
 };
 
 // 流式生成测试用例（SSE）
-// 直连后端 8000 端口，绕过 Vite 代理（代理会缓冲 SSE 流）
+// 直连后端 8009 端口，绕过 Vite 代理（代理会缓冲 SSE 流）
 // 支持 FormData（带文件上传）和普通 JSON 两种格式
 export const aiGenerateTestcaseStream = async (data, onChunk, onDone, onError, onStart) => {
     const token = (await import('../store/state')).default.token;
     // 开发环境直连后端，生产环境用相对路径
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
 
     // 判断是 FormData 还是普通对象
     const isFormData = data instanceof FormData;

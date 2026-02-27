@@ -503,7 +503,7 @@ const connectWebSocket = (executionId, websocketUrl) => {
         backendHost = url.host
     } else {
         // 开发环境：直接使用后端地址（不能通过 Vite proxy）
-        backendHost = '127.0.0.1:8000'
+        backendHost = '127.0.0.1:8009'
     }
 
     const wsUrl = `${protocol}//${backendHost}${websocketUrl}`

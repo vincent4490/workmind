@@ -93,7 +93,7 @@
                         <el-form-item label="API_BASE_URL">
                             <el-input
                                 v-model.trim="sceneRuntime.base_url"
-                                placeholder="http://127.0.0.1:8000"
+                                placeholder="http://127.0.0.1:8009"
                                 size="small"
                             />
                         </el-form-item>
@@ -939,7 +939,7 @@ const sceneForm = ref({
 })
 const sceneVariables = ref([])
 const sceneRuntime = ref({
-    base_url: "http://127.0.0.1:8000",
+    base_url: "http://127.0.0.1:8009",
     retry_times: 0,
     retry_interval: 0.5
 })
@@ -1561,7 +1561,7 @@ const resetScene = () => {
     }
     sceneVariables.value = []
     sceneRuntime.value = {
-        base_url: "http://127.0.0.1:8000",
+        base_url: "http://127.0.0.1:8009",
         retry_times: 0,
         retry_interval: 0.5
     }
@@ -1891,7 +1891,7 @@ const loadCaseDetail = async (caseId) => {
             sceneRuntime.value = {
                 base_url: caseData.runtime && caseData.runtime.base_url !== undefined
                     ? caseData.runtime.base_url
-                    : "http://127.0.0.1:8000",
+                    : "http://127.0.0.1:8009",
                 retry_times: caseData.runtime && caseData.runtime.retry_times !== undefined
                     ? caseData.runtime.retry_times
                     : 0,
