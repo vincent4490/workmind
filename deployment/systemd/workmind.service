@@ -12,7 +12,8 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/data/workmind/backend
-Environment="PATH=/data/workmind/backend/venv/bin"
+# 包含 venv 与系统路径，以便后端能找到 adb 等命令（设备管理刷新依赖 ADB）
+Environment="PATH=/data/workmind/backend/venv/bin:/usr/local/bin:/usr/bin:/bin"
 EnvironmentFile=/data/workmind/.env
 ExecStart=/data/workmind/backend/venv/bin/daphne -b 0.0.0.0 -p 8009 backend.asgi:application
 Restart=on-failure

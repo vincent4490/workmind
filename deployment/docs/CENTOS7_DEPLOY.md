@@ -201,6 +201,8 @@ systemctl status workmind
 
 查看日志：`journalctl -u workmind -f`
 
+**设备管理 / ADB**：刷新设备列表依赖系统上的 `adb`。systemd 模板里已把 `PATH` 设为包含 `/usr/local/bin:/usr/bin:/bin`，进程内可找到 `/usr/bin/adb`。若仍报“未检测到可用 ADB 路径”，可在 Django 后台 **UI测试配置**（表 `ui_test_config`）里将 **ADB路径** 设为绝对路径，例如：`/usr/bin/adb` 或 `/opt/android-sdk/platform-tools/adb`。
+
 ---
 
 ## 十、检查与访问
@@ -232,3 +234,6 @@ curl -I http://172.13.6.230/   # 用你实际 IP 测 Nginx
 - **SELinux 拦截**  
   可先临时关闭测试：`setenforce 0`。长期可对 Nginx 放行网络、文件访问：  
   `setsebool -P httpd_can_network_connect 1`，或按需配置 Nginx 相关 context。
+
+- **刷新设备列表报 500 / 未检测到可用 ADB 路径**  
+  systemd 里原 `PATH` 只有 venv，进程找不到 `adb`。请更新为仓库里的 `workmind.service`（已含 `PATH=.../venv/bin:/usr/local/bin:/usr/bin:/bin`），执行 `systemctl daemon-reload && systemctl restart workmind`。若仍不行，在 Django 后台 **UI测试配置** 中把 **ADB路径** 设为绝对路径，如 `/usr/bin/adb`。
