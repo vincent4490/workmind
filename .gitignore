@@ -1,0 +1,71 @@
+# AI 测试用例输出与上传目录
+backend/apps/ai_testcase/output/
+backend/apps/ai_testcase/uploads/
+
+# 环境与密钥（勿提交敏感信息）
+.env
+.env.local
+.env.*.local
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/venv/
+backend/.venv/
+.venv/
+venv/
+*.egg-info/
+.eggs/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Django
+*.log
+backend/db.sqlite3
+backend/media/
+backend/static_root/
+backend/*/migrations/*.pyc
+
+# Node / 前端
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# IDE 与编辑器
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 构建与缓存
+.cache/
+*.log
+*.tmp
+*.temp
+.temp/
+tmp/
+temp/
