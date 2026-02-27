@@ -46,16 +46,8 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'monaco-editor': ['monaco-editor'],
-          'echarts': ['echarts'],
-          'vue-vendor': ['vue', 'vue-router', 'vuex'],
-        }
-      }
-    }
+    // 不使用 manualChunks，避免 Vite 4 下 chunk 加载顺序导致 "before initialization"
+    // rollupOptions 留空，使用默认分包
   },
   css: {
     preprocessorOptions: {

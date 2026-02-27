@@ -154,7 +154,7 @@ vim /etc/nginx/conf.d/workmind.conf
 修改：
 
 - `server_name _;` 改为你的 IP 或域名，例如：`server_name 172.13.6.230;`
-- 确认 `root` 为 `/data/workmind/frontend/dist`，`alias` 为 `/data/workmind/backend/static_root/`，`proxy_pass` 为 `http://127.0.0.1:8009`
+- 确认 `root` 为 `/data/workmind/frontend/dist`，`alias` 为 `/data/workmind/backend/static_root/`，`proxy_pass` 为 `http://127.0.0.1:8009`。若使用 8080 端口，访问地址为 `http://IP:8080`
 
 然后：
 
@@ -211,7 +211,7 @@ curl -I http://127.0.0.1:8009/admin/   # 本机测后端
 curl -I http://172.13.6.230/   # 用你实际 IP 测 Nginx
 ```
 
-浏览器访问：`http://172.13.6.230`（换成你的 IP 或域名），应能打开登录页。
+浏览器访问：`http://172.13.6.230` 或 `http://172.13.6.230:8080`（若 Nginx 使用 8080 端口），应能打开登录页。
 
 ---
 
