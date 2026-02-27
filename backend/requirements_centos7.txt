@@ -24,9 +24,9 @@ easyocr==1.7.2
 airtest==1.4.3
 opencv-contrib-python==4.13.0.90
 
-# 数据处理（CentOS 7 用 2.x 预编译包，避免编译）
-numpy>=1.26.0,<2
-pandas>=2.0.0,<3
+# 数据处理（CentOS 7 必须用固定版本才有预编译 wheel，避免编译）
+numpy==1.26.4
+pandas==2.2.2
 openpyxl==3.1.5
 pydantic==2.12.5
 
