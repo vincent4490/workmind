@@ -199,10 +199,22 @@
                     />
                 </el-form-item>
                 <el-form-item label="产品负责人" prop="product_owner">
-                    <el-input
+                    <el-select
                         v-model="requirementFormData.product_owner"
-                        placeholder="请输入产品负责人"
-                    />
+                        multiple
+                        filterable
+                        collapse-tags
+                        placeholder="请选择产品负责人"
+                        style="width: 100%;"
+                        :loading="userListLoading"
+                    >
+                        <el-option
+                            v-for="u in userList"
+                            :key="u.id"
+                            :label="u.name || u.username"
+                            :value="u.username"
+                        />
+                    </el-select>
                 </el-form-item>
                 <el-form-item label="状态" prop="status">
                     <el-select v-model="requirementFormData.status" placeholder="请选择状态" style="width: 200px;">
@@ -236,10 +248,22 @@
                     />
                 </el-form-item>
                 <el-form-item label="开发人员" prop="developers">
-                    <el-input
+                    <el-select
                         v-model="requirementFormData.developers"
-                        placeholder="请输入开发人员"
-                    />
+                        multiple
+                        filterable
+                        collapse-tags
+                        placeholder="请选择开发人员"
+                        style="width: 100%;"
+                        :loading="userListLoading"
+                    >
+                        <el-option
+                            v-for="u in userList"
+                            :key="u.id"
+                            :label="u.name || u.username"
+                            :value="u.username"
+                        />
+                    </el-select>
                 </el-form-item>
                 <el-form-item label="开发人日" prop="dev_man_days">
                     <el-input
@@ -259,10 +283,22 @@
                     />
                 </el-form-item>
                 <el-form-item label="测试人员" prop="testers">
-                    <el-input
+                    <el-select
                         v-model="requirementFormData.testers"
-                        placeholder="请输入测试人员"
-                    />
+                        multiple
+                        filterable
+                        collapse-tags
+                        placeholder="请选择测试人员"
+                        style="width: 100%;"
+                        :loading="userListLoading"
+                    >
+                        <el-option
+                            v-for="u in userList"
+                            :key="u.id"
+                            :label="u.name || u.username"
+                            :value="u.username"
+                        />
+                    </el-select>
                 </el-form-item>
                 <el-form-item label="测试团队" prop="test_team">
                     <el-select
@@ -321,7 +357,8 @@ import {
     getFunctionalRequirements,
     createFunctionalRequirement,
     updateFunctionalRequirement,
-    deleteFunctionalRequirement
+    deleteFunctionalRequirement,
+    getUserList
 } from '@/restful/api'
 
 
@@ -345,19 +382,22 @@ const requirementFormData = ref({
     id: null,
     name: '',
     link: '',
-    product_owner: '',
+    product_owner: [],
     status: '未开始',
     tags: [],
     remark: '',
-    developers: '',
+    developers: [],
     dev_man_days: '',
     dev_time: [],
-    testers: '',
+    testers: [],
     test_team: '',
     test_man_days: '',
     submit_test_time: '',
     test_time: []
 })
+
+const userList = ref([])
+const userListLoading = ref(false)
 
 const requirementRules = {
     name: [
@@ -377,14 +417,14 @@ const getDefaultForm = () => ({
     id: null,
     name: '',
     link: '',
-    product_owner: '',
+    product_owner: [],
     status: '未开始',
     tags: [],
     remark: '',
-    developers: '',
+    developers: [],
     dev_man_days: '',
     dev_time: [],
-    testers: '',
+    testers: [],
     test_team: '',
     test_man_days: '',
     submit_test_time: '',
@@ -475,6 +515,17 @@ const showAddDialog = () => {
     dialogVisible.value = true
 }
 
+const parsePersonField = (val) => {
+    if (!val) return []
+    if (Array.isArray(val)) return val
+    return String(val).split(',').map(s => s.trim()).filter(Boolean)
+}
+
+const formatPersonField = (val) => {
+    if (!val || !Array.isArray(val)) return ''
+    return val.filter(Boolean).join(',')
+}
+
 const editRequirement = (row) => {
     dialogTitle.value = '编辑需求'
     isEdit.value = true
@@ -482,14 +533,14 @@ const editRequirement = (row) => {
         id: row.id,
         name: row.name,
         link: row.link || '',
-        product_owner: row.product_owner || '',
+        product_owner: parsePersonField(row.product_owner),
         status: row.status || '未开始',
         tags: parseTags(row.tags),
         remark: row.remark || '',
-        developers: row.developers || '',
+        developers: parsePersonField(row.developers),
         dev_man_days: row.dev_man_days || '',
         dev_time: parseTimeRange(row.dev_time),
-        testers: row.testers || '',
+        testers: parsePersonField(row.testers),
         test_team: row.test_team || '',
         test_man_days: row.test_man_days || '',
         submit_test_time: parseSingleDate(row.submit_test_time),
@@ -525,14 +576,14 @@ const saveRequirement = () => {
         const params = {
             name: requirementFormData.value.name,
             link: requirementFormData.value.link || '',
-            product_owner: requirementFormData.value.product_owner || '',
+            product_owner: formatPersonField(requirementFormData.value.product_owner),
             status: requirementFormData.value.status || '未开始',
             tags: formatTagsValue(requirementFormData.value.tags),
             remark: requirementFormData.value.remark || '',
-            developers: requirementFormData.value.developers || '',
+            developers: formatPersonField(requirementFormData.value.developers),
             dev_man_days: requirementFormData.value.dev_man_days || '',
             dev_time: formatTimeRange(requirementFormData.value.dev_time),
-            testers: requirementFormData.value.testers || '',
+            testers: formatPersonField(requirementFormData.value.testers),
             test_team: requirementFormData.value.test_team || '',
             test_man_days: requirementFormData.value.test_man_days || '',
             submit_test_time: formatSingleDateToString(requirementFormData.value.submit_test_time),
@@ -789,8 +840,24 @@ const formatSingleDate = (dateStr) => {
     return str
 }
 
+const loadUserList = () => {
+    userListLoading.value = true
+    getUserList()
+        .then(data => {
+            const list = Array.isArray(data) ? data : (data && data.data) ? data.data : []
+            userList.value = list.filter(u => u && (u.username || u.id))
+        })
+        .catch(() => {
+            userList.value = []
+        })
+        .finally(() => {
+            userListLoading.value = false
+        })
+}
+
 // 生命周期
 onMounted(() => {
+    loadUserList()
     loadRequirementOptions()
     loadRequirements()
 })
