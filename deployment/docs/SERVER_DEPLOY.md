@@ -121,7 +121,7 @@ sudo systemctl reload nginx
 
 ```bash
 sudo cp /data/workmind/deployment/systemd/workmind.service /etc/systemd/system/
-# 确认 ExecStart 中的路径为 /data/workmind
+# 模板默认 User=root/Group=root；确认 ExecStart 中路径为 /data/workmind
 sudo systemctl daemon-reload
 ```
 

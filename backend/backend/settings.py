@@ -41,6 +41,8 @@ SECRET_KEY = locals().get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = locals().get("DEBUG", True)
 ALLOWED_HOSTS = locals().get("ALLOWED_HOSTS", ["*"])
+# 允许的 CSRF 来源（通过 IP/域名:端口 访问 admin 等表单时必须配置）
+CSRF_TRUSTED_ORIGINS = locals().get("CSRF_TRUSTED_ORIGINS", [])
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 

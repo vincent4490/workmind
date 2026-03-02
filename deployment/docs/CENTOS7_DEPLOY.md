@@ -165,36 +165,12 @@ systemctl reload nginx
 
 ---
 
-## 九、Systemd 运行后端（CentOS 用 nginx 用户）
+## 九、Systemd 运行后端
 
-CentOS 上 Nginx 运行用户一般为 `nginx`，建议后端也用同一用户，避免权限问题：
+模板默认以 **root** 运行（省去 ADB/目录权限配置），直接复制并启动即可：
 
 ```bash
 cp /data/workmind/deployment/systemd/workmind.service /etc/systemd/system/
-vim /etc/systemd/system/workmind.service
-```
-
-将 `User=www-data` 和 `Group=www-data` 改为：
-
-```ini
-User=nginx
-Group=nginx
-```
-
-并保证 `nginx` 用户能读 `/data/workmind` 下代码和 venv、能读 `.env`；**设备管理** 用 ADB 时还需给 nginx 一个可写目录作为 HOME（供 adb daemon 写缓存）：
-
-```bash
-chown -R nginx:nginx /data/workmind
-mkdir -p /data/workmind/backend/.adb_home
-chown nginx:nginx /data/workmind/backend/.adb_home
-# 若 .env 含敏感信息且不想给 nginx 读，可只放代码目录给 nginx，.env 用 600 且 owner 为 root，再在 service 里用 User=root（不推荐）或单独建 app 用户
-```
-
-若你希望用当前用户（如 root）跑后端，可保留 `User=root`、`Group=root`，并确保该用户能读 `/data/workmind` 和 `.env`。
-
-然后：
-
-```bash
 systemctl daemon-reload
 systemctl enable workmind
 systemctl start workmind
@@ -203,7 +179,17 @@ systemctl status workmind
 
 查看日志：`journalctl -u workmind -f`
 
-**设备管理 / ADB**：刷新设备列表依赖系统上的 `adb`。systemd 模板里已把 `PATH` 设为包含 `/usr/local/bin:/usr/bin:/bin`，并设置 `HOME=/data/workmind/backend/.adb_home`，请确保该目录存在且属主为 nginx（见上 `mkdir/chown`）。若仍报“未检测到可用 ADB 路径”，可在 Django 后台 **UI测试配置**（表 `ui_test_config`）里将 **ADB路径** 设为绝对路径，例如：`/usr/bin/adb` 或 `/opt/android-sdk/platform-tools/adb`。
+**设备管理 / ADB**：刷新设备列表依赖系统上的 `adb`。模板里 `PATH` 已包含 `/usr/local/bin:/usr/bin:/bin`，root 下 ADB 可直接用。若仍报“未检测到可用 ADB 路径”，可在 Django 后台 **UI测试配置**（表 `ui_test_config`）里将 **ADB路径** 设为绝对路径，如 `/usr/bin/adb` 或 `/opt/android-sdk/platform-tools/adb`。
+
+**可选：改为 nginx 用户（生产建议）**  
+若希望后端与 Nginx 同用 `nginx` 用户，编辑 service 将 `User=root`、`Group=root` 改为 `User=nginx`、`Group=nginx`，并执行：
+
+```bash
+chown -R nginx:nginx /data/workmind
+mkdir -p /data/workmind/backend/.adb_home
+chown nginx:nginx /data/workmind/backend/.adb_home
+```
+
 
 ---
 
@@ -241,4 +227,4 @@ curl -I http://172.13.6.230/   # 用你实际 IP 测 Nginx
   systemd 里原 `PATH` 只有 venv，进程找不到 `adb`。请更新为仓库里的 `workmind.service`（已含 `PATH=.../venv/bin:/usr/local/bin:/usr/bin:/bin`），执行 `systemctl daemon-reload && systemctl restart workmind`。若仍不行，在 Django 后台 **UI测试配置** 中把 **ADB路径** 设为绝对路径，如 `/usr/bin/adb`。
 
 - **刷新设备列表报「failed to start daemon adb」「Permission denied」**  
-  以 nginx 用户跑时，ADB daemon 需要可写目录。service 里已设置 `HOME=/data/workmind/backend/.adb_home`。在服务器执行：`mkdir -p /data/workmind/backend/.adb_home && chown nginx:nginx /data/workmind/backend/.adb_home`，然后 `systemctl restart workmind`。
+  若改用 **nginx** 用户跑后端，需为 ADB 提供可写目录：在 service 中增加 `Environment="HOME=/data/workmind/backend/.adb_home"`，并在服务器执行 `mkdir -p /data/workmind/backend/.adb_home && chown nginx:nginx /data/workmind/backend/.adb_home`，然后 `systemctl restart workmind`。默认以 root 运行则无此问题。

@@ -61,6 +61,14 @@ ENABLE_LOGIN_ANALYSIS_LOG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
+# CSRF 受信任来源（与 ALLOWED_HOSTS 配合，解决通过 IP:端口 访问时的 403）
+# 格式示例: "http://172.136.230:9000,http://localhost:9000"
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "http://172.136.230:9000").split(",")
+    if origin.strip()
+]
+
 BASE_REPORT_URL = os.getenv("BASE_REPORT_URL")
 
 IM_REPORT_SETTING = {
