@@ -32,7 +32,11 @@
             <el-table-column prop="name" label="计划名称" width="350" show-overflow-tooltip />
             <el-table-column prop="description" label="描述" width="450" show-overflow-tooltip />
             <el-table-column prop="case_count" label="用例数" width="230" />
-            <el-table-column prop="created_by_username" label="创建人" width="250" />
+            <el-table-column prop="created_by_name" label="创建人" width="250">
+                <template #default="scope">
+                    {{ scope.row.created_by_name || scope.row.created_by_username || '-' }}
+                </template>
+            </el-table-column>
             <el-table-column prop="updated_at" label="更新时间" width="300">
                 <template #default="scope">
                     {{ formatDate(scope.row.updated_at) }}
@@ -144,8 +148,9 @@
                 row-key="id"
             >
                 <el-table-column type="index" label="序号" width="60" />
-                <el-table-column prop="test_case_detail.requirement_name" label="需求名称" min-width="150" show-overflow-tooltip />
-                <el-table-column prop="test_case_detail.feature_name" label="功能模块" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="test_case_detail.title" label="需求名称" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="test_case_detail.module_name" label="模块名称" min-width="120" show-overflow-tooltip />
+                <el-table-column prop="test_case_detail.function_name" label="功能点" min-width="120" show-overflow-tooltip />
                 <el-table-column prop="test_case_detail.name" label="用例名称" min-width="200" />
                 <el-table-column prop="test_case_detail.priority" label="优先级" width="100">
                     <template #default="scope">
@@ -210,9 +215,10 @@
                 @selection-change="handleCaseSelectionChange"
             >
                 <el-table-column type="selection" width="55" />
-            <el-table-column prop="requirement_name" label="需求名称" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="feature_name" label="功能模块" min-width="150" show-overflow-tooltip />
-            <el-table-column prop="name" label="用例名称" min-width="200" />
+                <el-table-column prop="title" label="需求名称" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="module_name" label="模块名称" min-width="120" show-overflow-tooltip />
+                <el-table-column prop="function_name" label="功能点" min-width="120" show-overflow-tooltip />
+                <el-table-column prop="name" label="用例名称" min-width="200" />
                 <el-table-column prop="priority" label="优先级" width="100">
                     <template #default="scope">
                         <el-tag
@@ -451,15 +457,15 @@ const resetAddCaseSearch = () => {
 }
 
 const loadAvailableCases = () => {
-    const params = {}
+    const params = { page: 1, page_size: 1000 }
     if (addCaseSearch.value.requirement_name) {
-        params.requirement_name = addCaseSearch.value.requirement_name
+        params.title = addCaseSearch.value.requirement_name
     }
     getFunctionalCases(params).then(res => {
         if (res.code === 0) {
-            const allCases = res.data.results || res.data || []
-            const planCaseIds = planCaseList.value.map(pc => pc.test_case_detail.id)
-            availableCases.value = allCases.filter(c => !planCaseIds.includes(c.id))
+            const allCases = res.data?.results || res.data || []
+            const planCaseIds = (planCaseList.value || []).map(pc => pc.test_case_detail?.id)
+            availableCases.value = Array.isArray(allCases) ? allCases.filter(c => !planCaseIds.includes(c.id)) : []
         } else {
             ElMessage.error(res.msg || '获取用例列表失败')
             availableCases.value = []

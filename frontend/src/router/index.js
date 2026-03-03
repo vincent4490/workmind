@@ -8,6 +8,7 @@ import ElementManagement from "@/pages/workmind/app_ui/ElementManagement";
 import UiTestSceneBuilder from "@/pages/workmind/app_ui/UiTestSceneBuilder";
 import UiFlowCaseList from "@/pages/workmind/app_ui/UiFlowCaseList";
 import RequirementManagement from "@/pages/workmind/app_ui/RequirementManagement";
+import TaskManagement from "@/pages/workmind/app_ui/TaskManagement";
 import FunctionalTestCaseManagement from "@/pages/workmind/app_ui/FunctionalTestCaseManagement";
 import TestPlanManagement from "@/pages/workmind/app_ui/TestPlanManagement";
 import TestPlanExecute from "@/pages/workmind/app_ui/TestPlanExecute";
@@ -109,6 +110,15 @@ const router = createRouter({
                     component: RequirementManagement,
                     meta: {
                         title: "需求管理",
+                        requireAuth: true
+                    }
+                },
+                {
+                    name: "TaskManagement",
+                    path: "task",
+                    component: TaskManagement,
+                    meta: {
+                        title: "任务管理",
                         requireAuth: true
                     }
                 },

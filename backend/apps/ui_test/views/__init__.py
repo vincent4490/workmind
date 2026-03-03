@@ -13,6 +13,7 @@ from .ui_test_views import (
 from .functional_test_views import (
     FunctionalRequirementViewSet,
     FunctionalTestCaseViewSet,
+    TaskViewSet,
     TestPlanViewSet,
     functional_case_export,
 )
@@ -31,6 +32,7 @@ __all__ = [
     'UiComponentPackageViewSet',
     'FunctionalRequirementViewSet',
     'FunctionalTestCaseViewSet',
+    'TaskViewSet',
     'TestPlanViewSet',
     'functional_case_export',
     'UiTestExecutionViewSet',

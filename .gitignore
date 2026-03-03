@@ -8,9 +8,12 @@ backend/apps/ai_testcase/uploads/
 .env.*.local
 *.local
 
-# Python
+# Python（字节码与缓存，不纳入版本跟踪）
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*.pyc
+*.pyc.*
 *$py.class
 *.so
 .Python

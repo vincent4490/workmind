@@ -84,6 +84,7 @@
         <el-table
             v-loading="loading"
             :data="requirementList"
+            :key="'req-table-' + (userList.length || 0)"
             style="width: 100%; margin-top: 10px;"
             :empty-text="emptyText"
             :header-cell-style="{ textAlign: 'center' }"
@@ -92,7 +93,11 @@
             <el-table-column type="index" label="序号" width="60" />
             <el-table-column prop="name" label="需求名称" min-width="160" />
             <el-table-column prop="link" label="需求链接" min-width="240" />
-            <el-table-column prop="product_owner" label="产品负责人" width="100" show-overflow-tooltip />
+            <el-table-column prop="product_owner" label="产品负责人" width="100" show-overflow-tooltip>
+                <template #default="scope">
+                    {{ personFieldToDisplay(scope.row.product_owner) || '-' }}
+                </template>
+            </el-table-column>
             <el-table-column prop="status" label="状态" width="80">
                 <template #default="scope">
                     <el-tag :type="getStatusType(scope.row.status)" size="small">
@@ -117,14 +122,22 @@
                 </template>
             </el-table-column>
             <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="developers" label="开发人员" width="80" show-overflow-tooltip />
+            <el-table-column prop="developers" label="开发人员" width="80" show-overflow-tooltip>
+                <template #default="scope">
+                    {{ personFieldToDisplay(scope.row.developers) || '-' }}
+                </template>
+            </el-table-column>
             <el-table-column prop="dev_man_days" label="开发人日" width="80" />
             <el-table-column prop="dev_time" label="开发时间" min-width="140">
                 <template #default="scope">
                     {{ formatDisplayDate(scope.row.dev_time) }}
                 </template>
             </el-table-column>
-            <el-table-column prop="testers" label="测试人员" width="80" show-overflow-tooltip />
+            <el-table-column prop="testers" label="测试人员" width="80" show-overflow-tooltip>
+                <template #default="scope">
+                    {{ personFieldToDisplay(scope.row.testers) || '-' }}
+                </template>
+            </el-table-column>
             <el-table-column prop="test_team" label="测试团队" width="80" />
             <el-table-column prop="test_man_days" label="测试人日" width="80" />
             <el-table-column prop="submit_test_time" label="提测时间" width="100">
@@ -137,7 +150,11 @@
                     {{ formatDisplayDate(scope.row.test_time) }}
                 </template>
             </el-table-column>
-            <el-table-column prop="created_by_username" label="创建人" width="80" show-overflow-tooltip />
+            <el-table-column prop="created_by_name" label="创建人" width="80" show-overflow-tooltip>
+                <template #default="scope">
+                    {{ scope.row.created_by_name || scope.row.created_by_username || '-' }}
+                </template>
+            </el-table-column>
             <el-table-column prop="created_at" label="创建时间" width="160">
                 <template #default="scope">
                     {{ formatDate(scope.row.created_at) }}
@@ -519,6 +536,20 @@ const parsePersonField = (val) => {
     if (!val) return []
     if (Array.isArray(val)) return val
     return String(val).split(',').map(s => s.trim()).filter(Boolean)
+}
+
+/** 将存储的用户名字符串转为展示用姓名（与编辑页下拉 label 一致） */
+const personFieldToDisplay = (val) => {
+    if (!val) return ''
+    const usernames = parsePersonField(val)
+    if (!usernames.length) return ''
+    const list = userList.value || []
+    const names = usernames.map(uid => {
+        const key = String(uid).trim().toLowerCase()
+        const u = list.find(x => String(x.username || x.id || '').toLowerCase() === key)
+        return u ? (u.name || u.username || uid) : uid
+    })
+    return names.join('、')
 }
 
 const formatPersonField = (val) => {

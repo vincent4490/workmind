@@ -6,7 +6,7 @@ from .views import (
     UiTestCaseViewSet,
     UiComponentDefinitionViewSet, UiCustomComponentDefinitionViewSet,
     UiComponentPackageViewSet,
-    FunctionalRequirementViewSet, FunctionalTestCaseViewSet, TestPlanViewSet,
+    FunctionalRequirementViewSet, FunctionalTestCaseViewSet, TaskViewSet, TestPlanViewSet,
     functional_case_export,
     UiTestExecutionViewSet,
     AppPackageViewSet,
@@ -25,6 +25,7 @@ router.register(r'ui-component-packages', UiComponentPackageViewSet, basename='u
 
 router.register(r'functional-requirements', FunctionalRequirementViewSet, basename='functional-requirement')
 router.register(r'functional-cases', FunctionalTestCaseViewSet, basename='functional-test-case')
+router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'test-plans', TestPlanViewSet, basename='test-plan')
 router.register(r'executions', UiTestExecutionViewSet, basename='ui-test-execution')
 router.register(r'app-packages', AppPackageViewSet, basename='app-package')

@@ -10,24 +10,12 @@
                 >
                     新建用例
                 </el-button>
-                <el-upload
-                    :action="uploadAction"
-                    :headers="uploadHeaders"
-                    :data="uploadData"
-                    :before-upload="beforeUpload"
-                    :on-success="handleImportSuccess"
-                    :on-error="handleImportError"
-                    :show-file-list="false"
-                    accept=".xmind,.xls,.xlsx,.csv"
-                    style="display: inline-block; margin-left: 10px;"
-                >
-                    <el-button
-                        type="success"
-                        :icon="Upload"
-                    >
-                        导入用例
-                    </el-button>
-                </el-upload>
+                <el-button type="success" :icon="Upload" @click="showImportManualDialog = true">
+                    导入用例
+                </el-button>
+                <el-button type="warning" @click="showImportAiDialog = true">
+                    从 AI 导入
+                </el-button>
                 <el-dropdown @command="handleExport">
                     <el-button type="warning" :icon="Download">
                         导出用例
@@ -55,42 +43,16 @@
         <el-card class="filter-card" style="margin-top: 20px;">
             <el-form :inline="true" size="small">
                 <el-form-item label="需求名称">
-                    <el-select
-                        v-model="searchForm.requirement_name"
-                        placeholder="请选择需求名称"
-                        filterable
-                        clearable
-                        style="width: 200px;"
-                        @change="loadCases"
-                    >
-                        <el-option
-                            v-for="item in requirementOptions"
-                            :key="item"
-                            :label="item"
-                            :value="item"
-                        />
-                    </el-select>
+                    <el-input v-model="searchForm.title" placeholder="需求名称" clearable style="width: 160px;" @keyup.enter="loadCases" />
                 </el-form-item>
-                <el-form-item label="标签">
-                    <el-select
-                        v-model="searchForm.tag"
-                        placeholder="请选择标签"
-                        clearable
-                        style="width: 150px;"
-                        @change="loadCases"
-                    >
-                        <el-option label="回归" value="回归" />
-                        <el-option label="冒烟" value="冒烟" />
-                    </el-select>
+                <el-form-item label="模块名称">
+                    <el-input v-model="searchForm.module_name" placeholder="模块名称" clearable style="width: 140px;" />
+                </el-form-item>
+                <el-form-item label="功能点">
+                    <el-input v-model="searchForm.function_name" placeholder="功能点" clearable style="width: 140px;" />
                 </el-form-item>
                 <el-form-item label="优先级">
-                    <el-select
-                        v-model="searchForm.priority"
-                        placeholder="请选择优先级"
-                        clearable
-                        style="width: 150px;"
-                        @change="loadCases"
-                    >
+                    <el-select v-model="searchForm.priority" placeholder="优先级" clearable style="width: 100px;" @change="loadCases">
                         <el-option label="P0" value="P0" />
                         <el-option label="P1" value="P1" />
                         <el-option label="P2" value="P2" />
@@ -112,63 +74,23 @@
             :empty-text="emptyText"
         >
             <el-table-column type="index" label="序号" width="60" />
-            <el-table-column prop="requirement_name" label="需求名称" min-width="150" />
-            <el-table-column prop="feature_name" label="功能模块" min-width="150" />
-            <el-table-column prop="name" label="用例名称" min-width="200" />
-            <el-table-column prop="tags" label="标签" min-width="150">
+            <el-table-column prop="title" label="需求名称" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="module_name" label="模块名称" width="120" show-overflow-tooltip />
+            <el-table-column prop="function_name" label="功能点" width="120" show-overflow-tooltip />
+            <el-table-column prop="name" label="用例名称" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="priority" label="优先级" width="80">
                 <template #default="scope">
-                    <el-tag
-                        v-for="tag in scope.row.tags"
-                        :key="tag"
-                        size="small"
-                        style="margin-right: 5px;"
-                    >
-                        {{ tag }}
-                    </el-tag>
+                    <el-tag :type="getPriorityType(scope.row.priority)" size="small">{{ scope.row.priority }}</el-tag>
                 </template>
             </el-table-column>
-            <el-table-column prop="priority" label="优先级" width="100">
+            <el-table-column prop="precondition" label="前置条件" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="steps" label="测试步骤" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="expected" label="预期结果" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="created_by_name" label="创建人" width="120">
                 <template #default="scope">
-                    <el-tag
-                        :type="getPriorityType(scope.row.priority)"
-                        size="small"
-                    >
-                        {{ scope.row.priority }}
-                    </el-tag>
+                    {{ scope.row.created_by_name || scope.row.created_by_username || '-' }}
                 </template>
             </el-table-column>
-            <el-table-column prop="preconditions" label="前置条件" min-width="200" />
-            <el-table-column prop="test_steps" label="操作步骤" min-width="300" show-overflow-tooltip>
-                <template #default="scope">
-                    <div v-if="scope.row.test_steps && scope.row.test_steps.length > 0">
-                        <div
-                            v-for="(step, index) in scope.row.test_steps"
-                            :key="index"
-                            style="margin-bottom: 5px;"
-                        >
-                            <span style="color: #909399; font-size: 12px;">步骤{{ index + 1 }}：</span>
-                            <span>{{ step.step || '-' }}</span>
-                        </div>
-                    </div>
-                    <span v-else>-</span>
-                </template>
-            </el-table-column>
-            <el-table-column prop="expected_results" label="预期结果" min-width="300" show-overflow-tooltip>
-                <template #default="scope">
-                    <div v-if="scope.row.test_steps && scope.row.test_steps.length > 0">
-                        <div
-                            v-for="(step, index) in scope.row.test_steps"
-                            :key="index"
-                            style="margin-bottom: 5px; color: #67c23a;"
-                        >
-                            <span style="color: #909399; font-size: 12px;">预期结果{{ index + 1 }}：</span>
-                            <span>{{ step.expected_result || '-' }}</span>
-                        </div>
-                    </div>
-                    <span v-else>-</span>
-                </template>
-            </el-table-column>
-            <el-table-column prop="created_by_username" label="创建人" width="120" />
             <el-table-column prop="updated_at" label="更新时间" width="180">
                 <template #default="scope">
                     {{ formatDate(scope.row.updated_at) }}
@@ -220,6 +142,7 @@
             :title="dialogTitle"
             v-model="dialogVisible"
             width="800px"
+            @open="loadRequirements"
             @close="resetForm"
         >
             <el-form
@@ -228,84 +151,30 @@
                 :rules="caseRules"
                 label-width="120px"
             >
-                <el-form-item label="需求名称" prop="requirement_name">
+                <el-form-item label="需求名称" prop="title">
                     <el-select
-                        v-model="caseFormData.requirement_name"
+                        v-model="caseFormData.title"
                         placeholder="请选择需求名称"
                         filterable
                         clearable
                         style="width: 100%;"
                     >
                         <el-option
-                            v-for="item in requirementOptions"
-                            :key="item"
-                            :label="item"
-                            :value="item"
+                            v-for="item in requirementList"
+                            :key="item.id"
+                            :label="item.name"
+                            :value="item.name"
                         />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="功能模块" prop="feature_name">
-                    <el-input
-                        v-model="caseFormData.feature_name"
-                        placeholder="请输入功能模块"
-                        maxlength="200"
-                        show-word-limit
-                    />
+                <el-form-item label="模块名称" prop="module_name">
+                    <el-input v-model="caseFormData.module_name" placeholder="模块名称" maxlength="200" />
+                </el-form-item>
+                <el-form-item label="功能点名称" prop="function_name">
+                    <el-input v-model="caseFormData.function_name" placeholder="功能点名称" maxlength="200" />
                 </el-form-item>
                 <el-form-item label="用例名称" prop="name">
-                    <el-input
-                        v-model="caseFormData.name"
-                        placeholder="请输入用例名称"
-                        maxlength="200"
-                        show-word-limit
-                    />
-                </el-form-item>
-                <el-form-item label="前置条件" prop="preconditions">
-                    <el-input
-                        v-model="caseFormData.preconditions"
-                        type="textarea"
-                        :rows="2"
-                        placeholder="请输入前置条件"
-                    />
-                </el-form-item>
-                <el-form-item label="操作步骤" prop="test_steps">
-                    <div v-for="(step, index) in caseFormData.test_steps" :key="index" style="margin-bottom: 15px; padding: 10px; border: 1px solid #e4e7ed; border-radius: 4px;">
-                        <div style="margin-bottom: 8px; font-weight: bold; color: #606266;">
-                            步骤 {{ index + 1 }}
-                        </div>
-                        <el-form-item :label="'操作步骤' + (index + 1)" style="margin-bottom: 10px;">
-                            <el-input
-                                v-model="step.step"
-                                type="textarea"
-                                :rows="2"
-                                placeholder="请输入操作步骤"
-                            />
-                        </el-form-item>
-                        <el-form-item :label="'预期结果' + (index + 1)">
-                            <el-input
-                                v-model="step.expected_result"
-                                type="textarea"
-                                :rows="2"
-                                placeholder="请输入预期结果"
-                            />
-                        </el-form-item>
-                        <el-button
-                            v-if="caseFormData.test_steps.length > 1"
-                            link
-                            :icon="Delete"
-                            style="color: #f56c6c;"
-                            @click="removeStep(index)"
-                        >
-                            删除步骤
-                        </el-button>
-                    </div>
-                    <el-button
-                        link
-                        :icon="Plus"
-                        @click="addStep"
-                    >
-                        添加步骤
-                    </el-button>
+                    <el-input v-model="caseFormData.name" placeholder="用例名称" maxlength="200" show-word-limit />
                 </el-form-item>
                 <el-form-item label="优先级" prop="priority">
                     <el-select v-model="caseFormData.priority" placeholder="请选择优先级" style="width: 200px;">
@@ -315,17 +184,14 @@
                         <el-option label="P3-低优先级" value="P3" />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="标签" prop="tags">
-                    <el-select
-                        v-model="caseFormData.tags"
-                        multiple
-                        collapse-tags
-                        placeholder="请选择标签"
-                        style="width: 200px;"
-                    >
-                        <el-option label="回归" value="回归" />
-                        <el-option label="冒烟" value="冒烟" />
-                    </el-select>
+                <el-form-item label="前置条件" prop="precondition">
+                    <el-input v-model="caseFormData.precondition" type="textarea" :rows="2" placeholder="前置条件" />
+                </el-form-item>
+                <el-form-item label="测试步骤" prop="steps">
+                    <el-input v-model="caseFormData.steps" type="textarea" :rows="4" placeholder="1. 步骤一&#10;2. 步骤二" />
+                </el-form-item>
+                <el-form-item label="预期结果" prop="expected">
+                    <el-input v-model="caseFormData.expected" type="textarea" :rows="3" placeholder="预期结果" />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -348,13 +214,19 @@
                 <el-form-item label="">
                     <div class="detail-line">
                         <span class="detail-line-label">需求名称：</span>
-                        <span class="detail-line-value">{{ detailCase.requirement_name || '-' }}</span>
+                        <span class="detail-line-value">{{ detailCase.title || '-' }}</span>
                     </div>
                 </el-form-item>
                 <el-form-item label="">
                     <div class="detail-line">
-                        <span class="detail-line-label">功能模块：</span>
-                        <span class="detail-line-value">{{ detailCase.feature_name || '-' }}</span>
+                        <span class="detail-line-label">模块名称：</span>
+                        <span class="detail-line-value">{{ detailCase.module_name || '-' }}</span>
+                    </div>
+                </el-form-item>
+                <el-form-item label="">
+                    <div class="detail-line">
+                        <span class="detail-line-label">功能点：</span>
+                        <span class="detail-line-value">{{ detailCase.function_name || '-' }}</span>
                     </div>
                 </el-form-item>
                 <el-form-item label="">
@@ -366,53 +238,33 @@
                 <el-form-item label="">
                     <div class="detail-line">
                         <span class="detail-line-label">前置条件：</span>
-                        <span class="detail-line-value multiline">{{ detailCase.preconditions || '-' }}</span>
+                        <span class="detail-line-value multiline">{{ detailCase.precondition || '-' }}</span>
                     </div>
                 </el-form-item>
                 <el-form-item label="">
-                    <div class="detail-section-title">操作步骤</div>
-                    <div v-if="detailCase.test_steps && detailCase.test_steps.length">
-                        <div v-for="(step, index) in detailCase.test_steps" :key="index" class="detail-step">
-                            <div class="detail-step-line">
-                                <span class="detail-step-label">步骤{{ index + 1 }}：</span>
-                                <span class="detail-step-content">{{ step.step || '-' }}</span>
-                            </div>
-                            <div class="detail-step-line">
-                                <span class="detail-step-label">预期结果{{ index + 1 }}：</span>
-                                <span class="detail-step-expected">{{ step.expected_result || '-' }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <span v-else>-</span>
+                    <div class="detail-section-title">测试步骤</div>
+                    <span class="detail-line-value multiline">{{ detailCase.steps || '-' }}</span>
+                </el-form-item>
+                <el-form-item label="">
+                    <div class="detail-section-title">预期结果</div>
+                    <span class="detail-line-value multiline">{{ detailCase.expected || '-' }}</span>
                 </el-form-item>
                 <el-form-item label="">
                     <div class="detail-line">
                         <span class="detail-line-label">优先级：</span>
-                        <el-tag :type="getPriorityType(detailCase.priority)" size="small">
-                            {{ detailCase.priority || '-' }}
-                        </el-tag>
+                        <el-tag :type="getPriorityType(detailCase.priority)" size="small">{{ detailCase.priority || '-' }}</el-tag>
                     </div>
                 </el-form-item>
                 <el-form-item label="">
                     <div class="detail-line">
-                        <span class="detail-line-label">标签：</span>
-                        <span v-if="detailCase.tags && detailCase.tags.length">
-                            <el-tag
-                                v-for="tag in detailCase.tags"
-                                :key="tag"
-                                size="small"
-                                style="margin-right: 5px;"
-                            >
-                                {{ tag }}
-                            </el-tag>
-                        </span>
-                        <span v-else>-</span>
+                        <span class="detail-line-label">来源：</span>
+                        <span class="detail-line-value">{{ detailCase.source === 'ai' ? 'AI导入' : '手动' }}</span>
                     </div>
                 </el-form-item>
                 <el-form-item label="">
                     <div class="detail-line">
                         <span class="detail-line-label">创建人：</span>
-                        <span class="detail-line-value">{{ detailCase.created_by_username || '-' }}</span>
+                        <span class="detail-line-value">{{ detailCase.created_by_name || detailCase.created_by_username || '-' }}</span>
                     </div>
                 </el-form-item>
                 <el-form-item label="">
@@ -427,6 +279,80 @@
             </template>
         </el-dialog>
 
+        <!-- 手动导入用例 -->
+        <el-dialog title="手动导入用例" v-model="showImportManualDialog" width="520px" @open="onImportManualDialogOpen" @close="selectedRequirementIdForManual = null">
+            <el-form label-width="100px">
+                <el-form-item label="需求名称" required>
+                    <el-select
+                        v-model="selectedRequirementIdForManual"
+                        placeholder="请先选择需求名称"
+                        filterable
+                        style="width: 100%;"
+                    >
+                        <el-option
+                            v-for="item in requirementList"
+                            :key="item.id"
+                            :label="item.name"
+                            :value="item.id"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="选择文件" required>
+                    <el-upload
+                        :action="uploadAction"
+                        :headers="uploadHeaders"
+                        :data="manualImportUploadData"
+                        :before-upload="beforeManualUpload"
+                        :on-success="handleManualImportSuccess"
+                        :on-error="handleImportError"
+                        :show-file-list="false"
+                        accept=".xmind,.xls,.xlsx,.csv"
+                    >
+                        <el-button type="primary" :icon="Upload">选择 XMind / Excel / CSV 文件</el-button>
+                    </el-upload>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+
+        <!-- 从 AI 导入 -->
+        <el-dialog title="从 AI 导入用例" v-model="showImportAiDialog" width="520px" @open="onImportAiDialogOpen" @close="selectedRequirementId = null">
+            <el-form label-width="100px">
+                <el-form-item label="需求名称" required>
+                    <el-select
+                        v-model="selectedRequirementId"
+                        placeholder="请选择需求名称"
+                        filterable
+                        style="width: 100%;"
+                    >
+                        <el-option
+                            v-for="item in requirementList"
+                            :key="item.id"
+                            :label="item.name"
+                            :value="item.id"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="选择生成记录" required>
+                    <el-select
+                        v-model="selectedAiGenerationId"
+                        placeholder="请选择一条 AI 生成记录"
+                        filterable
+                        style="width: 100%;"
+                    >
+                        <el-option
+                            v-for="item in aiGenerations"
+                            :key="item.id"
+                            :label="`#${item.id} ${(item.requirement || '').slice(0, 40)}... (${item.case_count || 0} 条)`"
+                            :value="item.id"
+                        />
+                    </el-select>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showImportAiDialog = false">取消</el-button>
+                <el-button type="primary" :loading="importAiLoading" @click="confirmImportFromAi">确定导入</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -437,12 +363,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Download, Refresh, Search, Delete, ArrowDown } from '@element-plus/icons-vue'
 import {
     getFunctionalCases,
-    getFunctionalRequirements,
     createFunctionalCase,
     updateFunctionalCase,
     deleteFunctionalCase,
-    importFunctionalCases,
-    exportFunctionalCases
+    exportFunctionalCases,
+    importFunctionalCasesFromAi,
+    getAiTestcaseGenerations,
+    getFunctionalRequirements
 } from '@/restful/api'
 
 const store = useStore()
@@ -460,9 +387,11 @@ const pageSize = ref(10)
 const emptyText = ref('暂无数据')
 
 const searchForm = ref({
-    requirement_name: '',
-    tag: '',
-    priority: ''
+    title: '',
+    module_name: '',
+    function_name: '',
+    priority: '',
+    source: ''
 })
 
 const dialogVisible = ref(false)
@@ -470,31 +399,29 @@ const dialogTitle = ref('新建用例')
 const isEdit = ref(false)
 const detailDialogVisible = ref(false)
 const detailCase = ref({})
-const requirementOptions = ref([])
+const showImportManualDialog = ref(false)
+const selectedRequirementIdForManual = ref(null)
+const showImportAiDialog = ref(false)
+const selectedRequirementId = ref(null)
+const selectedAiGenerationId = ref(null)
+const requirementList = ref([])
+const aiGenerations = ref([])
+const importAiLoading = ref(false)
 
 const caseFormData = ref({
-    requirement_name: '',
-    feature_name: '',
+    title: '',
+    module_name: '',
+    function_name: '',
     name: '',
-    preconditions: '',
-    test_steps: [{ step: '', expected_result: '' }],
     priority: 'P2',
-    tags: []
+    precondition: '',
+    steps: '',
+    expected: ''
 })
 
 const caseRules = {
-    requirement_name: [
-        { required: true, message: '请输入需求名称', trigger: 'blur' }
-    ],
-    feature_name: [
-        { required: true, message: '请输入功能模块', trigger: 'blur' }
-    ],
-    name: [
-        { required: true, message: '请输入用例名称', trigger: 'blur' }
-    ],
-    priority: [
-        { required: true, message: '请选择优先级', trigger: 'change' }
-    ]
+    name: [{ required: true, message: '请输入用例名称', trigger: 'blur' }],
+    priority: [{ required: true, message: '请选择优先级', trigger: 'change' }]
 }
 
 // 计算属性 - 上传配置
@@ -509,32 +436,70 @@ const uploadHeaders = computed(() => ({
 
 const uploadData = computed(() => ({}))
 
+const manualImportUploadData = computed(() => ({
+    requirement_id: selectedRequirementIdForManual.value || ''
+}))
+
 // 方法
 const getDefaultForm = () => ({
-    requirement_name: '',
-    feature_name: '',
+    title: '',
+    module_name: '',
+    function_name: '',
     name: '',
-    preconditions: '',
-    test_steps: [{ step: '', expected_result: '' }],
     priority: 'P2',
-    tags: []
+    precondition: '',
+    steps: '',
+    expected: ''
 })
 
+const onImportManualDialogOpen = () => {
+    loadRequirements()
+}
+
+const onImportAiDialogOpen = () => {
+    loadAiGenerations()
+    loadRequirements()
+}
+
 const loadRequirements = () => {
-    const params = {
-        page: 1,
-        page_size: 1000
-    }
-    getFunctionalRequirements(params).then(res => {
-        if (res.code === 0) {
-            const list = res.data.results || res.data || []
-            requirementOptions.value = list.map(item => item.name).filter(Boolean)
-        } else {
-            requirementOptions.value = []
+    getFunctionalRequirements({ page: 1, page_size: 500 }).then(res => {
+        const list = res.results || res.data?.results || res.data || []
+        requirementList.value = Array.isArray(list) ? list : []
+    }).catch(() => { requirementList.value = [] })
+}
+
+const loadAiGenerations = () => {
+    getAiTestcaseGenerations({ page_size: 50, status: 'success' }).then(res => {
+        const list = res.results || res.data?.results || res.data || []
+        aiGenerations.value = Array.isArray(list) ? list : []
+        if (!selectedAiGenerationId.value && aiGenerations.value.length) {
+            selectedAiGenerationId.value = aiGenerations.value[0].id
         }
-    }).catch(() => {
-        requirementOptions.value = []
-    })
+    }).catch(() => { aiGenerations.value = [] })
+}
+
+const confirmImportFromAi = () => {
+    if (!selectedRequirementId.value) {
+        ElMessage.warning('请选择需求名称')
+        return
+    }
+    if (!selectedAiGenerationId.value) {
+        ElMessage.warning('请选择一条 AI 生成记录')
+        return
+    }
+    importAiLoading.value = true
+    importFunctionalCasesFromAi({
+        ai_generation_id: selectedAiGenerationId.value,
+        requirement_id: selectedRequirementId.value
+    }).then(res => {
+        if (res.code === 0) {
+            ElMessage.success(res.msg || '导入成功')
+            showImportAiDialog.value = false
+            loadCases()
+        } else {
+            ElMessage.error(res.msg || '导入失败')
+        }
+    }).catch(err => ElMessage.error(err.message || '导入失败')).finally(() => { importAiLoading.value = false })
 }
 
 const loadCases = () => {
@@ -543,15 +508,11 @@ const loadCases = () => {
         page: currentPage.value,
         page_size: pageSize.value
     }
-    if (searchForm.value.requirement_name) {
-        params.requirement_name = searchForm.value.requirement_name
-    }
-    if (searchForm.value.tag) {
-        params.tag = searchForm.value.tag
-    }
-    if (searchForm.value.priority) {
-        params.priority = searchForm.value.priority
-    }
+    if (searchForm.value.title) params.title = searchForm.value.title
+    if (searchForm.value.module_name) params.module_name = searchForm.value.module_name
+    if (searchForm.value.function_name) params.function_name = searchForm.value.function_name
+    if (searchForm.value.priority) params.priority = searchForm.value.priority
+    if (searchForm.value.source) params.source = searchForm.value.source
     getFunctionalCases(params).then(res => {
         if (res.code === 0) {
             if (res.data.results) {
@@ -576,11 +537,7 @@ const loadCases = () => {
 }
 
 const resetSearch = () => {
-    searchForm.value = {
-        requirement_name: '',
-        tag: '',
-        priority: ''
-    }
+    searchForm.value = { title: '', module_name: '', function_name: '', priority: '', source: '' }
     currentPage.value = 1
     loadCases()
 }
@@ -590,16 +547,12 @@ const handleExport = (format) => {
         file_format: format
     }
     
-    if (searchForm.value.requirement_name) {
-        params.requirement_name = searchForm.value.requirement_name
-    }
-    if (searchForm.value.tag) {
-        params.tag = searchForm.value.tag
-    }
-    if (searchForm.value.priority) {
-        params.priority = searchForm.value.priority
-    }
-    
+    if (searchForm.value.title) params.title = searchForm.value.title
+    if (searchForm.value.module_name) params.module_name = searchForm.value.module_name
+    if (searchForm.value.function_name) params.function_name = searchForm.value.function_name
+    if (searchForm.value.priority) params.priority = searchForm.value.priority
+    if (searchForm.value.source) params.source = searchForm.value.source
+
     exportFunctionalCases(params).then(response => {
         let mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         let defaultFilename = '功能测试用例.xlsx'
@@ -648,29 +601,23 @@ const showAddDialog = () => {
     dialogTitle.value = '新建用例'
     isEdit.value = false
     dialogVisible.value = true
-    loadRequirements()
 }
 
 const editCase = (row) => {
     dialogTitle.value = '编辑用例'
     isEdit.value = true
-    let testSteps = row.test_steps && row.test_steps.length > 0 ? row.test_steps : [{ step: '', expected_result: '' }]
-    testSteps = testSteps.map(step => ({
-        step: step.step || '',
-        expected_result: step.expected_result || step.expected || ''
-    }))
     caseFormData.value = {
         id: row.id,
-        requirement_name: row.requirement_name || '',
-        feature_name: row.feature_name || '',
+        title: row.title || '',
+        module_name: row.module_name || '',
+        function_name: row.function_name || '',
         name: row.name,
-        preconditions: row.preconditions || '',
-        test_steps: testSteps,
         priority: row.priority || 'P2',
-        tags: row.tags || []
+        precondition: row.precondition || '',
+        steps: row.steps || '',
+        expected: row.expected || ''
     }
     dialogVisible.value = true
-    loadRequirements()
 }
 
 const deleteCase = (row) => {
@@ -696,11 +643,20 @@ const saveCase = () => {
     caseForm.value.validate(valid => {
         if (!valid) return
         saving.value = true
+        const { id, ...rest } = caseFormData.value
         const params = {
-            ...caseFormData.value
+            title: rest.title || '',
+            module_name: rest.module_name || '',
+            function_name: rest.function_name || '',
+            name: rest.name,
+            priority: rest.priority || 'P2',
+            precondition: rest.precondition || '',
+            steps: rest.steps || '',
+            expected: rest.expected || '',
+            source: 'manual'
         }
         const promise = isEdit.value
-            ? updateFunctionalCase(caseFormData.value.id, params)
+            ? updateFunctionalCase(id, params)
             : createFunctionalCase(params)
         promise.then(res => {
             if (res.code === 0) {
@@ -726,14 +682,6 @@ const resetForm = () => {
     isEdit.value = false
 }
 
-const addStep = () => {
-    caseFormData.value.test_steps.push({ step: '', expected_result: '' })
-}
-
-const removeStep = (index) => {
-    caseFormData.value.test_steps.splice(index, 1)
-}
-
 const beforeUpload = (file) => {
     const isValidType = ['xmind', 'xls', 'xlsx', 'csv'].some(ext => file.name.toLowerCase().endsWith('.' + ext))
     if (!isValidType) {
@@ -746,6 +694,19 @@ const beforeUpload = (file) => {
         return false
     }
     return true
+}
+
+const beforeManualUpload = (file) => {
+    if (!selectedRequirementIdForManual.value) {
+        ElMessage.warning('请先选择需求名称')
+        return false
+    }
+    return beforeUpload(file)
+}
+
+const handleManualImportSuccess = (res) => {
+    handleImportSuccess(res)
+    showImportManualDialog.value = false
 }
 
 const handleImportSuccess = (res) => {
@@ -795,7 +756,6 @@ const formatDate = (date) => {
 
 // 生命周期
 onMounted(() => {
-    loadRequirements()
     loadCases()
 })
 </script>
@@ -816,6 +776,13 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+}
+
+.case-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .case-header h3 {

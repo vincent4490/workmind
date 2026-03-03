@@ -2,7 +2,8 @@
 from rest_framework import serializers
 from .models import (
     Device, UiTestConfig, UiTestCase,
-    FunctionalRequirement, FunctionalTestCase, TestPlan, TestPlanCase, TestPlanCaseOperationLog,
+    FunctionalRequirement, FunctionalTestCase, Task,
+    TestPlan, TestPlanCase, TestPlanCaseOperationLog,
     UiComponentDefinition, UiCustomComponentDefinition, UiComponentPackage,
     UiTestExecution, AppPackage, UiElement
 )
@@ -68,17 +69,30 @@ class UiComponentPackageSerializer(serializers.ModelSerializer):
 class FunctionalRequirementSerializer(serializers.ModelSerializer):
     """功能测试需求序列化器"""
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-    
+    created_by_name = serializers.CharField(source='created_by.name', read_only=True)
+
     class Meta:
         model = FunctionalRequirement
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at', 'created_by']
 
 
-class FunctionalTestCaseSerializer(serializers.ModelSerializer):
-    """功能测试用例序列化器"""
+class TaskSerializer(serializers.ModelSerializer):
+    """任务管理序列化器"""
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-    
+    created_by_name = serializers.CharField(source='created_by.name', read_only=True)
+
+    class Meta:
+        model = Task
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at', 'created_by']
+
+
+class FunctionalTestCaseSerializer(serializers.ModelSerializer):
+    """功能测试用例序列化器（与 AI 结构一致）"""
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.name', read_only=True)
+
     class Meta:
         model = FunctionalTestCase
         fields = '__all__'
@@ -88,6 +102,7 @@ class FunctionalTestCaseSerializer(serializers.ModelSerializer):
 class TestPlanSerializer(serializers.ModelSerializer):
     """测试计划序列化器"""
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.name', read_only=True)
     case_count = serializers.SerializerMethodField()
     
     class Meta:
@@ -153,8 +168,10 @@ class AppPackageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
     
     def get_created_by_name(self, obj):
-        """获取创建人名称"""
-        return obj.created_by.username if obj.created_by else ''
+        """获取创建人姓名，无姓名时回退为 username"""
+        if not obj.created_by:
+            return ''
+        return getattr(obj.created_by, 'name', None) or obj.created_by.username or ''
     
     def validate_package_name(self, value):
         """验证包名格式"""
@@ -174,7 +191,7 @@ class AppPackageSerializer(serializers.ModelSerializer):
 class UiElementSerializer(serializers.ModelSerializer):
     """UI元素序列化器（完整版）"""
     
-    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
     element_type_display = serializers.CharField(source='get_element_type_display', read_only=True)
     
     class Meta:
@@ -187,6 +204,12 @@ class UiElementSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'is_active'
         ]
         read_only_fields = ['id', 'usage_count', 'last_used_at', 'created_at', 'updated_at', 'created_by']
+
+    def get_created_by_name(self, obj):
+        """获取创建人姓名，无姓名时回退为 username"""
+        if not obj.created_by:
+            return ''
+        return getattr(obj.created_by, 'name', None) or obj.created_by.username or ''
     
     def validate_name(self, value):
         """验证元素名称唯一性"""

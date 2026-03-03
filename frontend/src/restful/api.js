@@ -267,6 +267,23 @@ export const deleteFunctionalRequirement = requirementId => {
     return axios.delete("/api/ui_test/functional-requirements/" + requirementId + "/").then(res => res.data);
 };
 
+// 任务管理
+export const getTasks = params => {
+    return axios.get("/api/ui_test/tasks/", { params }).then(res => res.data);
+};
+
+export const createTask = params => {
+    return axios.post("/api/ui_test/tasks/", params).then(res => res.data);
+};
+
+export const updateTask = (taskId, params) => {
+    return axios.put("/api/ui_test/tasks/" + taskId + "/", params).then(res => res.data);
+};
+
+export const deleteTask = taskId => {
+    return axios.delete("/api/ui_test/tasks/" + taskId + "/").then(res => res.data);
+};
+
 // 功能测试用例管理
 export const getFunctionalCases = params => {
     return axios.get("/api/ui_test/functional-cases/", { params }).then(res => res.data);
@@ -289,6 +306,10 @@ export const exportFunctionalCases = params => {
         params,
         responseType: 'blob'
     });
+};
+
+export const importFunctionalCasesFromAi = ({ ai_generation_id, requirement_id }) => {
+    return axios.post("/api/ui_test/functional-cases/import-from-ai/", { ai_generation_id, requirement_id }).then(res => res.data);
 };
 
 export const importFunctionalCases = (file) => {
@@ -333,6 +354,14 @@ export const getPlanCases = planId => {
 export const markPlanCaseStatus = (planId, caseId, status, message = '') => {
     return axios.post(`/api/ui_test/test-plans/${planId}/cases/mark/`, {
         case_id: caseId,
+        status,
+        message
+    }).then(res => res.data);
+};
+
+export const batchMarkPlanCaseStatus = (planId, caseIds, status, message = '') => {
+    return axios.post(`/api/ui_test/test-plans/${planId}/cases/batch-mark/`, {
+        case_ids: caseIds,
         status,
         message
     }).then(res => res.data);

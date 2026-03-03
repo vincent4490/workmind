@@ -2,7 +2,7 @@
 from django.contrib import admin
 from .models import (
     Device, UiTestConfig, UiTestCase,
-    FunctionalRequirement, FunctionalTestCase, TestPlan, TestPlanCase
+    FunctionalRequirement, FunctionalTestCase, Task, TestPlan, TestPlanCase
 )
 
 
@@ -37,11 +37,19 @@ class FunctionalRequirementAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
 
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ['name', 'requirement_name', 'owner', 'status', 'created_by', 'created_at', 'updated_at']
+    list_filter = ['status', 'created_by', 'created_at']
+    search_fields = ['name', 'requirement_name', 'owner']
+    readonly_fields = ['created_at', 'updated_at']
+
+
 @admin.register(FunctionalTestCase)
 class FunctionalTestCaseAdmin(admin.ModelAdmin):
-    list_display = ['name', 'priority', 'created_by', 'created_at', 'updated_at']
-    list_filter = ['priority', 'created_by', 'created_at']
-    search_fields = ['name', 'description']
+    list_display = ['name', 'title', 'module_name', 'function_name', 'priority', 'source', 'created_by', 'created_at', 'updated_at']
+    list_filter = ['priority', 'source', 'created_by', 'created_at']
+    search_fields = ['name', 'title', 'module_name', 'function_name']
     readonly_fields = ['created_at', 'updated_at']
 
 

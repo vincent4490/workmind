@@ -26,15 +26,15 @@ class BaseCaseImporter:
             file: 待解析的上传文件对象
             
         Returns:
-            List[Dict]: 用例数据列表，每个字典包含以下字段：
-                - requirement_name: 需求名称
-                - feature_name: 功能模块
+            List[Dict]: 用例数据列表，每个字典包含（与 AI 结构一致）：
+                - title: 需求名称_测试用例
+                - module_name: 模块名称
+                - function_name: 功能点名称
                 - name: 用例名称
-                - preconditions: 前置条件
-                - test_steps: 操作步骤列表
-                - expected_result: 预期结果
-                - priority: 优先级
-                - tags: 标签列表
+                - priority: P0/P1/P2/P3
+                - precondition: 前置条件（文本）
+                - steps: 测试步骤（文本）
+                - expected: 预期结果（文本）
         """
         raise NotImplementedError
 
@@ -74,14 +74,17 @@ class XMindImporter(BaseCaseImporter):
             labels = topic.get('labels', [])
             
             case = {
-                'requirement_name': '',
-                'feature_name': '',
+                'title': '',
+                'module_name': '',
+                'function_name': '',
                 'name': full_title or '未命名用例',
-                'preconditions': '',
-                'test_steps': [{'step': '步骤1', 'expected_result': '预期结果1'}],
-                'priority': 'P2',
-                'tags': labels if isinstance(labels, list) else []
+                'precondition': '',
+                'steps': '1. 步骤1',
+                'expected': '',
+                'priority': 'P2'
             }
+            if isinstance(labels, list) and labels:
+                case['priority'] = str(labels[0]).strip()
             cases.append(case)
         
         return cases
@@ -100,7 +103,11 @@ class XMindImporter(BaseCaseImporter):
         return cases
 
     def _parse_xmind_json(self, content_json: bytes) -> List[Dict[str, Any]]:
-        """解析标准 XMind content.json"""
+        """
+        解析 XMind content.json，仅支持四层结构（与 AI 导出一致）：
+        root(主题) → 模块 → 功能点 → 用例
+        用例节点下：前置条件 → 测试步骤 → 预期结果（或 前置条件：/测试步骤/预期结果 子节点）
+        """
         cases: List[Dict[str, Any]] = []
         try:
             data = json.loads(content_json.decode('utf-8'))
@@ -124,6 +131,12 @@ class XMindImporter(BaseCaseImporter):
                 return children
             return []
 
+        def has_label(node: Dict[str, Any], label_substr: str) -> bool:
+            labels = node.get('labels') or []
+            if not isinstance(labels, list):
+                return False
+            return any(label_substr in str(lb) for lb in labels)
+
         sheets = []
         if isinstance(data, list):
             sheets = data
@@ -138,58 +151,105 @@ class XMindImporter(BaseCaseImporter):
             if not isinstance(root_topic, dict):
                 continue
 
-            requirement_name = get_title(root_topic) or '未命名需求'
+            # 第一层：主题
+            title = get_title(root_topic) or '未命名需求'
+            # 第二层：模块
             for module_topic in iter_child_topics(root_topic):
-                feature_name = get_title(module_topic) or '未命名模块'
-                for case_topic in iter_child_topics(module_topic):
-                    case_name = get_title(case_topic) or '未命名用例'
-                    case = {
-                        'requirement_name': requirement_name,
-                        'feature_name': feature_name,
-                        'name': case_name,
-                        'preconditions': '',
-                        'test_steps': [],
-                        'priority': 'P2',
-                        'tags': []
-                    }
+                module_name = get_title(module_topic) or '未命名模块'
+                # 第三层：功能点
+                for func_topic in iter_child_topics(module_topic):
+                    function_name = get_title(func_topic) or '未命名功能点'
+                    # 第四层：用例
+                    for case_topic in iter_child_topics(func_topic):
+                        case_name = get_title(case_topic) or '未命名用例'
+                        case = {
+                            'title': title,
+                            'module_name': module_name,
+                            'function_name': function_name,
+                            'name': case_name,
+                            'precondition': '',
+                            'steps': '',
+                            'expected': '',
+                            'priority': 'P2',
+                        }
+                        # 优先级：用例节点的 labels（如 ["用例标题", "P0"]）
+                        labels = case_topic.get('labels')
+                        if isinstance(labels, list):
+                            for lb in labels:
+                                s = str(lb).strip().upper()
+                                if s in ('P0', 'P1', 'P2', 'P3'):
+                                    case['priority'] = s
+                                    break
 
-                    labels = case_topic.get('labels')
-                    if isinstance(labels, list) and labels:
-                        case['priority'] = str(labels[0]).strip()
+                        # 1) AI 导出链式：用例 → 前置条件(labels) → 测试步骤(labels) → 预期结果(labels)，各节点 title 为正文
+                        for detail_topic in iter_child_topics(case_topic):
+                            if has_label(detail_topic, '前置条件'):
+                                case['precondition'] = get_title(detail_topic)
+                                for step_topic in iter_child_topics(detail_topic):
+                                    if has_label(step_topic, '测试步骤'):
+                                        case['steps'] = get_title(step_topic)
+                                        for exp_topic in iter_child_topics(step_topic):
+                                            if has_label(exp_topic, '预期结果'):
+                                                case['expected'] = get_title(exp_topic)
+                                                break
+                                        break
+                                break
 
-                    for detail_topic in iter_child_topics(case_topic):
-                        title = get_title(detail_topic)
-                        if title.startswith('前置条件：'):
-                            case['preconditions'] = title.replace('前置条件：', '', 1).strip()
-                            continue
-                        if title == '操作步骤':
-                            steps = []
-                            for step_topic in iter_child_topics(detail_topic):
-                                step_title = get_title(step_topic)
-                                step_text = ''
-                                expected_text = ''
-                                if step_title.startswith('步骤'):
-                                    step_text = step_title.split('：', 1)[-1].strip()
-                                    for exp_topic in iter_child_topics(step_topic):
-                                        exp_title = get_title(exp_topic)
-                                        if exp_title.startswith('预期结果'):
-                                            expected_text = exp_title.split('：', 1)[-1].strip()
-                                elif step_title.startswith('预期结果'):
-                                    expected_text = step_title.split('：', 1)[-1].strip()
-                                if step_text or expected_text:
-                                    steps.append({
-                                        'step': step_text,
-                                        'expected_result': expected_text
-                                    })
-                            if steps:
-                                case['test_steps'] = steps
+                        # 2) 兜底：按标题关键字解析（手改 XMind 或「前置条件：」/「测试步骤」子节点格式）
+                        step_lines = []
+                        expected_lines = []
+                        for detail_topic in iter_child_topics(case_topic):
+                            detail_title = get_title(detail_topic)
+                            if not case['precondition'] and detail_title.startswith('前置条件：'):
+                                case['precondition'] = detail_title.replace('前置条件：', '', 1).strip()
+                                continue
+                            if detail_title in ('操作步骤', '测试步骤'):
+                                sub_topics = iter_child_topics(detail_topic)
+                                if len(sub_topics) == 1 and not case['steps']:
+                                    only_child = sub_topics[0]
+                                    only_title = get_title(only_child)
+                                    if only_title.startswith('预期结果') or (only_title and '预期' in only_title):
+                                        case['steps'] = case.get('steps') or detail_title
+                                        if not case['expected']:
+                                            case['expected'] = only_title.split('：', 1)[-1].strip() if '：' in only_title else only_title
+                                    else:
+                                        step_lines.append(only_title)
+                                        for exp_topic in iter_child_topics(only_child):
+                                            exp_title = get_title(exp_topic)
+                                            if exp_title.startswith('预期结果'):
+                                                expected_lines.append(exp_title.split('：', 1)[-1].strip())
+                                elif sub_topics and not case['steps']:
+                                    for step_topic in sub_topics:
+                                        step_title = get_title(step_topic)
+                                        if step_title.startswith('步骤'):
+                                            step_lines.append(step_title.split('：', 1)[-1].strip())
+                                        elif step_title.startswith('预期结果') or '预期' in step_title:
+                                            expected_lines.append(
+                                                step_title.split('：', 1)[-1].strip() if '：' in step_title else step_title
+                                            )
+                                        else:
+                                            step_lines.append(step_title)
+                                        for exp_topic in iter_child_topics(step_topic):
+                                            exp_title = get_title(exp_topic)
+                                            if exp_title.startswith('预期结果'):
+                                                expected_lines.append(exp_title.split('：', 1)[-1].strip())
+                                elif not case['steps']:
+                                    case['steps'] = detail_title or '1. 步骤1'
+                                continue
+                            if not case['expected'] and (detail_title.startswith('预期结果') or (detail_title and '预期' in detail_title)):
+                                case['expected'] = detail_title.split('：', 1)[-1].strip() if '：' in detail_title else detail_title
 
-                    if not case['test_steps']:
-                        case['test_steps'] = [{'step': '步骤1', 'expected_result': '预期结果1'}]
+                        if step_lines or expected_lines:
+                            if step_lines:
+                                case['steps'] = case.get('steps') or '\n'.join(f'{i+1}. {s}' for i, s in enumerate(step_lines))
+                            if expected_lines:
+                                case['expected'] = case.get('expected') or '\n'.join(expected_lines)
+                        if not case.get('steps') and not case.get('expected'):
+                            case['steps'] = '1. 步骤1'
 
-                    cases.append(case)
+                        cases.append(case)
 
-        logger.info("XMind导入完成: json_cases_count=%s", len(cases))
+        logger.info("XMind导入完成(四层结构): json_cases_count=%s", len(cases))
         return cases
 
 
@@ -204,20 +264,20 @@ class ExcelImporter(BaseCaseImporter):
             # 读取 Excel 文件
             df = pd.read_excel(file, sheet_name=0)
             
-            # 映射列名到标准字段名（支持中英文列名）
             column_mapping = {
-                '需求名称': 'requirement_name',
-                '功能模块': 'feature_name',
+                '需求名称': 'title',
+                '模块名称': 'module_name',
+                '功能点名称': 'function_name',
+                '功能模块': 'module_name',
                 '用例名称': 'name',
                 '优先级': 'priority',
-                '前置条件': 'preconditions',
-                '操作步骤': 'test_steps',
-                '预期结果': 'expected_result',
+                '前置条件': 'precondition',
+                '测试步骤': 'steps',
+                '操作步骤': 'steps',
+                '预期结果': 'expected',
             }
-            
-            # 标准化列名
             df.columns = [column_mapping.get(col, col) for col in df.columns]
-            
+
             def split_lines(value: Any, kind: str) -> List[str]:
                 if value is None:
                     return []
@@ -236,40 +296,34 @@ class ExcelImporter(BaseCaseImporter):
 
             cases = []
             for _, row in df.iterrows():
-                raw_steps = row.get('test_steps', '')
-                raw_expected = row.get('expected_result', '')
-
+                raw_steps = row.get('steps', '')
+                raw_expected = row.get('expected', '')
                 steps_list = split_lines(raw_steps, 'step')
                 expected_list = split_lines(raw_expected, 'expected')
                 if steps_list or expected_list:
-                    max_len = max(len(steps_list), len(expected_list))
-                    test_steps = []
-                    for i in range(max_len):
-                        test_steps.append({
-                            'step': steps_list[i] if i < len(steps_list) else '',
-                            'expected_result': expected_list[i] if i < len(expected_list) else ''
-                        })
+                    steps_text = '\n'.join(f'{i+1}. {s}' for i, s in enumerate(steps_list)) if steps_list else ''
+                    expected_text = '\n'.join(expected_list) if expected_list else ''
                 else:
                     test_steps = self._parse_test_steps(raw_steps)
-                
-                # 解析优先级
+                    steps_text = '\n'.join(f'{i+1}. {(s.get("step") or "").strip()}' for i, s in enumerate(test_steps))
+                    expected_text = '\n'.join((s.get('expected_result') or '').strip() for s in test_steps)
+
                 priority = self._parse_priority(row.get('priority', 'P2'))
-                
-                
-                case = {
-                    'requirement_name': str(row.get('requirement_name', '')).strip(),
-                    'feature_name': str(row.get('feature_name', '')).strip(),
-                    'name': str(row.get('name', '未命名用例')).strip(),
-                    'preconditions': str(row.get('preconditions', '')).strip(),
-                    'test_steps': test_steps,
-                    'priority': priority,
-                    'tags': []
-                }
-                if not case['feature_name']:
-                    case['feature_name'] = str(row.get('module_name', '')).strip()
-                
-                if case['name'] and case['name'] != '未命名用例':
-                    cases.append(case)
+                title = str(row.get('title', '')).strip()
+                module_name = str(row.get('module_name', '')).strip()
+                function_name = str(row.get('function_name', '')).strip()
+                name = str(row.get('name', '未命名用例')).strip()
+                if name and name != '未命名用例':
+                    cases.append({
+                        'title': title,
+                        'module_name': module_name,
+                        'function_name': function_name,
+                        'name': name,
+                        'priority': priority,
+                        'precondition': str(row.get('precondition', '')).strip(),
+                        'steps': steps_text,
+                        'expected': expected_text,
+                    })
             
             return cases
         except ImportError:
@@ -372,23 +426,21 @@ class CSVImporter(BaseCaseImporter):
                     file.seek(0)
                     df = pd.read_csv(file, encoding='gb18030')
             
-            # 映射列名到标准字段名（支持中英文列名）
             column_mapping = {
-                '需求名称': 'requirement_name',
-                '功能模块': 'feature_name',
+                '需求名称': 'title',
+                '模块名称': 'module_name',
+                '功能点名称': 'function_name',
+                '功能模块': 'module_name',
                 '用例名称': 'name',
                 '优先级': 'priority',
-                '前置条件': 'preconditions',
-                '操作步骤': 'test_steps',
-                '预期结果': 'expected_result',
+                '前置条件': 'precondition',
+                '测试步骤': 'steps',
+                '操作步骤': 'steps',
+                '预期结果': 'expected',
             }
-            
-            # 标准化列名
             df.columns = [column_mapping.get(col, col) for col in df.columns]
-            
-            # 复用 Excel 导入器的解析逻辑
             excel_importer = ExcelImporter()
-            
+
             def split_lines(value: Any, kind: str) -> List[str]:
                 if value is None:
                     return []
@@ -407,38 +459,31 @@ class CSVImporter(BaseCaseImporter):
 
             cases = []
             for _, row in df.iterrows():
-                raw_steps = row.get('test_steps', '')
-                raw_expected = row.get('expected_result', '')
-
+                raw_steps = row.get('steps', '')
+                raw_expected = row.get('expected', '')
                 steps_list = split_lines(raw_steps, 'step')
                 expected_list = split_lines(raw_expected, 'expected')
                 if steps_list or expected_list:
-                    max_len = max(len(steps_list), len(expected_list))
-                    test_steps = []
-                    for i in range(max_len):
-                        test_steps.append({
-                            'step': steps_list[i] if i < len(steps_list) else '',
-                            'expected_result': expected_list[i] if i < len(expected_list) else ''
-                        })
+                    steps_text = '\n'.join(f'{i+1}. {s}' for i, s in enumerate(steps_list)) if steps_list else ''
+                    expected_text = '\n'.join(expected_list) if expected_list else ''
                 else:
                     test_steps = excel_importer._parse_test_steps(raw_steps)
+                    steps_text = '\n'.join(f'{i+1}. {(s.get("step") or "").strip()}' for i, s in enumerate(test_steps))
+                    expected_text = '\n'.join((s.get('expected_result') or '').strip() for s in test_steps)
 
                 priority = excel_importer._parse_priority(row.get('priority', 'P2'))
-                
-                case = {
-                    'requirement_name': str(row.get('requirement_name', '')).strip(),
-                    'feature_name': str(row.get('feature_name', '')).strip(),
-                    'name': str(row.get('name', '未命名用例')).strip(),
-                    'preconditions': str(row.get('preconditions', '')).strip(),
-                    'test_steps': test_steps,
-                    'priority': priority,
-                    'tags': []
-                }
-                if not case['feature_name']:
-                    case['feature_name'] = str(row.get('module_name', '')).strip()
-                
-                if case['name'] and case['name'] != '未命名用例':
-                    cases.append(case)
+                name = str(row.get('name', '未命名用例')).strip()
+                if name and name != '未命名用例':
+                    cases.append({
+                        'title': str(row.get('title', '')).strip(),
+                        'module_name': str(row.get('module_name', '')).strip(),
+                        'function_name': str(row.get('function_name', '')).strip(),
+                        'name': name,
+                        'priority': priority,
+                        'precondition': str(row.get('precondition', '')).strip(),
+                        'steps': steps_text,
+                        'expected': expected_text,
+                    })
             
             return cases
         except ImportError:

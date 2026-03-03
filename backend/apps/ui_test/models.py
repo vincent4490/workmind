@@ -195,32 +195,69 @@ class FunctionalRequirement(models.Model):
         return self.name
 
 
+class Task(models.Model):
+    """功能测试任务管理"""
+    name = models.CharField(max_length=200, verbose_name='任务名称')
+    requirement_name = models.CharField(max_length=200, blank=True, default='', verbose_name='所属需求')
+    owner = models.CharField(max_length=200, blank=True, default='', verbose_name='任务负责人')
+    status = models.CharField(max_length=20, blank=True, default='未开始', verbose_name='任务状态')
+    remark = models.TextField(blank=True, default='', verbose_name='备注')
+    man_days = models.CharField(max_length=50, blank=True, default='', verbose_name='任务人日')
+    task_time = models.CharField(max_length=80, blank=True, default='', verbose_name='任务时间')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_tasks', verbose_name='创建人')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'functional_task'
+        verbose_name = '任务'
+        verbose_name_plural = '任务管理'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return self.name
+
+
 class FunctionalTestCase(models.Model):
-    """功能测试用例"""
+    """功能测试用例（与 AI 生成结构一致）"""
     PRIORITY_CHOICES = [
         ('P0', 'P0-最高优先级'),
         ('P1', 'P1-高优先级'),
         ('P2', 'P2-中优先级'),
         ('P3', 'P3-低优先级'),
     ]
-    
-    requirement_name = models.CharField(max_length=200, verbose_name='需求名称', help_text='需求名称')
-    feature_name = models.CharField(max_length=200, verbose_name='功能模块', help_text='功能模块')
+    SOURCE_CHOICES = [
+        ('manual', '手动'),
+        ('ai', 'AI导入'),
+    ]
+
+    title = models.CharField(max_length=200, blank=True, default='', verbose_name='需求名称_测试用例')
+    module_name = models.CharField(max_length=200, blank=True, default='', verbose_name='模块名称')
+    function_name = models.CharField(max_length=200, blank=True, default='', verbose_name='功能点名称')
     name = models.CharField(max_length=200, verbose_name='用例名称')
-    preconditions = models.TextField(blank=True, default='', verbose_name='前置条件')
-    test_steps = models.JSONField(default=list, verbose_name='操作步骤', help_text='步骤列表, 每个步骤包含: 操作步骤(step)和预期结果(expected_result)')
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='P2', verbose_name='优先级')
-    tags = models.JSONField(default=list, verbose_name='标签', help_text='标签列表')
+    precondition = models.TextField(blank=True, default='', verbose_name='前置条件')
+    steps = models.TextField(blank=True, default='', verbose_name='测试步骤')
+    expected = models.TextField(blank=True, default='', verbose_name='预期结果')
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='manual', verbose_name='来源')
+    ai_generation = models.ForeignKey(
+        'ai_testcase.AiTestcaseGeneration',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='imported_functional_cases',
+        verbose_name='AI生成记录'
+    )
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_functional_cases', verbose_name='创建人')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
-    
+
     class Meta:
         db_table = 'functional_test_case'
         verbose_name = '功能测试用例'
         verbose_name_plural = verbose_name
         ordering = ['-updated_at']
-    
+
     def __str__(self):
         return self.name
 
