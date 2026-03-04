@@ -1660,7 +1660,7 @@ onUnmounted(() => {
 
 /* 历史记录 */
 .history-list {
-    max-height: calc(100vh - 240px);
+    max-height: 868px;
     overflow-y: auto;
 }
 

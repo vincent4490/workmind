@@ -1,10 +1,10 @@
 <template>
-    <el-container>
+    <el-container class="layout-container">
         <el-header style="background: #242f42; padding:0; height: 50px">
             <home-header></home-header>
         </el-header>
 
-        <el-container>
+        <el-container class="content-container">
             <el-aside style="width: 202px">
                 <home-side></home-side>
             </el-aside>
@@ -41,6 +41,14 @@ const cachedViews = computed(() => store.state.cachedViews)
 </script>
 
 <style scoped>
+.layout-container {
+    height: 100vh;
+}
+
+.content-container {
+    height: calc(100vh - 50px);
+}
+
 .main-container {
     padding: 0;
     overflow: hidden;
@@ -50,7 +58,8 @@ const cachedViews = computed(() => store.state.cachedViews)
 
 .app-main {
     flex: 1;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 20px;
     background: #f5f7fa;
 }
