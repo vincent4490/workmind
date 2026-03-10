@@ -44,24 +44,34 @@
                     v-model="searchForm.test_team"
                     placeholder="请选择测试团队"
                     clearable
+                    filterable
                     style="width: 140px;"
                     @change="loadRequirements"
                 >
-                    <el-option label="slots" value="slots" />
-                    <el-option label="大厅" value="大厅" />
-                    <el-option label="捕鱼" value="捕鱼" />
-                    <el-option label="本地棋牌" value="本地棋牌" />
-                    <el-option label="国际棋牌" value="国际棋牌" />
+                    <el-option
+                        v-for="item in testTeamOptions"
+                        :key="item"
+                        :label="item"
+                        :value="item"
+                    />
                 </el-select>
             </el-form-item>
             <el-form-item label="测试人员">
-                <el-input
+                <el-select
                     v-model="searchForm.testers"
-                    placeholder="请输入测试人员"
+                    placeholder="请选择测试人员"
+                    filterable
                     clearable
-                    style="width: 140px;"
+                    style="width: 180px;"
                     @change="loadRequirements"
-                />
+                >
+                    <el-option
+                        v-for="item in testerOptions"
+                        :key="item"
+                        :label="getTesterOptionLabel(item)"
+                        :value="item"
+                    />
+                </el-select>
             </el-form-item>
             <el-form-item label="创建时间">
                 <el-date-picker
@@ -180,7 +190,7 @@
         <el-pagination
             v-show="total > 0"
             :current-page="currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 30, 50, 100, 200, 500, 2000]"
             :page-size="pageSize"
             :total="total"
             layout="total, sizes, prev, pager, next, jumper"
@@ -216,22 +226,11 @@
                     />
                 </el-form-item>
                 <el-form-item label="产品负责人" prop="product_owner">
-                    <el-select
+                    <el-input
                         v-model="requirementFormData.product_owner"
-                        multiple
-                        filterable
-                        collapse-tags
-                        placeholder="请选择产品负责人"
-                        style="width: 100%;"
-                        :loading="userListLoading"
-                    >
-                        <el-option
-                            v-for="u in userList"
-                            :key="u.id"
-                            :label="u.name || u.username"
-                            :value="u.username"
-                        />
-                    </el-select>
+                        placeholder="请输入产品负责人"
+                        clearable
+                    />
                 </el-form-item>
                 <el-form-item label="状态" prop="status">
                     <el-select v-model="requirementFormData.status" placeholder="请选择状态" style="width: 200px;">
@@ -265,22 +264,11 @@
                     />
                 </el-form-item>
                 <el-form-item label="开发人员" prop="developers">
-                    <el-select
+                    <el-input
                         v-model="requirementFormData.developers"
-                        multiple
-                        filterable
-                        collapse-tags
-                        placeholder="请选择开发人员"
-                        style="width: 100%;"
-                        :loading="userListLoading"
-                    >
-                        <el-option
-                            v-for="u in userList"
-                            :key="u.id"
-                            :label="u.name || u.username"
-                            :value="u.username"
-                        />
-                    </el-select>
+                        placeholder="请输入开发人员"
+                        clearable
+                    />
                 </el-form-item>
                 <el-form-item label="开发人日" prop="dev_man_days">
                     <el-input
@@ -322,13 +310,15 @@
                         v-model="requirementFormData.test_team"
                         placeholder="请选择测试团队"
                         clearable
+                        filterable
                         style="width: 100%;"
                     >
-                        <el-option label="slots" value="slots" />
-                        <el-option label="大厅" value="大厅" />
-                        <el-option label="捕鱼" value="捕鱼" />
-                        <el-option label="本地棋牌" value="本地棋牌" />
-                        <el-option label="国际棋牌" value="国际棋牌" />
+                        <el-option
+                            v-for="item in testTeamOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="测试人日" prop="test_man_days">
@@ -372,6 +362,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
     getFunctionalRequirements,
+    getFunctionalRequirementTestTeamOptions,
+    getFunctionalRequirementTesterOptions,
     createFunctionalRequirement,
     updateFunctionalRequirement,
     deleteFunctionalRequirement,
@@ -387,9 +379,11 @@ const loading = ref(false)
 const saving = ref(false)
 const requirementList = ref([])
 const requirementOptions = ref([])
+const testTeamOptions = ref([])
+const testerOptions = ref([])
 const total = ref(0)
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(20)
 const emptyText = ref('暂无数据')
 const dialogVisible = ref(false)
 const dialogTitle = ref('新建需求')
@@ -399,11 +393,11 @@ const requirementFormData = ref({
     id: null,
     name: '',
     link: '',
-    product_owner: [],
+    product_owner: '',
     status: '未开始',
     tags: [],
     remark: '',
-    developers: [],
+    developers: '',
     dev_man_days: '',
     dev_time: [],
     testers: [],
@@ -434,11 +428,11 @@ const getDefaultForm = () => ({
     id: null,
     name: '',
     link: '',
-    product_owner: [],
+    product_owner: '',
     status: '未开始',
     tags: [],
     remark: '',
-    developers: [],
+    developers: '',
     dev_man_days: '',
     dev_time: [],
     testers: [],
@@ -451,7 +445,7 @@ const getDefaultForm = () => ({
 const loadRequirementOptions = () => {
     const params = {
         page: 1,
-        page_size: 1000
+        page_size: 2000
     }
     getFunctionalRequirements(params).then(res => {
         if (res.code === 0) {
@@ -462,6 +456,30 @@ const loadRequirementOptions = () => {
         }
     }).catch(() => {
         requirementOptions.value = []
+    })
+}
+
+const loadTestTeamOptions = () => {
+    getFunctionalRequirementTestTeamOptions().then(res => {
+        if (res.code === 0 && Array.isArray(res.data)) {
+            testTeamOptions.value = res.data
+        } else {
+            testTeamOptions.value = []
+        }
+    }).catch(() => {
+        testTeamOptions.value = []
+    })
+}
+
+const loadTesterOptions = () => {
+    getFunctionalRequirementTesterOptions().then(res => {
+        if (res.code === 0 && Array.isArray(res.data)) {
+            testerOptions.value = res.data
+        } else {
+            testerOptions.value = []
+        }
+    }).catch(() => {
+        testerOptions.value = []
     })
 }
 
@@ -552,6 +570,15 @@ const personFieldToDisplay = (val) => {
     return names.join('、')
 }
 
+/** 测试人员筛选项展示：用 name，无则用 username */
+const getTesterOptionLabel = (username) => {
+    if (!username) return ''
+    const list = userList.value || []
+    const key = String(username).trim().toLowerCase()
+    const u = list.find(x => String(x.username || x.id || '').toLowerCase() === key)
+    return u ? (u.name || u.username || username) : username
+}
+
 const formatPersonField = (val) => {
     if (!val || !Array.isArray(val)) return ''
     return val.filter(Boolean).join(',')
@@ -564,11 +591,11 @@ const editRequirement = (row) => {
         id: row.id,
         name: row.name,
         link: row.link || '',
-        product_owner: parsePersonField(row.product_owner),
+        product_owner: String(row.product_owner || '').trim(),
         status: row.status || '未开始',
         tags: parseTags(row.tags),
         remark: row.remark || '',
-        developers: parsePersonField(row.developers),
+        developers: String(row.developers || '').trim(),
         dev_man_days: row.dev_man_days || '',
         dev_time: parseTimeRange(row.dev_time),
         testers: parsePersonField(row.testers),
@@ -590,6 +617,8 @@ const deleteRequirement = (row) => {
             if (res.code === 0) {
                 ElMessage.success('删除成功')
                 loadRequirementOptions()
+                loadTestTeamOptions()
+                loadTesterOptions()
                 loadRequirements()
             } else {
                 ElMessage.error(res.msg || '删除失败')
@@ -607,11 +636,11 @@ const saveRequirement = () => {
         const params = {
             name: requirementFormData.value.name,
             link: requirementFormData.value.link || '',
-            product_owner: formatPersonField(requirementFormData.value.product_owner),
+            product_owner: (requirementFormData.value.product_owner || '').trim(),
             status: requirementFormData.value.status || '未开始',
             tags: formatTagsValue(requirementFormData.value.tags),
             remark: requirementFormData.value.remark || '',
-            developers: formatPersonField(requirementFormData.value.developers),
+            developers: (requirementFormData.value.developers || '').trim(),
             dev_man_days: requirementFormData.value.dev_man_days || '',
             dev_time: formatTimeRange(requirementFormData.value.dev_time),
             testers: formatPersonField(requirementFormData.value.testers),
@@ -628,6 +657,8 @@ const saveRequirement = () => {
                 ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
                 dialogVisible.value = false
                 loadRequirementOptions()
+                loadTestTeamOptions()
+                loadTesterOptions()
                 loadRequirements()
             } else {
                 ElMessage.error(res.msg || (isEdit.value ? '更新失败' : '创建失败'))
@@ -890,6 +921,8 @@ const loadUserList = () => {
 onMounted(() => {
     loadUserList()
     loadRequirementOptions()
+    loadTestTeamOptions()
+    loadTesterOptions()
     loadRequirements()
 })
 </script>

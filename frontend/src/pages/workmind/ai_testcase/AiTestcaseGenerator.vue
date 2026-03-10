@@ -672,6 +672,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
     Edit, MagicStick, Document, Download, View,
@@ -689,6 +690,9 @@ import {
     downloadAiTestcaseXmind,
     getAiTestcaseConfigStatus
 } from '@/restful/api'
+
+const route = useRoute()
+const router = useRouter()
 
 // 状态
 const requirement = ref('')
@@ -1347,9 +1351,40 @@ function formatTime(timeStr) {
 }
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
     loadConfigStatus()
-    loadHistory()
+    await loadHistory()
+
+    // 从需求智能体结构直传跳转：打开指定 record_id 的生成结果
+    const recordId = route.query.record_id
+    if (recordId) {
+        try {
+            const res = await previewAiTestcase(Number(recordId))
+            streamContent.value = ''
+            currentResult.value = {
+                id: Number(recordId),
+                title: res.title,
+                module_count: res.module_count,
+                case_count: res.case_count,
+                data: res.data,
+                usage: res.usage || {}
+            }
+            router.replace({ name: 'AiTestcaseGenerator' })
+        } catch (e) {
+            ElMessage.warning('无法加载该用例记录')
+            router.replace({ name: 'AiTestcaseGenerator' })
+        }
+        return
+    }
+
+    // 接收 AI 需求智能体的功能点桥接数据（方案 B：原文）
+    const bridgeText = sessionStorage.getItem('ai_req_bridge_text')
+    if (bridgeText) {
+        requirement.value = bridgeText
+        sessionStorage.removeItem('ai_req_bridge_text')
+        sessionStorage.removeItem('ai_req_bridge_source')
+        ElMessage.info('已从 AI 需求智能体导入功能点，可直接点击"智能生成用例"')
+    }
 })
 
 onUnmounted(() => {

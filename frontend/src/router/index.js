@@ -13,6 +13,8 @@ import FunctionalTestCaseManagement from "@/pages/workmind/app_ui/FunctionalTest
 import TestPlanManagement from "@/pages/workmind/app_ui/TestPlanManagement";
 import TestPlanExecute from "@/pages/workmind/app_ui/TestPlanExecute";
 import AiTestcaseGenerator from "@/pages/workmind/ai_testcase/AiTestcaseGenerator";
+import AiRequirementAgent from "@/pages/workmind/ai_requirement/AiRequirementAgent";
+import AiRequirementDashboard from "@/pages/workmind/ai_requirement/AiRequirementDashboard";
 import Redirect from "@/pages/redirect/Redirect";
 
 const router = createRouter({
@@ -155,6 +157,24 @@ const router = createRouter({
                     component: AiTestcaseGenerator,
                     meta: {
                         title: "AI用例智能体",
+                        requireAuth: true
+                    }
+                },
+                {
+                    name: "AiRequirementAgent",
+                    path: "ai_requirement",
+                    component: AiRequirementAgent,
+                    meta: {
+                        title: "AI需求智能体",
+                        requireAuth: true
+                    }
+                },
+                {
+                    name: "AiRequirementDashboard",
+                    path: "ai_requirement_dashboard",
+                    component: AiRequirementDashboard,
+                    meta: {
+                        title: "需求智能体看板",
                         requireAuth: true
                     }
                 },

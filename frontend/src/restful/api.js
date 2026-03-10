@@ -255,6 +255,16 @@ export const getFunctionalRequirements = params => {
     return axios.get("/api/ui_test/functional-requirements/", { params }).then(res => res.data);
 };
 
+/** 需求管理：获取所有测试团队选项（用于筛选/表单下拉） */
+export const getFunctionalRequirementTestTeamOptions = () => {
+    return axios.get("/api/ui_test/functional-requirements/test-team-options/").then(res => res.data);
+};
+
+/** 需求管理：获取所有测试人员选项（用于筛选下拉，可输入搜索） */
+export const getFunctionalRequirementTesterOptions = () => {
+    return axios.get("/api/ui_test/functional-requirements/tester-options/").then(res => res.data);
+};
+
 export const createFunctionalRequirement = params => {
     return axios.post("/api/ui_test/functional-requirements/", params).then(res => res.data);
 };
@@ -628,6 +638,519 @@ export const aiApplyReviewStream = async (data, onChunk, onDone, onError, onStar
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/apply-review-stream/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        if (event.type === 'start') {
+                            if (onStart) onStart(event);
+                        } else if (event.type === 'chunk') {
+                            onChunk(event.content);
+                        } else if (event.type === 'done') {
+                            onDone(event);
+                        } else if (event.type === 'error') {
+                            onError(event.error);
+                        }
+                    } catch (e) {
+                        // 忽略解析失败的行
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+// ============ AI 需求智能体 ============
+
+// SSE 流式生成需求分析（支持 FormData 文件上传 + JSON）
+// onCostEstimateRequired: 可选，当服务端返回 cost_estimate_required 时调用（预估成本超阈值，由前端确认后带 cost_confirmed 重发）
+export const aiRequirementStream = async (data, onChunk, onDone, onError, onStart, onCostEstimateRequired) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const isFormData = data instanceof FormData;
+
+    try {
+        const response = await fetch(sseBase + '/api/ai_requirement/run-stream/', {
+            method: 'POST',
+            headers: {
+                ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: isFormData ? data : JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        if (event.type === 'start') {
+                            if (onStart) onStart(event);
+                        } else if (event.type === 'cost_estimate_required') {
+                            if (onCostEstimateRequired) onCostEstimateRequired(event);
+                            return;
+                        } else if (event.type === 'quota_exceeded') {
+                            onError(event.error || '您今日配额已用尽');
+                            return;
+                        } else if (event.type === 'chunk') {
+                            onChunk(event.content);
+                            // 等待下一帧再处理下一 chunk，确保浏览器有机会重绘，流式效果可见
+                            await new Promise(r => requestAnimationFrame(r));
+                        } else if (event.type === 'done') {
+                            onDone(event);
+                        } else if (event.type === 'error') {
+                            onError(event.error);
+                        }
+                    } catch (e) {
+                        // 忽略解析失败的行
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+// 获取需求智能体任务历史
+export const getAiRequirementTasks = params => {
+    return axios.get('/api/ai_requirement/tasks/', { params }).then(res => res.data);
+};
+
+// 获取需求智能体任务详情
+export const getAiRequirementTask = id => {
+    return axios.get(`/api/ai_requirement/tasks/${id}/`).then(res => res.data);
+};
+
+/** 下载任务导出文件（PDF 或 Word）。返回 { data: Blob, filename: string } */
+export const downloadAiRequirementTaskExport = (taskId, format) => {
+    return axios
+        .get(`/api/ai_requirement/tasks/${taskId}/export/`, {
+            params: { format: format === 'word' ? 'docx' : format },
+            responseType: 'blob'
+        })
+        .then(res => {
+            let filename = `requirement_${taskId}.${format === 'word' ? 'docx' : format}`;
+            const disposition = res.headers['content-disposition'];
+            if (disposition && disposition.includes("filename*=")) {
+                const m = disposition.match(/filename\*=UTF-8''([^;]+)/);
+                if (m) filename = decodeURIComponent(m[1].trim());
+            }
+            return { data: res.data, filename };
+        })
+        .catch(async err => {
+            if (err.response?.data instanceof Blob) {
+                try {
+                    const text = await err.response.data.text();
+                    const j = JSON.parse(text);
+                    throw new Error(j.error || '导出失败');
+                } catch (e) {
+                    if (e instanceof SyntaxError) throw err;
+                    throw e;
+                }
+            }
+            throw err;
+        });
+};
+
+// 提交用户反馈
+export const submitAiRequirementFeedback = data => {
+    return axios.post('/api/ai_requirement/feedback/', data).then(res => res.data);
+};
+
+// SSE 多轮对话
+export const aiRequirementChatStream = async (data, onChunk, onDone, onError, onStart) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+
+    try {
+        const response = await fetch(sseBase + '/api/ai_requirement/chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        if (event.type === 'start') {
+                            if (onStart) onStart(event);
+                        } else if (event.type === 'quota_exceeded') {
+                            onError(event.error || '您今日配额已用尽');
+                            return;
+                        } else if (event.type === 'chunk') {
+                            onChunk(event.content);
+                        } else if (event.type === 'done') {
+                            onDone(event);
+                        } else if (event.type === 'error') {
+                            onError(event.error);
+                        }
+                    } catch (e) {
+                        // 忽略解析失败的行
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+// P1-1：澄清并继续（提交澄清答案后流式重新生成）
+export const aiRequirementClarifyAndContinue = async (taskId, clarificationAnswers, onChunk, onDone, onError, onStart) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const response = await fetch(sseBase + '/api/ai_requirement/clarify-and-continue/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+        },
+        body: JSON.stringify({ task_id: taskId, clarification_answers: clarificationAnswers || [] })
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        let err = text;
+        try {
+            const j = JSON.parse(text);
+            err = j.error || text;
+        } catch (_) {}
+        onError(err || `HTTP ${response.status}`);
+        return;
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                try {
+                    const event = JSON.parse(line.slice(6));
+                    if (event.type === 'start' && onStart) onStart(event);
+                    else if (event.type === 'chunk') onChunk(event.content);
+                    else if (event.type === 'done') onDone(event);
+                    else if (event.type === 'error') onError(event.error);
+                } catch (_) {}
+            }
+        }
+    }
+};
+
+// 功能点 → 用例智能体桥接
+export const bridgeToTestcase = data => {
+    return axios.post('/api/ai_requirement/bridge-to-testcase/', data).then(res => res.data);
+};
+
+// Jira / Confluence 同步（P2-3）
+export const aiRequirementSyncToJira = data => {
+    return axios.post('/api/ai_requirement/sync-to-jira/', data).then(res => res.data);
+};
+export const aiRequirementSyncToConfluence = data => {
+    return axios.post('/api/ai_requirement/sync-to-confluence/', data).then(res => res.data);
+};
+
+// 成本统计概览
+export const getAiRequirementStats = () => {
+    return axios.get('/api/ai_requirement/stats/overview/').then(res => res.data);
+};
+
+// Prompt 版本管理
+export const getPromptVersions = params => {
+    return axios.get('/api/ai_requirement/prompts/', { params }).then(res => res.data);
+};
+
+export const createPromptVersion = data => {
+    return axios.post('/api/ai_requirement/prompts/', data).then(res => res.data);
+};
+
+export const updatePromptVersion = (id, data) => {
+    return axios.patch(`/api/ai_requirement/prompts/${id}/`, data).then(res => res.data);
+};
+
+export const deletePromptVersion = id => {
+    return axios.delete(`/api/ai_requirement/prompts/${id}/`).then(res => res.data);
+};
+
+export const activatePromptVersion = (id, data) => {
+    return axios.post(`/api/ai_requirement/prompts/${id}/activate/`, data).then(res => res.data);
+};
+
+// ============ 工作流（深度模式） ============
+
+export const startWorkflowStream = async (data, onEvent, onError) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+
+    try {
+        const response = await fetch(sseBase + '/api/ai_requirement/workflow/start/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        onEvent(event);
+                    } catch (e) { /* skip */ }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+export const approveWorkflowStream = async (workflowId, data, onEvent, onError) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+
+    try {
+        const response = await fetch(sseBase + `/api/ai_requirement/workflow/${workflowId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        onEvent(event);
+                    } catch (e) { /* skip */ }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+export const getWorkflowRuns = params => {
+    return axios.get('/api/ai_requirement/workflows/', { params }).then(res => res.data);
+};
+
+export const getWorkflowRun = id => {
+    return axios.get(`/api/ai_requirement/workflows/${id}/`).then(res => res.data);
+};
+
+// ============ 多智能体协作工作流 ============
+
+export const startMultiAgentStream = async (data, onEvent, onError) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+
+    try {
+        const response = await fetch(sseBase + '/api/ai_requirement/multi-agent/start/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        onEvent(event);
+                    } catch (e) { /* skip */ }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+export const approveMultiAgentStream = async (workflowId, data, onEvent, onError) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+
+    try {
+        const response = await fetch(sseBase + `/api/ai_requirement/multi-agent/${workflowId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        onEvent(event);
+                    } catch (e) { /* skip */ }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+// 基于功能点结构流式生成测试用例（需求智能体结构直传，方案 A）
+// 与 aiGenerateTestcaseStream 事件格式一致：onStart/onChunk/onDone/onError
+export const aiGenerateTestcaseFromStructureStream = async (data, onChunk, onDone, onError, onStart) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+
+    try {
+        const response = await fetch(sseBase + '/api/ai_testcase/generate-from-structure/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

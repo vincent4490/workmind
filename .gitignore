@@ -35,6 +35,7 @@ htmlcov/
 backend/logs/
 backend/.adb_home/
 backend/db.sqlite3
+backend/data/
 backend/media/
 backend/static_root/
 backend/*/migrations/*.pyc

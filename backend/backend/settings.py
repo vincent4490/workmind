@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "workminduser",
     "apps.ui_test",  # UI测试应用（包含设备管理）
     "apps.ai_testcase",  # AI用例智能体
+    "apps.ai_requirement",  # AI需求智能体
 ]
 
 MIDDLEWARE = [
@@ -119,6 +120,13 @@ DATABASES = {
         },
     }
 }
+
+# LangGraph 工作流持久化（SQLite Checkpointer，进程重启可恢复）
+# 默认：backend/data/langgraph_checkpoints.sqlite；可通过 LANGGRAPH_CHECKPOINT_DB_PATH 覆盖
+LANGGRAPH_CHECKPOINT_DB_PATH = os.environ.get(
+    "LANGGRAPH_CHECKPOINT_DB_PATH",
+    os.path.join(BASE_DIR, "data", "langgraph_checkpoints.sqlite"),
+)
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
@@ -404,6 +412,53 @@ except Exception as e:
 
 # ==================== Kimi AI 配置 ====================
 # KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-4y1Q6cMuga6L7Gdu3E10xSw8DIoRo42WbQHltL0vcu8oH7eT")
-KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-uReKLPnpZFNwGu6In1UZewaz9WKjUlDcnLHWGqt95oIL0vRQ")
+KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-6i7MZc9qTrnLxLfYTRTEFVisMBAs6qXyTAYgSSWbZWhzRgXP")
 KIMI_BASE_URL = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
 KIMI_MODEL = os.environ.get("KIMI_MODEL", "kimi-k2.5")
+
+# ==================== DeepSeek AI 配置（需求智能体备选/增强）====================
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_R1_MODEL = os.environ.get("DEEPSEEK_R1_MODEL", "deepseek-reasoner")
+
+# ==================== 需求智能体 - 视频 ASR（可选）====================
+# 开启后，上传视频时会提取音轨并 POST 到下方 URL 获取转写文本，参与竞品分析等生成
+# 接口期望：POST application/octet-stream 或 multipart，返回 JSON {"text": "..."} 或纯文本
+AI_REQUIREMENT_ASR_ENABLED = os.environ.get("AI_REQUIREMENT_ASR_ENABLED", "false").lower() in ("true", "1", "yes")
+AI_REQUIREMENT_ASR_API_URL = os.environ.get("AI_REQUIREMENT_ASR_API_URL", "")
+
+# ==================== 需求智能体 - 数据分级与成本确认（P2-1）====================
+# 机密数据强制使用的模型（如本地/私有化 DeepSeek），默认 deepseek-chat
+AI_REQUIREMENT_CONFIDENTIAL_MODEL = os.environ.get("AI_REQUIREMENT_CONFIDENTIAL_MODEL", "deepseek-chat")
+# 单任务预估成本超过该值（USD）时要求前端确认后再执行，0 表示不确认
+AI_REQUIREMENT_COST_CONFIRM_THRESHOLD_USD = float(os.environ.get("AI_REQUIREMENT_COST_CONFIRM_THRESHOLD_USD", "0.5"))
+# 成本告警：当日全站成本超过该值（USD）时触发告警并写入 stats，0 表示不告警
+AI_REQUIREMENT_COST_ALERT_DAILY_USD = float(os.environ.get("AI_REQUIREMENT_COST_ALERT_DAILY_USD", "0"))
+# 成本告警触发时 POST 的 Webhook URL（可选），请求体 JSON: {"date": "YYYY-MM-DD", "total_usd": 1.23, "message": "..."}
+AI_REQUIREMENT_COST_ALERT_WEBHOOK = os.environ.get("AI_REQUIREMENT_COST_ALERT_WEBHOOK", "")
+# 用户维度配额：单用户当日成本上限（USD），0 表示不限制
+AI_REQUIREMENT_USER_DAILY_COST_LIMIT_USD = float(os.environ.get("AI_REQUIREMENT_USER_DAILY_COST_LIMIT_USD", "0"))
+# 用户维度配额：单用户当日请求次数上限，0 表示不限制
+AI_REQUIREMENT_USER_DAILY_REQUESTS_LIMIT = int(os.environ.get("AI_REQUIREMENT_USER_DAILY_REQUESTS_LIMIT", "0"))
+
+# ==================== 需求智能体 - Jira/Confluence 连接器（P2-3）====================
+# Jira：Base URL（如 https://your-domain.atlassian.net）、邮箱、API Token、默认项目 Key
+JIRA_BASE_URL = os.environ.get("JIRA_BASE_URL", "")
+JIRA_EMAIL = os.environ.get("JIRA_EMAIL", "")
+JIRA_API_TOKEN = os.environ.get("JIRA_API_TOKEN", "")
+JIRA_PROJECT_KEY = os.environ.get("JIRA_PROJECT_KEY", "")
+# Confluence：Base URL、邮箱、API Token、默认空间 Key
+CONFLUENCE_BASE_URL = os.environ.get("CONFLUENCE_BASE_URL", "")
+CONFLUENCE_EMAIL = os.environ.get("CONFLUENCE_EMAIL", "")
+CONFLUENCE_API_TOKEN = os.environ.get("CONFLUENCE_API_TOKEN", "")
+CONFLUENCE_SPACE_KEY = os.environ.get("CONFLUENCE_SPACE_KEY", "")
+
+# ==================== 需求智能体 - RAG 长期记忆（P2-4）====================
+# 开启后，成功任务会索引到向量库，生成时注入历史 PRD/术语表片段
+AI_REQUIREMENT_RAG_ENABLED = os.environ.get("AI_REQUIREMENT_RAG_ENABLED", "false").lower() in ("true", "1", "yes")
+# 使用 OpenAI Embedding（需 OPENAI_API_KEY）；未配置则 RAG 不建索引、检索返回空
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+AI_REQUIREMENT_EMBEDDING_MODEL = os.environ.get("AI_REQUIREMENT_EMBEDDING_MODEL", "text-embedding-3-small")
+AI_REQUIREMENT_RAG_TOP_K = int(os.environ.get("AI_REQUIREMENT_RAG_TOP_K", "5"))
+AI_REQUIREMENT_RAG_MAX_CHARS = int(os.environ.get("AI_REQUIREMENT_RAG_MAX_CHARS", "8000"))

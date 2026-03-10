@@ -24,10 +24,11 @@ class MyCursorPagination(pagination.CursorPagination):
 
 class MyPageNumberPagination(pagination.PageNumberPagination):
     """
-    普通分页，数据量越大性能越差
+    普通分页，数据量越大性能越差。
+    前端传 page、page_size，最大每页 2000 条以便“全部”展示。
     """
 
-    page_size = 10
-    page_size_query_param = "size"
+    page_size = 20
+    page_size_query_param = "page_size"
     page_query_param = "page"
-    max_page_size = 40
+    max_page_size = 2000

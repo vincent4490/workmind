@@ -446,6 +446,137 @@ async def generate_stream_view(request):
 generate_stream_view.csrf_exempt = True
 
 
+async def generate_from_structure_stream_view(request):
+    """
+    SSE 流式：基于功能点结构生成测试用例（需求智能体结构直传，方案 A）。
+
+    POST /api/ai_testcase/generate-from-structure/
+    Body: {
+        "structure": { "title": "...", "modules": [{ "name": "...", "functions": [{ "name", "description", "acceptance_points", "priority", "test_hint" }] }] },
+        "requirement": "可选需求摘要",
+        "use_thinking": false,
+        "source_requirement_task_id": 123
+    }
+
+    Response: text/event-stream
+        data: {"type": "start", "record_id": 1, "source_requirement_task_id": 123}
+        data: {"type": "chunk", "content": "..."}
+        data: {"type": "done", "record_id": 1, "data": {...}, ...}
+        data: {"type": "error", "error": "..."}
+    """
+    if request.method == 'OPTIONS':
+        resp = HttpResponse(status=200)
+        return _add_cors_headers(resp)
+
+    if request.method != 'POST':
+        return _add_cors_headers(HttpResponse('Method not allowed', status=405))
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return _add_cors_headers(HttpResponse('Invalid JSON', status=400))
+
+    structure = body.get('structure')
+    if not structure or not isinstance(structure, dict):
+        return _add_cors_headers(HttpResponse('缺少或无效的 structure（功能点 JSON）', status=400))
+    if not structure.get('modules'):
+        return _add_cors_headers(HttpResponse('structure 需包含 modules 数组', status=400))
+
+    requirement = (body.get('requirement') or '').strip()
+    use_thinking = body.get('use_thinking', False)
+    source_requirement_task_id = body.get('source_requirement_task_id')
+
+    requirement_summary = requirement or f"[来自功能点结构] {structure.get('title', '')}"
+
+    async def event_stream():
+        from asgiref.sync import sync_to_async
+        record = await sync_to_async(AiTestcaseGeneration.objects.create)(
+            requirement=requirement_summary,
+            use_thinking=use_thinking,
+            status='generating'
+        )
+        start_data = {'type': 'start', 'record_id': record.id}
+        if source_requirement_task_id is not None:
+            start_data['source_requirement_task_id'] = source_requirement_task_id
+        yield f"data: {json.dumps(start_data, ensure_ascii=False)}\n\n"
+
+        try:
+            client = KimiClient()
+            gen = client.generate_testcases_from_structure_stream_async(
+                structure, requirement_summary=requirement or None, use_thinking=use_thinking
+            )
+
+            async for event in gen:
+                if event['type'] == 'chunk':
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                elif event['type'] == 'done':
+                    full_content = event['content']
+                    usage = event['usage']
+                    data = KimiClient._parse_json(full_content)
+                    if data is None:
+                        record.status = 'failed'
+                        record.error_message = 'AI 返回的内容无法解析为 JSON'
+                        record.raw_content = full_content
+                        await sync_to_async(record.save)()
+                        yield f"data: {json.dumps({'type': 'error', 'error': 'AI 返回的内容无法解析为 JSON', 'record_id': record.id}, ensure_ascii=False)}\n\n"
+                        return
+                    record.raw_content = full_content
+                    record.prompt_tokens = usage['prompt_tokens']
+                    record.completion_tokens = usage['completion_tokens']
+                    record.total_tokens = usage['total_tokens']
+                    record.result_json = data
+                    record.count_stats()
+                    title = data.get('title', f'testcase_{record.id}')
+                    xmind_filename = f"{title}.xmind"
+                    xmind_path = os.path.join(XMIND_OUTPUT_DIR, xmind_filename)
+                    await sync_to_async(XMindBuilder.build_and_save)(data, xmind_path)
+                    record.xmind_file = xmind_path
+                    record.status = 'success'
+                    await sync_to_async(record.save)()
+
+                    # 回写血缘：将本次用例记录 ID 追加到需求任务的 downstream_testcases
+                    if source_requirement_task_id is not None:
+                        def _append_downstream():
+                            from apps.ai_requirement.models import AiRequirementTask
+                            try:
+                                task = AiRequirementTask.objects.get(id=source_requirement_task_id)
+                                downstream = list(task.downstream_testcases or [])
+                                if record.id not in downstream:
+                                    downstream.append(record.id)
+                                    task.downstream_testcases = downstream
+                                    task.save(update_fields=['downstream_testcases', 'updated_at'])
+                                    logger.info(f"[AI用例] 已回写 downstream_testcases: task_id={source_requirement_task_id}, record_id={record.id}")
+                            except AiRequirementTask.DoesNotExist:
+                                logger.warning(f"[AI用例] 回写时需求任务不存在: task_id={source_requirement_task_id}")
+
+                        await sync_to_async(_append_downstream)()
+
+                    yield f"data: {json.dumps({'type': 'done', 'record_id': record.id, 'title': title, 'module_count': record.module_count, 'case_count': record.case_count, 'usage': usage, 'data': data}, ensure_ascii=False)}\n\n"
+                elif event['type'] == 'error':
+                    record.status = 'failed'
+                    record.error_message = event['error']
+                    await sync_to_async(record.save)()
+                    yield f"data: {json.dumps({'type': 'error', 'error': event['error'], 'record_id': record.id}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.exception(f"[AI用例] 基于结构流式生成异常: {e}")
+            record.status = 'failed'
+            record.error_message = str(e)
+            await sync_to_async(record.save)()
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'record_id': record.id}, ensure_ascii=False)}\n\n"
+
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    response['Content-Encoding'] = 'identity'
+    return _add_cors_headers(response)
+
+
+generate_from_structure_stream_view.csrf_exempt = True
+
+
 async def regenerate_module_stream_view(request):
     """
     SSE 流式模块级重新生成测试用例

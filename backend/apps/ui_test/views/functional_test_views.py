@@ -59,6 +59,52 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
         if created_at_before:
             queryset = queryset.filter(created_at__date__lte=created_at_before)
         return queryset.order_by('-updated_at')
+
+    @action(detail=False, methods=['get'], url_path='test-team-options')
+    def test_team_options(self, request):
+        """返回所有出现过的测试团队（用于筛选下拉），去空格后去重，避免重复项"""
+        values = (
+            FunctionalRequirement.objects.all()
+            .values_list('test_team', flat=True)
+            .distinct()
+        )
+        seen = set()
+        options = []
+        for v in values:
+            v_clean = (v or '').strip()
+            if not v_clean or v_clean in seen:
+                continue
+            seen.add(v_clean)
+            options.append(v_clean)
+        options = sorted(options)
+        return Response({
+            'code': 0,
+            'msg': 'success',
+            'data': options
+        })
+
+    @action(detail=False, methods=['get'], url_path='tester-options')
+    def tester_options(self, request):
+        """返回所有出现过的测试人员（用于筛选下拉），testers 为逗号分隔，拆分去重"""
+        values = (
+            FunctionalRequirement.objects.all()
+            .values_list('testers', flat=True)
+            .distinct()
+        )
+        seen = set()
+        for v in values:
+            if not v:
+                continue
+            for part in str(v).replace('，', ',').split(','):
+                p = part.strip()
+                if p and p not in seen:
+                    seen.add(p)
+        options = sorted(seen)
+        return Response({
+            'code': 0,
+            'msg': 'success',
+            'data': options
+        })
     
     def list(self, request, *args, **kwargs):
         """获取需求列表"""
