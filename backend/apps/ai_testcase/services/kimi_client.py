@@ -6,6 +6,7 @@ import json
 import logging
 from django.conf import settings
 from openai import OpenAI, AsyncOpenAI
+from json_repair import repair_json
 
 from .prompts import (
     get_testcase_prompt,
@@ -557,8 +558,16 @@ class KimiClient:
 
     @staticmethod
     def _parse_json(content: str) -> dict | None:
-        """解析 AI 返回的 JSON"""
+        """
+        解析 AI 返回的 JSON（使用 json_repair 增强容错能力）
+        
+        处理流程：
+        1. 去除 markdown 代码块标记
+        2. 尝试标准 json.loads()
+        3. 失败时使用 json_repair 修复并重试
+        """
         text = content.strip()
+        
         # 去掉 markdown 代码块标记
         if text.startswith("```json"):
             text = text[7:]
@@ -568,8 +577,18 @@ class KimiClient:
             text = text[:-3]
         text = text.strip()
 
+        # 尝试标准解析
         try:
             return json.loads(text)
         except json.JSONDecodeError as e:
-            logger.error(f"[Kimi] JSON 解析失败: {e}, 内容前200字: {text[:200]}")
-            return None
+            logger.warning(f"[Kimi] 标准 JSON 解析失败: {e}, 尝试使用 json_repair 修复...")
+            
+            # 使用 json_repair 修复并重试
+            try:
+                repaired_text = repair_json(text)
+                result = json.loads(repaired_text)
+                logger.info(f"[Kimi] JSON 修复成功")
+                return result
+            except Exception as repair_error:
+                logger.error(f"[Kimi] JSON 修复失败: {repair_error}, 内容前200字: {text[:200]}")
+                return None

@@ -71,7 +71,7 @@
                                     拖拽文件到此处，或 <em>点击上传</em>
                                 </div>
                                 <div class="upload-drag-tip">
-                                    .docx / .pdf / .txt / .md / .png / .jpg / .webp，单文件最大 10MB，最多 10 个
+                                    .docx / .pdf / .txt / .md / .png / .jpg / .webp，单文件最大 100MB，最多 10 个
                                 </div>
                             </div>
                         </el-upload>
@@ -845,7 +845,13 @@ async function handleGenerate() {
 
     // 添加文件
     for (const file of fileList.value) {
-        formData.append('files', file.raw)
+        // Element Plus upload 组件的文件对象结构：file.raw 是原始 File 对象
+        const rawFile = file.raw || file
+        if (rawFile instanceof File) {
+            formData.append('files', rawFile)
+        } else {
+            console.error('无效的文件对象:', file)
+        }
     }
 
     await aiGenerateTestcaseStream(
@@ -1343,11 +1349,12 @@ function getStatusText(status) {
 function formatTime(timeStr) {
     if (!timeStr) return ''
     const d = new Date(timeStr)
+    const year = d.getFullYear()
     const month = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
     const hours = String(d.getHours()).padStart(2, '0')
     const minutes = String(d.getMinutes()).padStart(2, '0')
-    return `${month}-${day} ${hours}:${minutes}`
+    return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
 // 初始化
