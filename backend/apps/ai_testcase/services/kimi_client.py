@@ -44,13 +44,14 @@ class KimiClient:
             base_url=self.base_url,
         )
 
-    def generate_testcases(self, requirement: str, use_thinking: bool = False) -> dict:
+    def generate_testcases(self, requirement: str, use_thinking: bool = False, mode: str = 'comprehensive') -> dict:
         """
         调用 Kimi API 生成测试用例
 
         Args:
             requirement: 功能需求描述
             use_thinking: 是否启用思考模式
+            mode: 生成模式 ('comprehensive', 'balanced', 'quality')
 
         Returns:
             dict: {
@@ -61,9 +62,9 @@ class KimiClient:
                 "error": str | None
             }
         """
-        logger.info(f"[Kimi] 开始生成用例, 需求: {requirement[:100]}...")
+        logger.info(f"[Kimi] 开始生成用例, 模式: {mode}, 需求: {requirement[:100]}...")
 
-        messages = get_testcase_prompt(requirement)
+        messages = get_testcase_prompt(requirement, mode)
 
         if use_thinking:
             extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
@@ -115,18 +116,23 @@ class KimiClient:
                 "error": str(e)
             }
 
-    async def generate_testcases_stream_async(self, requirement: str, use_thinking: bool = False):
+    async def generate_testcases_stream_async(self, requirement: str, use_thinking: bool = False, mode: str = 'comprehensive'):
         """
         异步流式调用 Kimi API 生成测试用例
+
+        Args:
+            requirement: 功能需求描述
+            use_thinking: 是否启用思考模式
+            mode: 生成模式 ('comprehensive', 'balanced', 'quality')
 
         Yields:
             dict: {"type": "chunk", "content": "..."} 或
                   {"type": "done", "content": "完整内容", "usage": {...}} 或
                   {"type": "error", "error": "..."}
         """
-        logger.info(f"[Kimi] 开始流式生成用例, 需求: {requirement[:100]}...")
+        logger.info(f"[Kimi] 开始流式生成用例, 模式: {mode}, 需求: {requirement[:100]}...")
 
-        messages = get_testcase_prompt(requirement)
+        messages = get_testcase_prompt(requirement, mode)
 
         if use_thinking:
             extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
@@ -171,7 +177,8 @@ class KimiClient:
         requirement: str,
         extracted_texts: list,
         images: list,
-        use_thinking: bool = False
+        use_thinking: bool = False,
+        mode: str = 'comprehensive'
     ):
         """
         多模态流式生成测试用例（文字 + 图片）
@@ -181,23 +188,56 @@ class KimiClient:
             extracted_texts: [{"source": "文件名", "content": "提取的文字"}]
             images: [{"source": "文件名", "data": "base64", "mime": "image/jpeg"}]
             use_thinking: 是否启用思考模式
+            mode: 生成模式 ('comprehensive', 'balanced', 'quality')
 
         Yields:
             dict: {"type": "chunk"/"done"/"error", ...}
         """
         # 根据是否有附件选择不同的 prompt
         if extracted_texts or images:
-            messages = get_testcase_prompt_multimodal(requirement, extracted_texts, images)
+            messages = get_testcase_prompt_multimodal(requirement, extracted_texts, images, mode)
             text_summary = requirement[:50] if requirement else (extracted_texts[0]['source'] if extracted_texts else 'images')
-            logger.info(f"[Kimi] 开始多模态流式生成, 文本数={len(extracted_texts)}, 图片数={len(images)}, 摘要: {text_summary}...")
+            logger.info(f"[Kimi] 开始多模态流式生成, 模式: {mode}, 文本数={len(extracted_texts)}, 图片数={len(images)}, 摘要: {text_summary}...")
         else:
-            messages = get_testcase_prompt(requirement)
-            logger.info(f"[Kimi] 开始流式生成用例 (纯文本), 需求: {requirement[:100]}...")
+            messages = get_testcase_prompt(requirement, mode)
+            logger.info(f"[Kimi] 开始流式生成用例 (纯文本), 模式: {mode}, 需求: {requirement[:100]}...")
 
         if use_thinking:
             extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
         else:
             extra_body = {"thinking": {"type": "disabled"}}
+
+        try:
+            stream = await self.async_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                extra_body=extra_body,
+                stream=True,
+                stream_options={"include_usage": True}
+            )
+
+            full_content = ""
+            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+            async for chunk in stream:
+                if chunk.usage:
+                    usage = {
+                        "prompt_tokens": chunk.usage.prompt_tokens or 0,
+                        "completion_tokens": chunk.usage.completion_tokens or 0,
+                        "total_tokens": chunk.usage.total_tokens or 0,
+                    }
+
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        full_content += delta.content
+                        yield {"type": "chunk", "content": delta.content}
+
+            yield {"type": "done", "content": full_content, "usage": usage}
+
+        except Exception as e:
+            logger.error(f"[Kimi] 多模态流式 API 调用失败: {e}")
+            yield {"type": "error", "error": str(e)}
 
         try:
             stream = await self.async_client.chat.completions.create(

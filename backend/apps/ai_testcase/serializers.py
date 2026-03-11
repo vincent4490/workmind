@@ -30,6 +30,16 @@ class GenerateRequestSerializer(serializers.Serializer):
         default=False,
         help_text="是否启用 AI 思考模式"
     )
+    mode = serializers.ChoiceField(
+        choices=[
+            ('comprehensive', '全覆盖模式'),
+            ('balanced', '平衡模式'),
+            ('quality', '质量模式'),
+        ],
+        required=False,
+        default='comprehensive',
+        help_text="生成模式"
+    )
 
 
 class RegenerateModuleRequestSerializer(serializers.Serializer):

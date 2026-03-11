@@ -90,6 +90,34 @@
                         />
                     </div>
 
+                    <!-- 生成模式选择 -->
+                    <div class="mode-selection">
+                        <div class="mode-label">
+                            <el-icon><Setting /></el-icon>
+                            <span>生成模式</span>
+                        </div>
+                        <el-radio-group v-model="generationMode" class="mode-radio-group">
+                            <el-radio value="comprehensive" class="mode-radio">
+                                <div class="mode-content">
+                                    <span class="mode-title">全覆盖模式</span>
+                                    <span class="mode-desc">（复杂需求）</span>
+                                </div>
+                            </el-radio>
+                            <el-radio value="balanced" class="mode-radio">
+                                <div class="mode-content">
+                                    <span class="mode-title">平衡模式</span>
+                                    <span class="mode-desc">（中等需求）</span>
+                                </div>
+                            </el-radio>
+                            <el-radio value="quality" class="mode-radio">
+                                <div class="mode-content">
+                                    <span class="mode-title">质量模式</span>
+                                    <span class="mode-desc">（简单需求）</span>
+                                </div>
+                            </el-radio>
+                        </el-radio-group>
+                    </div>
+
                     <div class="input-actions">
                         <el-button
                             type="primary"
@@ -677,7 +705,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
     Edit, MagicStick, Document, Download, View,
     Clock, Refresh, Delete, Folder, UploadFilled, Paperclip,
-    EditPen, CircleCheck, Search, Select, Warning
+    EditPen, CircleCheck, Search, Select, Warning, Setting
 } from '@element-plus/icons-vue'
 import {
     aiGenerateTestcaseStream,
@@ -697,6 +725,7 @@ const router = useRouter()
 // 状态
 const requirement = ref('')
 const useThinking = ref(false)
+const generationMode = ref('comprehensive')  // 新增：生成模式
 const generating = ref(false)
 const currentResult = ref(null)
 const configStatus = ref({ configured: false, model: '', base_url: '', api_key_prefix: '' })
@@ -814,6 +843,7 @@ function handleClear() {
     requirement.value = ''
     fileList.value = []
     fileWarnings.value = []
+    generationMode.value = 'comprehensive'  // 重置为默认模式
 }
 
 // 生成用例（流式）
@@ -842,6 +872,7 @@ async function handleGenerate() {
     const formData = new FormData()
     formData.append('requirement', requirement.value.trim())
     formData.append('use_thinking', useThinking.value)
+    formData.append('mode', generationMode.value)  // 新增：传递生成模式
 
     // 添加文件
     for (const file of fileList.value) {
@@ -1580,6 +1611,75 @@ onUnmounted(() => {
 
 .file-warning-item :deep(.el-alert__title) {
     font-size: 12px;
+}
+
+/* 生成模式选择 */
+.mode-selection {
+    margin-top: 16px;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e4e7ed;
+}
+
+.mode-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #303133;
+    margin-bottom: 12px;
+}
+
+.mode-radio-group {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mode-radio {
+    margin-right: 0 !important;
+    padding: 12px 16px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border: 1px solid #e4e7ed;
+    background: #fff;
+    flex: 1;
+    min-width: 140px;
+}
+
+.mode-radio:hover {
+    background: #ecf5ff;
+    border-color: #c6e2ff;
+}
+
+.mode-radio.is-checked {
+    background: #ecf5ff;
+    border-color: #409eff;
+    box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.2);
+}
+
+.mode-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+}
+
+.mode-title {
+    font-weight: 500;
+    color: #303133;
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.mode-desc {
+    font-size: 12px;
+    color: #909399;
+    line-height: 1.2;
 }
 
 /* 输入区 */

@@ -304,6 +304,7 @@ async def generate_stream_view(request):
 
         requirement = _post.get('requirement', '').strip()
         use_thinking = _post.get('use_thinking', 'false').lower() in ('true', '1', 'yes')
+        mode = _post.get('mode', 'comprehensive')  # 新增模式参数
         uploaded_files = _files.getlist('files')
 
         # 处理上传的文件
@@ -328,6 +329,7 @@ async def generate_stream_view(request):
 
         requirement = body.get('requirement', '').strip()
         use_thinking = body.get('use_thinking', False)
+        mode = body.get('mode', 'comprehensive')  # 新增模式参数
 
     # 校验：至少要有文字输入或上传文件
     if not requirement and not extracted_texts and not images:
@@ -373,11 +375,11 @@ async def generate_stream_view(request):
             # 根据是否有附件选择不同的生成方法
             if has_attachments:
                 gen = client.generate_testcases_multimodal_stream_async(
-                    requirement, extracted_texts, images, use_thinking=use_thinking
+                    requirement, extracted_texts, images, use_thinking=use_thinking, mode=mode
                 )
             else:
                 gen = client.generate_testcases_stream_async(
-                    requirement, use_thinking=use_thinking
+                    requirement, use_thinking=use_thinking, mode=mode
                 )
 
             async for event in gen:
@@ -1056,6 +1058,7 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
 
         requirement = serializer.validated_data['requirement']
         use_thinking = serializer.validated_data.get('use_thinking', False)
+        mode = serializer.validated_data.get('mode', 'comprehensive')
 
         # 创建记录
         record = AiTestcaseGeneration.objects.create(
@@ -1067,7 +1070,7 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         try:
             # 调用 Kimi API
             client = KimiClient()
-            result = client.generate_testcases(requirement, use_thinking=use_thinking)
+            result = client.generate_testcases(requirement, use_thinking=use_thinking, mode=mode)
 
             # 更新 Token 消耗
             record.prompt_tokens = result['usage']['prompt_tokens']
