@@ -105,6 +105,12 @@ def _apply_review_changes(result_json: dict, changes: list) -> tuple:
     mod_index = {m['name']: m for m in modules}
 
     for change in changes:
+        # 确保 change 是字典类型
+        if not isinstance(change, dict):
+            logger.warning(f"[AI用例] 跳过非字典类型的变更指令: {change}")
+            stats['skipped'] += 1
+            continue
+            
         action = change.get('action', '')
         mod_name = change.get('module', '')
 
@@ -981,7 +987,14 @@ async def apply_review_stream_view(request):
                         yield f"data: {json.dumps({'type': 'error', 'error': 'AI 返回内容无法解析为 JSON，原用例数据不受影响'}, ensure_ascii=False)}\n\n"
                         return
 
-                    changes = change_data.get('changes', [])
+                    # 处理 AI 返回的数据格式：可能是 {"changes": [...]} 或直接是 [...]
+                    if isinstance(change_data, list):
+                        changes = change_data
+                    elif isinstance(change_data, dict):
+                        changes = change_data.get('changes', [])
+                    else:
+                        changes = []
+                    
                     if not changes:
                         record.status = 'success'
                         await sync_to_async(record.save)(update_fields=['status'])
