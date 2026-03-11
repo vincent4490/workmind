@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 MAX_FILES = 10                          # 最多上传文件数
 MAX_FILE_SIZE = 100 * 1024 * 1024       # 单文件最大 100MB（增加到100MB以支持大型文档）
 MAX_TOTAL_TEXT_CHARS = 30000            # 提取文字总上限（字符），约15K tokens
-MAX_IMAGES = 20                         # 图片总上限（含文档内嵌入的），约20-30K tokens
+MAX_IMAGES = 200                        # 图片总上限（含文档内嵌入的），约200-300K tokens
 IMAGE_MAX_DIMENSION = 1024              # 图片最大边长（像素）
 IMAGE_QUALITY = 80                      # JPEG 压缩质量
 
