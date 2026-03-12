@@ -769,9 +769,10 @@ export const getAiRequirementTask = id => {
 
 /** 下载任务导出文件（PDF 或 Word）。返回 { data: Blob, filename: string } */
 export const downloadAiRequirementTaskExport = (taskId, format) => {
+    const fileFormat = format === 'word' ? 'docx' : format
     return axios
         .get(`/api/ai_requirement/tasks/${taskId}/export/`, {
-            params: { format: format === 'word' ? 'docx' : format },
+            params: { file_format: fileFormat },
             responseType: 'blob'
         })
         .then(res => {

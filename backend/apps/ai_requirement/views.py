@@ -1200,8 +1200,8 @@ def _task_export_response(request, task, fmt):
 
 def task_export_view(request, pk):
     """
-    GET /api/ai_requirement/tasks/<id>/export/?format=pdf|docx
-    独立 URL，确保导出接口稳定可用（不依赖 router 的 action）。
+    GET /api/ai_requirement/tasks/<id>/export/?file_format=pdf|docx
+    使用 file_format 避免与 DRF/Django 的 format（内容协商）冲突。
     """
     if request.method == 'OPTIONS':
         return _add_cors_headers(HttpResponse(status=200))
@@ -1215,7 +1215,7 @@ def task_export_view(request, pk):
             content_type='application/json',
             status=404,
         ))
-    fmt = (request.GET.get('format') or 'pdf').lower()
+    fmt = (request.GET.get('file_format') or 'pdf').lower()
     return _task_export_response(request, task, fmt)
 
 
@@ -1239,9 +1239,9 @@ class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):
-        """GET /api/ai_requirement/tasks/<id>/export/?format=pdf|docx（router 注册）"""
+        """GET /api/ai_requirement/tasks/<id>/export/?file_format=pdf|docx（router 注册）"""
         task = self.get_object()
-        fmt = (request.query_params.get('format') or 'pdf').lower()
+        fmt = (request.query_params.get('file_format') or 'pdf').lower()
         return _task_export_response(request, task, fmt)
 
 
