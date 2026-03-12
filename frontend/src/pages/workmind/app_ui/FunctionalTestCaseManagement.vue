@@ -43,7 +43,21 @@
         <el-card class="filter-card" style="margin-top: 20px;">
             <el-form :inline="true" size="small">
                 <el-form-item label="需求名称">
-                    <el-input v-model="searchForm.title" placeholder="需求名称" clearable style="width: 160px;" @keyup.enter="loadCases" />
+                    <el-select
+                        v-model="searchForm.title"
+                        placeholder="请选择需求名称"
+                        filterable
+                        clearable
+                        style="width: 180px;"
+                        @change="loadCases"
+                    >
+                        <el-option
+                            v-for="item in requirementOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
                 </el-form-item>
                 <el-form-item label="模块名称">
                     <el-input v-model="searchForm.module_name" placeholder="模块名称" clearable style="width: 140px;" />
@@ -405,6 +419,8 @@ const showImportAiDialog = ref(false)
 const selectedRequirementId = ref(null)
 const selectedAiGenerationId = ref(null)
 const requirementList = ref([])
+/** 需求名称下拉选项（用于搜索，与任务管理一致） */
+const requirementOptions = ref([])
 const aiGenerations = ref([])
 const importAiLoading = ref(false)
 
@@ -466,6 +482,15 @@ const loadRequirements = () => {
         const list = res.results || res.data?.results || res.data || []
         requirementList.value = Array.isArray(list) ? list : []
     }).catch(() => { requirementList.value = [] })
+}
+
+/** 加载需求名称下拉（搜索用，与任务管理一致） */
+const loadRequirementOptions = () => {
+    getFunctionalRequirements({ page: 1, page_size: 1000 }).then(res => {
+        const list = res.results || res.data?.results || res.data || []
+        const arr = Array.isArray(list) ? list : []
+        requirementOptions.value = arr.map(item => item.name).filter(Boolean)
+    }).catch(() => { requirementOptions.value = [] })
 }
 
 const loadAiGenerations = () => {
@@ -756,6 +781,7 @@ const formatDate = (date) => {
 
 // 生命周期
 onMounted(() => {
+    loadRequirementOptions()
     loadCases()
 })
 </script>
