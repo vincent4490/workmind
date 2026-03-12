@@ -1165,14 +1165,21 @@ def sync_to_confluence_view(request):
 # ============ ViewSet ============
 
 def _task_export_response(request, task, fmt):
-    """共用导出逻辑：根据 format 生成 PDF/Word 并返回 HttpResponse。"""
+    """共用导出逻辑：根据 format 生成 PDF/Word 并返回 HttpResponse。注意：本函数被普通 Django 视图调用，只能返回 HttpResponse，不能返回 DRF Response。"""
     from urllib.parse import quote
     from apps.ai_requirement.services.export_doc import export_pdf, export_docx
 
+    def _json_error(msg, status):
+        return _add_cors_headers(HttpResponse(
+            json.dumps({'error': msg}, ensure_ascii=False),
+            content_type='application/json',
+            status=status,
+        ))
+
     if fmt not in ('pdf', 'docx'):
-        return Response({'error': 'format 须为 pdf 或 docx'}, status=400)
+        return _json_error('format 须为 pdf 或 docx', 400)
     if not (task.result_md or task.raw_content):
-        return Response({'error': '该任务无文本内容可导出'}, status=400)
+        return _json_error('该任务无文本内容可导出', 400)
     try:
         if fmt == 'pdf':
             data, filename = export_pdf(task)
@@ -1185,10 +1192,10 @@ def _task_export_response(request, task, fmt):
         response['Access-Control-Expose-Headers'] = 'Content-Disposition'
         return _add_cors_headers(response)
     except ValueError as e:
-        return Response({'error': str(e)}, status=400)
+        return _json_error(str(e), 400)
     except Exception as e:
         logger.exception("[AI需求] 导出失败: %s", e)
-        return Response({'error': f'导出失败: {str(e)}'}, status=500)
+        return _json_error(f'导出失败: {str(e)}', 500)
 
 
 def task_export_view(request, pk):
@@ -1203,7 +1210,11 @@ def task_export_view(request, pk):
     try:
         task = AiRequirementTask.objects.get(pk=pk)
     except AiRequirementTask.DoesNotExist:
-        return _add_cors_headers(Response({'error': '任务不存在'}, status=404))
+        return _add_cors_headers(HttpResponse(
+            json.dumps({'error': '任务不存在'}, ensure_ascii=False),
+            content_type='application/json',
+            status=404,
+        ))
     fmt = (request.GET.get('format') or 'pdf').lower()
     return _task_export_response(request, task, fmt)
 
