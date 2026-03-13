@@ -109,7 +109,7 @@ class RequirementAgentRouter:
         prompt_obj = PROMPT_REGISTRY.get((role, task_type))
         if prompt_obj is None:
             raise ValueError(f"不支持的任务类型: {role}/{task_type}")
-        return prompt_obj.get_system_prompt(), 'builtin'
+        return prompt_obj.get_full_system_prompt(), 'builtin'
 
     def build_messages(
         self,
@@ -281,7 +281,7 @@ class RequirementAgentRouter:
     ) -> dict:
         """
         非流式 + Pydantic 强校验 + 自动重试。
-        用于下游系统消费（如 feature_breakdown → ai_testcase）。
+        用于下游系统消费（如桥接至用例智能体）。
 
         校验失败时将错误信息反馈给 LLM 重新生成（最多 max_retries 次）。
 

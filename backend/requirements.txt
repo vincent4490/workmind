@@ -1,3 +1,7 @@
+# HTTP：requests 2.32 的 check_compatibility 要求 chardet 在 [3.0.2, 6.0.0)，当前 chardet 7.x 会触发警告
+# 详见 docs/backend_依赖说明_requests_urllib3.md
+requests>=2.32.0
+chardet==5.2.0
 
 # Django相关依赖
 django==4.2.7

@@ -4,7 +4,7 @@
 
 用法：
   python manage.py rebuild_rag_chunks
-  python manage.py rebuild_rag_chunks --task-type prd_draft --task-type feature_breakdown
+  python manage.py rebuild_rag_chunks --task-type prd_draft
   python manage.py rebuild_rag_chunks --since 2025-01-01 --limit 100
   python manage.py rebuild_rag_chunks --clear
   python manage.py rebuild_rag_chunks --dry-run
@@ -24,7 +24,7 @@ class Command(BaseCommand):
             action="append",
             dest="task_types",
             metavar="TYPE",
-            help="只处理指定任务类型，可多次指定（如 --task-type prd_draft --task-type feature_breakdown）",
+            help="只处理指定任务类型，可多次指定（如 --task-type prd_draft）",
         )
         parser.add_argument(
             "--since",

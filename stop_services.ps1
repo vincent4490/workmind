@@ -6,9 +6,9 @@ Write-Host "   Stopping All Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Stop backend service (port 8000)
-Write-Host "[1/3] Stopping backend service (Django, port 8000)..." -ForegroundColor Yellow
-$backendPids = (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' }).OwningProcess | Select-Object -Unique
+# Stop backend service (port 8009)
+Write-Host "[1/3] Stopping backend service (Django/Daphne, port 8009)..." -ForegroundColor Yellow
+$backendPids = (Get-NetTCPConnection -LocalPort 8009 -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Listen' }).OwningProcess | Select-Object -Unique
 if ($backendPids) {
     $backendPids | ForEach-Object {
         $procId = $_
@@ -26,7 +26,7 @@ if ($backendPids) {
         }
     }
 } else {
-    Write-Host "  [INFO] No service found on port 8000" -ForegroundColor Gray
+    Write-Host "  [INFO] No service found on port 8009" -ForegroundColor Gray
 }
 Write-Host ""
 

@@ -85,8 +85,6 @@ def index_task(task_id: int) -> int:
     content_type = "other"
     if task.task_type == "prd_draft":
         content_type = "prd_full"
-    elif task.task_type == "feature_breakdown":
-        content_type = "feature_breakdown"
     if task.result_md and task.result_md.strip():
         content_text = task.result_md.strip()
     elif task.result_json and isinstance(task.result_json, dict):
@@ -140,11 +138,8 @@ def get_rag_context(
 
     qs = RequirementChunk.objects.filter(embedding__isnull=False).exclude(embedding=[])
     # 可选：按 content_type 与 task_type 对齐（如 prd_draft 时只看 prd_full/glossary）
-    if task_type:
-        if task_type == "prd_draft":
-            qs = qs.filter(content_type__in=("prd_full", "glossary"))
-        elif task_type == "feature_breakdown":
-            qs = qs.filter(content_type__in=("feature_breakdown", "glossary", "prd_full"))
+    if task_type == "prd_draft":
+        qs = qs.filter(content_type__in=("prd_full", "glossary"))
     chunks = list(qs.order_by("-created_at")[: 200])  # 最多取 200 条再算相似度，避免全表
     if not chunks:
         return ""

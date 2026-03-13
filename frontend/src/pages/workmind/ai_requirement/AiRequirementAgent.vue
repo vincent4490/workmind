@@ -9,7 +9,7 @@
                     Kimi K2.5
                 </span>
             </div>
-            <span class="header-desc">多角色 AI 助手 —— 产品 PRD 撰写 · 开发需求分析 · 测试功能点梳理</span>
+            <span class="header-desc">多角色 AI 助手 —— 产品 PRD 撰写 · 开发需求分析 · 测试需求分析</span>
         </div>
 
         <el-row :gutter="20">
@@ -395,17 +395,25 @@
                             <el-icon><CopyDocument /></el-icon>
                             复制 Markdown
                         </el-button>
-                        <el-button @click="handleDownloadPdf" :loading="downloadPdfLoading">
-                            <el-icon><Download /></el-icon>
-                            下载 PDF
-                        </el-button>
-                        <el-button @click="handleDownloadWord" :loading="downloadWordLoading">
+                        <el-button
+                            v-if="isProductOrDevRole(doneResult)"
+                            @click="handleDownloadWord"
+                            :loading="downloadWordLoading"
+                        >
                             <el-icon><Download /></el-icon>
                             下载 Word
                         </el-button>
-                        <!-- 功能点 → AI 用例生成 -->
                         <el-button
-                            v-if="doneResult.task_type === 'feature_breakdown' && doneResult.result_json"
+                            v-if="isTestRole(doneResult)"
+                            @click="handleDownloadXmind"
+                            :loading="downloadXmindLoading"
+                        >
+                            <el-icon><Download /></el-icon>
+                            下载 XMind
+                        </el-button>
+                        <!-- 需求 → 用例页桥接：任意任务可带需求文本跳转用例页 -->
+                        <el-button
+                            v-if="doneResult?.record_id"
                             type="success"
                             @click="handleBridgeToTestcase"
                             :loading="bridging"
@@ -413,9 +421,9 @@
                             <el-icon><Right /></el-icon>
                             生成测试用例
                         </el-button>
-                        <!-- P2-3：同步到 Jira / 写入 Confluence -->
+                        <!-- P2-3：同步到 Jira / 写入 Confluence（Jira 当前不支持） -->
                         <el-button
-                            v-if="doneResult.task_type === 'feature_breakdown' && doneResult.result_json"
+                            v-if="doneResult?.record_id"
                             @click="handleSyncToJira"
                             :loading="syncingJira"
                         >
@@ -689,7 +697,6 @@ import {
     aiRequirementSyncToJira,
     aiRequirementSyncToConfluence,
     downloadAiRequirementTaskExport,
-    aiGenerateTestcaseFromStructureStream,
     startWorkflowStream,
     approveWorkflowStream,
     startMultiAgentStream,
@@ -709,7 +716,6 @@ const TASK_MAP = {
         { value: 'tech_design', label: '技术方案' },
     ],
     test: [
-        { value: 'feature_breakdown', label: '功能点梳理' },
         { value: 'test_requirement_analysis', label: '测试需求分析' },
     ],
 }
@@ -722,7 +728,6 @@ const TASK_LABELS = {
     requirement_analysis: '需求分析',
     tech_design: '技术方案',
     test_requirement_analysis: '测试需求分析',
-    feature_breakdown: '功能点梳理',
 }
 
 // ---- 表单 ----
@@ -966,24 +971,15 @@ function handleCopyMarkdown() {
     })
 }
 
-async function handleDownloadPdf() {
-    if (!doneResult.value?.record_id) return
-    downloadPdfLoading.value = true
-    try {
-        const { data, filename } = await downloadAiRequirementTaskExport(doneResult.value.record_id, 'pdf')
-        const url = URL.createObjectURL(new Blob([data]))
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        a.click()
-        URL.revokeObjectURL(url)
-        ElMessage.success('PDF 已开始下载')
-    } catch (err) {
-        const msg = err.response?.data?.error ?? err.message ?? '下载失败'
-        ElMessage.error(typeof msg === 'string' ? msg : (msg.error || '下载失败'))
-    } finally {
-        downloadPdfLoading.value = false
-    }
+function isProductOrDevRole(result) {
+    if (!result?.record_id) return false
+    const role = result.role || result.task_type
+    return role === 'product' || role === 'dev'
+}
+function isTestRole(result) {
+    if (!result?.record_id) return false
+    const role = result.role || result.task_type
+    return role === 'test' || role === 'test_requirement_analysis'
 }
 
 async function handleDownloadWord() {
@@ -1003,6 +999,26 @@ async function handleDownloadWord() {
         ElMessage.error(typeof msg === 'string' ? msg : (msg.error || '下载失败'))
     } finally {
         downloadWordLoading.value = false
+    }
+}
+
+async function handleDownloadXmind() {
+    if (!doneResult.value?.record_id) return
+    downloadXmindLoading.value = true
+    try {
+        const { data, filename } = await downloadAiRequirementTaskExport(doneResult.value.record_id, 'xmind')
+        const url = URL.createObjectURL(new Blob([data]))
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+        ElMessage.success('XMind 已开始下载')
+    } catch (err) {
+        const msg = err.response?.data?.error ?? err.message ?? '下载失败'
+        ElMessage.error(typeof msg === 'string' ? msg : (msg.error || '下载失败'))
+    } finally {
+        downloadXmindLoading.value = false
     }
 }
 
@@ -1487,8 +1503,8 @@ const bridging = ref(false)
 // ---- P2-3：Jira / Confluence 同步 ----
 const syncingJira = ref(false)
 const syncingConfluence = ref(false)
-const downloadPdfLoading = ref(false)
 const downloadWordLoading = ref(false)
+const downloadXmindLoading = ref(false)
 
 function hasPrdContent(r) {
     if (!r) return false
@@ -1539,38 +1555,10 @@ async function handleBridgeToTestcase() {
     try {
         const res = await bridgeToTestcase({ task_id: doneResult.value.record_id })
         if (res.status !== 'ok') return
-
-        // 方案 A：有 structure 时直接调用 generate-from-structure，生成完成后跳转并打开该记录
-        if (res.structure && res.structure.modules?.length) {
-            ElMessage.info(`已提取 ${res.module_count} 个模块、${res.function_count} 个功能点，正在生成用例...`)
-            await aiGenerateTestcaseFromStructureStream(
-                {
-                    structure: res.structure,
-                    source_requirement_task_id: res.source_task_id,
-                    use_thinking: false
-                },
-                () => {},
-                (event) => {
-                    bridging.value = false
-                    ElMessage.success(`用例生成成功，共 ${event.module_count} 个模块、${event.case_count} 条用例`)
-                    vueRouter.push({ name: 'AiTestcaseGenerator', query: { record_id: event.record_id } })
-                },
-                (err) => {
-                    bridging.value = false
-                    ElMessage.error('用例生成失败：' + (err || '未知错误'))
-                },
-                () => {}
-            )
-            return
-        }
-
-        // 方案 B：无 structure 时沿用原文跳转，由用户在用例页点击生成
-        ElMessage.success(`已提取 ${res.module_count} 个模块、${res.function_count} 个功能点，正在跳转...`)
-        sessionStorage.setItem('ai_req_bridge_text', res.requirement_text)
-        sessionStorage.setItem('ai_req_bridge_source', String(res.source_task_id))
-        setTimeout(() => {
-            vueRouter.push({ name: 'AiTestcaseGenerator' })
-        }, 800)
+        sessionStorage.setItem('ai_req_bridge_text', res.requirement_text || '')
+        sessionStorage.setItem('ai_req_bridge_source', String(res.source_task_id || ''))
+        ElMessage.success('已提取需求文本，正在跳转用例页…')
+        vueRouter.push({ name: 'AiTestcaseGenerator' })
     } catch (err) {
         ElMessage.error('桥接失败：' + (err.message || '未知错误'))
     } finally {

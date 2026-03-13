@@ -65,78 +65,10 @@ def create_jira_tickets_from_task(
     issue_type: str = "Task",
 ) -> dict:
     """
-    根据 feature_breakdown 任务的 result_json 在 Jira 中创建多个 Issue。
+    根据需求任务在 Jira 中创建工单。当前版本不支持，返回 501 提示。
     返回 {"success": bool, "created": [{"key": "PROJ-1", ...}], "error": str?}
     """
-    from apps.ai_requirement.models import AiRequirementTask
-
-    if not _jira_configured():
-        return {"success": False, "created": [], "error": "Jira 未配置（JIRA_BASE_URL / JIRA_API_TOKEN）"}
-
-    try:
-        task = AiRequirementTask.objects.get(id=task_id)
-    except AiRequirementTask.DoesNotExist:
-        return {"success": False, "created": [], "error": "任务不存在"}
-
-    if task.task_type != "feature_breakdown":
-        return {"success": False, "created": [], "error": "仅支持 feature_breakdown 任务类型"}
-    data = task.result_json
-    if not data or not isinstance(data, dict):
-        return {"success": False, "created": [], "error": "该任务无结构化结果"}
-
-    modules = data.get("modules", [])
-    if not modules:
-        return {"success": False, "created": [], "error": "功能点数据为空"}
-
-    base_url = (getattr(settings, "JIRA_BASE_URL", "") or "").rstrip("/")
-    proj = (project_key or getattr(settings, "JIRA_PROJECT_KEY", "") or "").strip()
-    if not proj:
-        return {"success": False, "created": [], "error": "未指定 JIRA 项目（JIRA_PROJECT_KEY 或请求参数 project_key）"}
-
-    email = (getattr(settings, "JIRA_EMAIL", "") or "").strip()
-    token = (getattr(settings, "JIRA_API_TOKEN", "") or "").strip()
-    basic_auth = base64.b64encode(f"{email}:{token}".encode()).decode() if email else None
-    if not basic_auth and token:
-        # 仅 API Token 时可用 Bearer（部分 Jira Cloud 支持）
-        basic_auth = base64.b64encode(f"{token}:".encode()).decode()
-
-    created = []
-    title = data.get("title", "功能点梳理")
-
-    for mod in modules:
-        mod_name = mod.get("name", "未命名模块")
-        for func in mod.get("functions", []):
-            name = func.get("name", "未命名功能")
-            desc_parts = [func.get("description") or "", f"\n\n验收要点:"]
-            for ap in func.get("acceptance_points", []):
-                desc_parts.append(f"\n- {ap}")
-            if func.get("test_hint"):
-                desc_parts.append(f"\n测试建议: {func['test_hint']}")
-            description = "\n".join(desc_parts) if desc_parts else name
-            payload = {
-                "fields": {
-                    "project": {"key": proj},
-                    "summary": f"[{mod_name}] {name}",
-                    "description": description,
-                    "issuetype": {"name": issue_type},
-                }
-            }
-            code, resp = _http_post(
-                f"{base_url}/rest/api/3/issue",
-                payload,
-                basic_auth=basic_auth,
-            )
-            if code in (200, 201) and resp and isinstance(resp, dict):
-                created.append({"key": resp.get("key"), "id": resp.get("id")})
-            else:
-                return {
-                    "success": False,
-                    "created": created,
-                    "error": f"创建 Jira 工单失败: HTTP {code}",
-                    "details": resp,
-                }
-
-    return {"success": True, "created": created, "error": None}
+    return {"success": False, "created": [], "error": "当前不支持从需求任务创建 Jira 工单"}
 
 
 def write_prd_to_confluence(

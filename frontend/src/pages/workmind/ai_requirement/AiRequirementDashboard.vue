@@ -125,7 +125,6 @@
                             <el-option label="需求分析" value="requirement_analysis" />
                             <el-option label="技术方案" value="tech_design" />
                             <el-option label="测试需求分析" value="test_requirement_analysis" />
-                            <el-option label="功能点梳理" value="feature_breakdown" />
                         </el-select>
                     </div>
 
@@ -216,7 +215,6 @@
                         <el-option label="需求分析" value="requirement_analysis" />
                         <el-option label="技术方案" value="tech_design" />
                         <el-option label="测试需求分析" value="test_requirement_analysis" />
-                        <el-option label="功能点梳理" value="feature_breakdown" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="版本号" required>
@@ -261,7 +259,7 @@ import {
 const TASK_LABELS = {
     competitive_analysis: '竞品分析', prd_draft: 'PRD 撰写', prd_refine: '需求完善',
     requirement_analysis: '需求分析', tech_design: '技术方案',
-    test_requirement_analysis: '测试需求分析', feature_breakdown: '功能点梳理',
+    test_requirement_analysis: '测试需求分析',
 }
 const ISSUE_LABELS = {
     hallucination: '幻觉', missing: '遗漏', format_error: '格式错误',

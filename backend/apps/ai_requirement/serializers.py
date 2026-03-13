@@ -26,7 +26,7 @@ class RunStreamRequestSerializer(serializers.Serializer):
     task_type = serializers.ChoiceField(choices=[
         'competitive_analysis', 'prd_draft', 'prd_refine',
         'requirement_analysis', 'tech_design',
-        'test_requirement_analysis', 'feature_breakdown',
+        'test_requirement_analysis',
     ])
     requirement_input = serializers.CharField(
         required=False, default='', allow_blank=True, max_length=50000,

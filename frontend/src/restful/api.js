@@ -767,22 +767,24 @@ export const getAiRequirementTask = id => {
     return axios.get(`/api/ai_requirement/tasks/${id}/`).then(res => res.data);
 };
 
-/** 下载任务导出文件（PDF 或 Word）。返回 { data: Blob, filename: string } */
+/** 下载任务导出文件（Word / XMind）。format: 'word' -> docx, 'xmind' -> xmind。返回 { data: Blob, filename: string } */
 export const downloadAiRequirementTaskExport = (taskId, format) => {
-    const fileFormat = format === 'word' ? 'docx' : format
+    const f = (format || '').toLowerCase()
+    const fileFormat = f === 'word' ? 'docx' : 'xmind'
     return axios
         .get(`/api/ai_requirement/tasks/${taskId}/export/`, {
             params: { file_format: fileFormat },
             responseType: 'blob'
         })
         .then(res => {
-            let filename = `requirement_${taskId}.${format === 'word' ? 'docx' : format}`;
-            const disposition = res.headers['content-disposition'];
+            const ext = fileFormat === 'docx' ? 'docx' : 'xmind'
+            let filename = `requirement_${taskId}.${ext}`
+            const disposition = res.headers['content-disposition']
             if (disposition && disposition.includes("filename*=")) {
-                const m = disposition.match(/filename\*=UTF-8''([^;]+)/);
-                if (m) filename = decodeURIComponent(m[1].trim());
+                const m = disposition.match(/filename\*=UTF-8''([^;]+)/)
+                if (m) filename = decodeURIComponent(m[1].trim())
             }
-            return { data: res.data, filename };
+            return { data: res.data, filename }
         })
         .catch(async err => {
             if (err.response?.data instanceof Blob) {

@@ -1019,17 +1019,17 @@ async def chat_stream_view(request):
     return _add_cors_headers(response)
 
 
-# ============ 功能点 → 用例智能体桥接 ============
+# ============ 需求 → 用例智能体桥接（通用）============
 
 async def bridge_to_testcase_view(request):
     """
-    将 feature_breakdown 结果桥接到 ai_testcase 的 generate-from-structure 接口
+    将任意需求任务的文本桥接到用例页，供用户在用例侧用「智能生成」生成用例。
 
     POST /api/ai_requirement/bridge-to-testcase/
     {"task_id": 123}
 
-    将 feature_breakdown 的 JSON 结构转换为 ai_testcase 可消费的格式，
-    直接调用 ai_testcase 的 SSE 流式生成。
+    返回 requirement_text（任务输入或结果摘要）与 source_task_id，不返回 structure。
+    前端跳转用例页并预填需求框，用户点击「智能生成用例」走 generate-stream。
     """
     if request.method == 'OPTIONS':
         return _add_cors_headers(HttpResponse(status=200))
@@ -1052,52 +1052,19 @@ async def bridge_to_testcase_view(request):
     except AiRequirementTask.DoesNotExist:
         return _add_cors_headers(HttpResponse('任务不存在', status=404))
 
-    if task.task_type != 'feature_breakdown':
-        return _add_cors_headers(HttpResponse('仅支持 feature_breakdown 任务类型', status=400))
-    if not task.result_json:
-        return _add_cors_headers(HttpResponse('该任务无结构化结果', status=400))
-
-    fb_data = task.result_json
-    modules = fb_data.get('modules', [])
-    if not modules:
-        return _add_cors_headers(HttpResponse('功能点数据为空', status=400))
-
-    # 方式 A：结构直传 —— 将 feature_breakdown 的 JSON 直接映射为 ai_testcase 需要的格式
-    requirement_text_parts = [f"# {fb_data.get('title', '功能点梳理')}\n"]
-    for mod in modules:
-        requirement_text_parts.append(f"\n## 模块：{mod['name']}")
-        for func in mod.get('functions', []):
-            requirement_text_parts.append(f"\n### {func['name']}（{func.get('priority', 'P1')}）")
-            if func.get('description'):
-                requirement_text_parts.append(f"描述：{func['description']}")
-            if func.get('acceptance_points'):
-                for ap in func['acceptance_points']:
-                    requirement_text_parts.append(f"  - {ap}")
-            if func.get('test_hint'):
-                requirement_text_parts.append(f"测试建议：{func['test_hint']}")
-
-    requirement_text = "\n".join(requirement_text_parts)
-
-    # 方式 A 结构直传：供前端调用 ai_testcase generate-from-structure 使用（不包含 cases）
-    structure = json.loads(json.dumps(fb_data))  # 深拷贝
-    for mod in structure.get('modules', []):
-        for func in mod.get('functions', []):
-            func.pop('cases', None)  # 去掉已有 cases，由用例接口生成
-
-    # 记录血缘追踪
-    def update_downstream():
-        downstream = task.downstream_testcases or []
-        task.downstream_testcases = downstream
-        task.save(update_fields=['downstream_testcases', 'updated_at'])
-    await sync_to_async(update_downstream)()
+    # 优先用任务输入；若有 result_md 可拼一段摘要供用例侧参考
+    requirement_text = (task.requirement_input or '').strip()
+    if not requirement_text and getattr(task, 'result_md', None):
+        requirement_text = (task.result_md or '')[:8000]
+    if not requirement_text and getattr(task, 'result_json', None):
+        requirement_text = f"[需求任务 #{task.id}] 请根据上下文在用例页输入或粘贴需求后生成用例。"
+    if not requirement_text:
+        return _add_cors_headers(HttpResponse('该任务无可用的需求文本', status=400))
 
     resp_data = {
         'status': 'ok',
         'requirement_text': requirement_text,
-        'structure': structure,
         'source_task_id': task.id,
-        'module_count': len(modules),
-        'function_count': sum(len(m.get('functions', [])) for m in modules),
     }
     resp = HttpResponse(
         json.dumps(resp_data, ensure_ascii=False),
@@ -1165,9 +1132,9 @@ def sync_to_confluence_view(request):
 # ============ ViewSet ============
 
 def _task_export_response(request, task, fmt):
-    """共用导出逻辑：根据 format 生成 PDF/Word 并返回 HttpResponse。注意：本函数被普通 Django 视图调用，只能返回 HttpResponse，不能返回 DRF Response。"""
+    """共用导出逻辑：docx 用于产品/开发角色，xmind 用于测试角色。"""
     from urllib.parse import quote
-    from apps.ai_requirement.services.export_doc import export_pdf, export_docx
+    from apps.ai_requirement.services.export_doc import export_docx, export_xmind
 
     def _json_error(msg, status):
         return _add_cors_headers(HttpResponse(
@@ -1176,17 +1143,15 @@ def _task_export_response(request, task, fmt):
             status=status,
         ))
 
-    if fmt not in ('pdf', 'docx'):
-        return _json_error('format 须为 pdf 或 docx', 400)
-    if not (task.result_md or task.raw_content):
-        return _json_error('该任务无文本内容可导出', 400)
+    if fmt not in ('docx', 'xmind'):
+        return _json_error('file_format 须为 docx 或 xmind', 400)
     try:
-        if fmt == 'pdf':
-            data, filename = export_pdf(task)
-            content_type = 'application/pdf'
-        else:
+        if fmt == 'docx':
             data, filename = export_docx(task)
             content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        else:
+            data, filename = export_xmind(task)
+            content_type = 'application/x-xmind'
         response = HttpResponse(data, content_type=content_type)
         response['Content-Disposition'] = f"attachment; filename*=UTF-8''{quote(filename)}"
         response['Access-Control-Expose-Headers'] = 'Content-Disposition'
@@ -1200,8 +1165,8 @@ def _task_export_response(request, task, fmt):
 
 def task_export_view(request, pk):
     """
-    GET /api/ai_requirement/tasks/<id>/export/?file_format=pdf|docx
-    使用 file_format 避免与 DRF/Django 的 format（内容协商）冲突。
+    GET /api/ai_requirement/tasks/<id>/export/?file_format=docx|xmind
+    产品/开发角色用 docx，测试角色用 xmind。
     """
     if request.method == 'OPTIONS':
         return _add_cors_headers(HttpResponse(status=200))
@@ -1215,7 +1180,7 @@ def task_export_view(request, pk):
             content_type='application/json',
             status=404,
         ))
-    fmt = (request.GET.get('file_format') or 'pdf').lower()
+    fmt = (request.GET.get('file_format') or '').lower()
     return _task_export_response(request, task, fmt)
 
 
@@ -1239,9 +1204,9 @@ class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):
-        """GET /api/ai_requirement/tasks/<id>/export/?file_format=pdf|docx（router 注册）"""
+        """GET /api/ai_requirement/tasks/<id>/export/?file_format=docx|xmind（router 注册）"""
         task = self.get_object()
-        fmt = (request.query_params.get('file_format') or 'pdf').lower()
+        fmt = (request.query_params.get('file_format') or '').lower()
         return _task_export_response(request, task, fmt)
 
 

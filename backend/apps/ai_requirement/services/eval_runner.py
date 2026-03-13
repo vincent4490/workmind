@@ -22,7 +22,6 @@ TASK_TYPE_TO_ROLE = {
     'requirement_analysis': 'dev',
     'tech_design': 'dev',
     'test_requirement_analysis': 'test',
-    'feature_breakdown': 'test',
 }
 
 

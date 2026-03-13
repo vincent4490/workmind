@@ -118,49 +118,6 @@ class AgenticPRDSchema(BaseModel):
     )
 
 
-# ============ 功能点梳理 (feature_breakdown) ============
-
-class FeatureFunction(BaseModel):
-    name: str = Field(min_length=2, description="功能点名称")
-    description: Optional[str] = Field(default=None, description="功能点描述")
-    acceptance_points: list[str] = Field(
-        min_length=1,
-        description="验收要点列表"
-    )
-    priority: str = Field(description="优先级 P0-P3")
-    testable: bool = Field(default=True)
-    related_requirement: Optional[str] = Field(default=None)
-    test_hint: Optional[str] = Field(
-        default=None,
-        description="测试设计提示"
-    )
-
-    @field_validator('priority')
-    @classmethod
-    def priority_must_be_valid(cls, v):
-        if v not in ('P0', 'P1', 'P2', 'P3'):
-            raise ValueError('priority 必须是 P0/P1/P2/P3')
-        return v
-
-
-class FeatureModule(BaseModel):
-    name: str = Field(min_length=2, description="模块名称")
-    functions: list[FeatureFunction] = Field(min_length=1)
-
-
-class FeatureBreakdownTraceability(BaseModel):
-    source_requirement_id: Optional[str] = None
-    generated_by: str = Field(default="feature_breakdown_agent")
-    generated_at: Optional[str] = None
-
-
-class FeatureBreakdownSchema(BaseModel):
-    """功能点梳理输出 Schema —— 与 ai_testcase 对齐"""
-    title: str = Field(min_length=2)
-    modules: list[FeatureModule] = Field(min_length=1)
-    traceability: Optional[FeatureBreakdownTraceability] = None
-
-
 # ============ 其他任务 Schema（Phase 1 后期补充）============
 
 class CompetitiveAnalysisSchema(BaseModel):
@@ -206,7 +163,6 @@ class PRDRefineSchema(BaseModel):
 
 SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {
     'prd_draft': AgenticPRDSchema,
-    'feature_breakdown': FeatureBreakdownSchema,
     'competitive_analysis': CompetitiveAnalysisSchema,
     'requirement_analysis': RequirementAnalysisSchema,
     'tech_design': TechDesignSchema,

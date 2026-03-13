@@ -19,7 +19,6 @@ class AiRequirementTask(models.Model):
         ('requirement_analysis', '需求分析'),
         ('tech_design', '技术方案'),
         ('test_requirement_analysis', '测试需求分析'),
-        ('feature_breakdown', '功能点梳理'),
     ]
 
     STATUS_CHOICES = [
@@ -538,7 +537,6 @@ class RequirementChunk(models.Model):
     """
     CONTENT_TYPE_CHOICES = [
         ('prd_full', 'PRD 全文'),
-        ('feature_breakdown', '功能点梳理'),
         ('glossary', '术语表'),
         ('other', '其他'),
     ]
