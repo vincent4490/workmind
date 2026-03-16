@@ -256,7 +256,7 @@ class FunctionalTestCase(models.Model):
         db_table = 'functional_test_case'
         verbose_name = '功能测试用例'
         verbose_name_plural = verbose_name
-        ordering = ['-updated_at']
+        ordering = ['created_at']  # 正序：与 AI/手动导入顺序一致，先导入的在前
 
     def __str__(self):
         return self.name

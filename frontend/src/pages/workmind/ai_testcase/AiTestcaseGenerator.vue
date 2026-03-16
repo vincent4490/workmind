@@ -173,29 +173,55 @@
                             :expand-on-click-node="false"
                         >
                             <template #default="{ node, data }">
-                                <span class="tree-node">
-                                    <el-tag
-                                        v-if="data.nodeType === 'module'"
-                                        type="primary" size="small" effect="dark"
-                                    >模块</el-tag>
-                                    <el-tag
-                                        v-else-if="data.nodeType === 'function'"
-                                        type="warning" size="small" effect="dark"
-                                    >功能</el-tag>
-                                    <el-tag
-                                        v-else-if="data.nodeType === 'case'"
-                                        :type="getPriorityType(data.priority)" size="small"
-                                    >{{ data.priority }}</el-tag>
-                                    <span class="tree-label">{{ data.label }}</span>
-                                    <el-button
-                                        v-if="data.nodeType === 'module' && !regenerating"
-                                        class="module-adjust-btn"
-                                        text type="warning" size="small"
-                                        @click.stop="openRegenerateDialog(data.label)"
-                                    >
-                                        <el-icon><EditPen /></el-icon>
-                                        调整
-                                    </el-button>
+                                <span class="tree-node" :class="{ 'tree-node-case': data.nodeType === 'case' }">
+                                    <div class="tree-node-row" :class="{ 'tree-node-row-case': data.nodeType === 'case' }">
+                                        <el-tag
+                                            v-if="data.nodeType === 'module'"
+                                            type="primary" size="small" effect="dark"
+                                        >模块</el-tag>
+                                        <el-tag
+                                            v-else-if="data.nodeType === 'function'"
+                                            type="warning" size="small" effect="dark"
+                                        >功能</el-tag>
+                                        <el-tag
+                                            v-else-if="data.nodeType === 'case'"
+                                            :type="getPriorityType(data.priority)" size="small"
+                                        >{{ data.priority }}</el-tag>
+                                        <span class="tree-label">{{ data.label }}</span>
+                                        <el-button
+                                            v-if="data.nodeType === 'case' && currentResult?.id"
+                                            class="case-edit-btn"
+                                            link type="primary" size="small"
+                                            @click.stop="openCaseEditDialog(data)"
+                                        >
+                                            <el-icon><EditPen /></el-icon>
+                                            编辑
+                                        </el-button>
+                                        <el-button
+                                            v-if="data.nodeType === 'module' && !regenerating"
+                                            class="module-adjust-btn"
+                                            text type="warning" size="small"
+                                            @click.stop="openRegenerateDialog(data.label)"
+                                        >
+                                            <el-icon><EditPen /></el-icon>
+                                            调整
+                                        </el-button>
+                                        <el-button
+                                            v-if="data.nodeType === 'function' && !regenerating && !regeneratingFunction"
+                                            class="function-adjust-btn"
+                                            text type="warning" size="small"
+                                            @click.stop="openRegenerateFunctionDialog(getModuleNameForNode(node), data.label)"
+                                        >
+                                            <el-icon><EditPen /></el-icon>
+                                            调整
+                                        </el-button>
+                                    </div>
+                                    <!-- 用例同一层：标题后直接跟前置条件、测试步骤、预期结果，不增加树层级 -->
+                                    <div v-if="data.nodeType === 'case' && (data.precondition || data.steps || data.expected)" class="tree-case-inline">
+                                        <span v-if="data.precondition" class="case-inline-item"><em>前置条件：</em>{{ data.precondition }}</span>
+                                        <span v-if="data.steps" class="case-inline-item"><em>测试步骤：</em><span class="case-inline-steps">{{ data.steps }}</span></span>
+                                        <span v-if="data.expected" class="case-inline-item"><em>预期结果：</em>{{ data.expected }}</span>
+                                    </div>
                                 </span>
                             </template>
                         </el-tree>
@@ -244,34 +270,59 @@
                             :expand-on-click-node="false"
                         >
                             <template #default="{ node, data }">
-                                <span class="tree-node">
-                                    <el-tag
-                                        v-if="data.nodeType === 'module'"
-                                        type="primary"
-                                        size="small"
-                                        effect="dark"
-                                    >模块</el-tag>
-                                    <el-tag
-                                        v-else-if="data.nodeType === 'function'"
-                                        type="warning"
-                                        size="small"
-                                        effect="dark"
-                                    >功能</el-tag>
-                                    <el-tag
-                                        v-else-if="data.nodeType === 'case'"
-                                        :type="getPriorityType(data.priority)"
-                                        size="small"
-                                    >{{ data.priority }}</el-tag>
-                                    <span class="tree-label">{{ data.label }}</span>
-                                    <el-button
-                                        v-if="data.nodeType === 'module' && !regenerating"
-                                        class="module-adjust-btn"
-                                        text type="warning" size="small"
-                                        @click.stop="openRegenerateDialog(data.label)"
-                                    >
-                                        <el-icon><EditPen /></el-icon>
-                                        调整
-                                    </el-button>
+                                <span class="tree-node" :class="{ 'tree-node-case': data.nodeType === 'case' }">
+                                    <div class="tree-node-row" :class="{ 'tree-node-row-case': data.nodeType === 'case' }">
+                                        <el-tag
+                                            v-if="data.nodeType === 'module'"
+                                            type="primary"
+                                            size="small"
+                                            effect="dark"
+                                        >模块</el-tag>
+                                        <el-tag
+                                            v-else-if="data.nodeType === 'function'"
+                                            type="warning"
+                                            size="small"
+                                            effect="dark"
+                                        >功能</el-tag>
+                                        <el-tag
+                                            v-else-if="data.nodeType === 'case'"
+                                            :type="getPriorityType(data.priority)"
+                                            size="small"
+                                        >{{ data.priority }}</el-tag>
+                                        <span class="tree-label">{{ data.label }}</span>
+                                        <el-button
+                                            v-if="data.nodeType === 'case' && currentResult?.id"
+                                            class="case-edit-btn"
+                                            link type="primary" size="small"
+                                            @click.stop="openCaseEditDialog(data)"
+                                        >
+                                            <el-icon><EditPen /></el-icon>
+                                            编辑
+                                        </el-button>
+                                        <el-button
+                                            v-if="data.nodeType === 'module' && !regenerating"
+                                            class="module-adjust-btn"
+                                            text type="warning" size="small"
+                                            @click.stop="openRegenerateDialog(data.label)"
+                                        >
+                                            <el-icon><EditPen /></el-icon>
+                                            调整
+                                        </el-button>
+                                        <el-button
+                                            v-if="data.nodeType === 'function' && !regenerating && !regeneratingFunction"
+                                            class="function-adjust-btn"
+                                            text type="warning" size="small"
+                                            @click.stop="openRegenerateFunctionDialog(getModuleNameForNode(node), data.label)"
+                                        >
+                                            <el-icon><EditPen /></el-icon>
+                                            调整
+                                        </el-button>
+                                    </div>
+                                    <div v-if="data.nodeType === 'case' && (data.precondition || data.steps || data.expected)" class="tree-case-inline">
+                                        <span v-if="data.precondition" class="case-inline-item"><em>前置条件：</em>{{ data.precondition }}</span>
+                                        <span v-if="data.steps" class="case-inline-item"><em>测试步骤：</em><span class="case-inline-steps">{{ data.steps }}</span></span>
+                                        <span v-if="data.expected" class="case-inline-item"><em>预期结果：</em>{{ data.expected }}</span>
+                                    </div>
                                 </span>
                             </template>
                         </el-tree>
@@ -496,6 +547,122 @@
             </template>
         </el-dialog>
 
+        <!-- 功能点调整弹窗 -->
+        <el-dialog
+            v-model="showRegenerateFunctionDialog"
+            :title="`调整功能点用例 — 模块「${regenerateFunctionModuleName}」- 功能「${regenerateFunctionName}」`"
+            width="800px"
+            :close-on-click-modal="!regeneratingFunction"
+            :close-on-press-escape="!regeneratingFunction"
+            @close="handleRegenerateFunctionDialogClose"
+        >
+            <div v-if="!regeneratingFunction && !regenerateFunctionStreamContent" class="regenerate-form">
+                <p class="regenerate-hint">
+                    AI 将根据以下信息重新生成该功能点的用例，其他功能点不受影响。两项至少填写一项。
+                </p>
+                <div class="regenerate-field">
+                    <div class="regenerate-field-label">
+                        <span>补充功能点需求</span>
+                        <el-tag size="small" type="info">可选</el-tag>
+                    </div>
+                    <el-input
+                        v-model="regenerateFunctionRequirement"
+                        type="textarea"
+                        :rows="6"
+                        placeholder="补充该功能点更细节的业务规则、验收要点等..."
+                        maxlength="20000"
+                        show-word-limit
+                    />
+                </div>
+                <div class="regenerate-field">
+                    <div class="regenerate-field-label">
+                        <span>调整意见</span>
+                        <el-tag size="small" type="info">可选</el-tag>
+                    </div>
+                    <el-input
+                        v-model="regenerateFunctionAdjustment"
+                        type="textarea"
+                        :rows="4"
+                        placeholder="对已有用例的改进要求，如：补充更多异常场景、步骤要更详细..."
+                        maxlength="2000"
+                        show-word-limit
+                    />
+                </div>
+                <div class="regenerate-options">
+                    <el-switch v-model="regenerateFunctionUseThinking" active-text="思考模式" inactive-text="" />
+                </div>
+            </div>
+            <div v-if="regeneratingFunction || regenerateFunctionStreamContent" class="regenerate-stream">
+                <div class="regenerate-stream-header">
+                    <span v-if="regeneratingFunction" class="regenerate-status">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span style="margin-left: 8px;">AI 正在重新生成「{{ regenerateFunctionName }}」功能点...</span>
+                        <span class="generating-timer">{{ regenerateFunctionElapsedTime }}s</span>
+                    </span>
+                    <span v-else class="regenerate-status regenerate-done">
+                        <el-icon><CircleCheck /></el-icon>
+                        功能点「{{ regenerateFunctionName }}」已更新
+                    </span>
+                </div>
+                <div class="stream-output regenerate-output" ref="regenerateFunctionStreamRef">
+                    <pre class="stream-text">{{ regenerateFunctionStreamContent }}</pre>
+                </div>
+            </div>
+            <template #footer>
+                <div class="regenerate-footer">
+                    <el-button @click="showRegenerateFunctionDialog = false" :disabled="regeneratingFunction">
+                        {{ regenerateFunctionStreamContent && !regeneratingFunction ? '关闭' : '取消' }}
+                    </el-button>
+                    <el-button
+                        v-if="!regenerateFunctionStreamContent || regeneratingFunction"
+                        type="primary"
+                        :loading="regeneratingFunction"
+                        :disabled="!canSubmitRegenerateFunction"
+                        @click="handleRegenerateFunction"
+                    >
+                        {{ regeneratingFunction ? '正在重新生成...' : '开始重新生成' }}
+                    </el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <!-- 用例编辑弹窗（编辑整条用例：标题、前置条件、测试步骤、预期结果） -->
+        <el-dialog
+            v-model="showCaseEditDialog"
+            title="编辑用例"
+            width="640px"
+            :close-on-click-modal="!savingCaseEdit"
+            @close="showCaseEditDialog = false"
+        >
+            <el-form label-width="90px" label-position="top">
+                <el-form-item label="用例标题">
+                    <el-input v-model="caseEditForm.name" placeholder="用例名称" maxlength="500" show-word-limit />
+                </el-form-item>
+                <el-form-item label="优先级">
+                    <el-select v-model="caseEditForm.priority" placeholder="P0/P1/P2" style="width: 120px">
+                        <el-option label="P0" value="P0" />
+                        <el-option label="P1" value="P1" />
+                        <el-option label="P2" value="P2" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="前置条件">
+                    <el-input v-model="caseEditForm.precondition" type="textarea" :rows="3" placeholder="前置条件" maxlength="2000" show-word-limit />
+                </el-form-item>
+                <el-form-item label="测试步骤">
+                    <el-input v-model="caseEditForm.steps" type="textarea" :rows="5" placeholder="1. 步骤一&#10;2. 步骤二" maxlength="5000" show-word-limit />
+                </el-form-item>
+                <el-form-item label="预期结果">
+                    <el-input v-model="caseEditForm.expected" type="textarea" :rows="3" placeholder="预期结果" maxlength="2000" show-word-limit />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showCaseEditDialog = false" :disabled="savingCaseEdit">取消</el-button>
+                <el-button type="primary" :loading="savingCaseEdit" @click="saveCaseEdit">保存</el-button>
+            </template>
+        </el-dialog>
+
         <!-- 用例评审弹窗 -->
         <el-dialog
             v-model="showReviewDialog"
@@ -710,6 +877,8 @@ import {
 import {
     aiGenerateTestcaseStream,
     aiRegenerateModuleStream,
+    aiRegenerateFunctionStream,
+    aiUpdateCase,
     aiReviewTestcaseStream,
     aiApplyReviewStream,
     getAiTestcaseGenerations,
@@ -763,6 +932,31 @@ const regenerateStreamRef = ref(null)
 const regenerateElapsedTime = ref(0)
 let regenerateTimerInterval = null
 
+// 功能点调整
+const showRegenerateFunctionDialog = ref(false)
+const regenerateFunctionModuleName = ref('')
+const regenerateFunctionName = ref('')
+const regenerateFunctionRequirement = ref('')
+const regenerateFunctionAdjustment = ref('')
+const regenerateFunctionUseThinking = ref(false)
+const regeneratingFunction = ref(false)
+const regenerateFunctionStreamContent = ref('')
+const regenerateFunctionStreamRef = ref(null)
+const regenerateFunctionElapsedTime = ref(0)
+let regenerateFunctionTimerInterval = null
+
+// 用例编辑（悬停编辑按钮 → 弹窗编辑整条用例）
+const showCaseEditDialog = ref(false)
+const caseEditForm = ref({
+    name: '',
+    priority: 'P1',
+    precondition: '',
+    steps: '',
+    expected: ''
+})
+const caseEditMeta = ref({ moduleName: '', functionName: '', caseIndex: 0 })
+const savingCaseEdit = ref(false)
+
 // 用例评审
 const showReviewDialog = ref(false)
 const reviewing = ref(false)
@@ -798,7 +992,7 @@ const jsonPreview = computed(() => {
     return JSON.stringify(currentResult.value.data, null, 2)
 })
 
-// 构建树形数据
+// 构建树形数据（用例节点附带 moduleName/functionName/caseIndex 供编辑接口使用）
 function buildTreeData(data) {
     const modules = data.modules || []
     return modules.map(mod => ({
@@ -807,13 +1001,16 @@ function buildTreeData(data) {
         children: (mod.functions || []).map(func => ({
             label: func.name,
             nodeType: 'function',
-            children: (func.cases || []).map(c => ({
+            children: (func.cases || []).map((c, caseIndex) => ({
                 label: c.name,
                 nodeType: 'case',
                 priority: c.priority,
                 precondition: c.precondition,
                 steps: c.steps,
-                expected: c.expected
+                expected: c.expected,
+                moduleName: mod.name,
+                functionName: func.name,
+                caseIndex
             }))
         }))
     }))
@@ -1094,6 +1291,150 @@ function stopRegenerateTimer() {
         clearInterval(regenerateTimerInterval)
         regenerateTimerInterval = null
     }
+}
+
+// ============ 用例编辑（悬停编辑按钮） ============
+function openCaseEditDialog(data) {
+    if (!currentResult.value?.id) return
+    caseEditForm.value = {
+        name: data.label || '',
+        priority: data.priority || 'P1',
+        precondition: data.precondition || '',
+        steps: data.steps || '',
+        expected: data.expected || ''
+    }
+    caseEditMeta.value = {
+        moduleName: data.moduleName || '',
+        functionName: data.functionName || '',
+        caseIndex: data.caseIndex ?? 0
+    }
+    showCaseEditDialog.value = true
+}
+
+async function saveCaseEdit() {
+    if (!currentResult.value?.id) return
+    const payload = {
+        record_id: currentResult.value.id,
+        module_name: caseEditMeta.value.moduleName,
+        function_name: caseEditMeta.value.functionName,
+        case_index: caseEditMeta.value.caseIndex,
+        name: caseEditForm.value.name.trim(),
+        priority: caseEditForm.value.priority,
+        precondition: caseEditForm.value.precondition || '',
+        steps: caseEditForm.value.steps || '',
+        expected: caseEditForm.value.expected || ''
+    }
+    if (!payload.name) {
+        ElMessage.warning('请填写用例标题')
+        return
+    }
+    savingCaseEdit.value = true
+    try {
+        const res = await aiUpdateCase(payload)
+        currentResult.value = {
+            ...currentResult.value,
+            data: res.data,
+            module_count: res.module_count,
+            case_count: res.case_count
+        }
+        showCaseEditDialog.value = false
+        ElMessage.success('用例已保存')
+    } catch (e) {
+        ElMessage.error(e?.response?.data?.error || e?.message || '保存失败')
+    } finally {
+        savingCaseEdit.value = false
+    }
+}
+
+// ============ 功能点调整 ============
+function getModuleNameForNode(node) {
+    return node?.parent?.data?.label ?? ''
+}
+
+function openRegenerateFunctionDialog(moduleName, functionName) {
+    if (!currentResult.value?.id) {
+        ElMessage.warning('请先查看一条用例记录')
+        return
+    }
+    regenerateFunctionModuleName.value = moduleName
+    regenerateFunctionName.value = functionName
+    regenerateFunctionRequirement.value = ''
+    regenerateFunctionAdjustment.value = ''
+    regenerateFunctionStreamContent.value = ''
+    regenerateFunctionElapsedTime.value = 0
+    showRegenerateFunctionDialog.value = true
+}
+
+function handleRegenerateFunctionDialogClose() {
+    if (regeneratingFunction.value) return
+    regenerateFunctionStreamContent.value = ''
+    regenerateFunctionRequirement.value = ''
+    regenerateFunctionAdjustment.value = ''
+}
+
+const canSubmitRegenerateFunction = computed(() => {
+    return regenerateFunctionRequirement.value.trim() || regenerateFunctionAdjustment.value.trim()
+})
+
+function stopRegenerateFunctionTimer() {
+    if (regenerateFunctionTimerInterval) {
+        clearInterval(regenerateFunctionTimerInterval)
+        regenerateFunctionTimerInterval = null
+    }
+}
+
+async function handleRegenerateFunction() {
+    if (!canSubmitRegenerateFunction.value) {
+        ElMessage.warning('请至少填写「补充功能点需求」或「调整意见」中的一项')
+        return
+    }
+    regeneratingFunction.value = true
+    regenerateFunctionStreamContent.value = ''
+    regenerateFunctionElapsedTime.value = 0
+    regenerateFunctionTimerInterval = setInterval(() => {
+        regenerateFunctionElapsedTime.value++
+    }, 1000)
+
+    await aiRegenerateFunctionStream(
+        {
+            record_id: currentResult.value.id,
+            module_name: regenerateFunctionModuleName.value,
+            function_name: regenerateFunctionName.value,
+            function_requirement: regenerateFunctionRequirement.value.trim(),
+            adjustment: regenerateFunctionAdjustment.value.trim(),
+            use_thinking: regenerateFunctionUseThinking.value
+        },
+        (content) => {
+            regenerateFunctionStreamContent.value += content
+            nextTick(() => {
+                if (regenerateFunctionStreamRef.value) {
+                    regenerateFunctionStreamRef.value.scrollTop = regenerateFunctionStreamRef.value.scrollHeight
+                }
+            })
+        },
+        (result) => {
+            stopRegenerateFunctionTimer()
+            regeneratingFunction.value = false
+            currentResult.value = {
+                ...currentResult.value,
+                data: result.data,
+                module_count: result.module_count,
+                case_count: result.case_count,
+                usage: {
+                    ...currentResult.value.usage,
+                    total_tokens: (currentResult.value.usage?.total_tokens || 0) + (result.usage?.total_tokens || 0)
+                }
+            }
+            ElMessage.success(`功能点「${regenerateFunctionName.value}」已重新生成，共 ${result.case_count} 条用例`)
+            loadHistory()
+        },
+        (error) => {
+            stopRegenerateFunctionTimer()
+            regeneratingFunction.value = false
+            ElMessage.error(`功能点调整失败：${error}`)
+        },
+        () => {}
+    )
 }
 
 // ============ 用例评审 ============
@@ -1778,7 +2119,11 @@ onUnmounted(() => {
 }
 
 :deep(.el-tree-node__content) {
-    height: 32px;
+    min-height: 32px;
+    height: auto;
+    align-items: flex-start;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 .tree-node {
@@ -1786,6 +2131,61 @@ onUnmounted(() => {
     align-items: center;
     gap: 8px;
     font-size: 13px;
+    flex-wrap: wrap;
+}
+
+.tree-node.tree-node-case {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.tree-node-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* 用例行：悬停时显示编辑按钮 */
+.tree-node-row-case .case-edit-btn {
+    opacity: 0;
+    margin-left: 4px;
+    transition: opacity 0.15s ease;
+}
+.tree-node-row-case:hover .case-edit-btn {
+    opacity: 1;
+}
+
+/* 用例同一层：标题后紧跟的前置条件、测试步骤、预期结果（不增加树层级） */
+.tree-case-inline {
+    font-size: 12px;
+    color: #606266;
+    line-height: 1.5;
+    padding-left: 12px;
+    border-left: 2px solid #e4e7ed;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.tree-case-inline .case-inline-item {
+    display: block;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.tree-case-inline .case-inline-item:last-child {
+    margin-bottom: 0;
+}
+
+.tree-case-inline .case-inline-item em {
+    color: #909399;
+    font-style: normal;
+    margin-right: 4px;
+}
+
+.tree-case-inline .case-inline-steps {
+    white-space: pre-line;
 }
 
 .tree-label {
@@ -1888,8 +2288,17 @@ onUnmounted(() => {
     transition: opacity 0.2s ease;
 }
 
-:deep(.el-tree-node__content:hover) .module-adjust-btn {
+:deep(.el-tree-node__content:hover) .module-adjust-btn,
+:deep(.el-tree-node__content:hover) .function-adjust-btn {
     opacity: 1;
+}
+
+.function-adjust-btn {
+    margin-left: 8px;
+    padding: 2px 6px !important;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
 /* 模块调整弹窗 */

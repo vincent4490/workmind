@@ -14,6 +14,7 @@ from .prompts import (
     get_testcase_from_structure_prompt,
     get_module_regenerate_prompt,
     get_module_regenerate_prompt_multimodal,
+    get_function_regenerate_prompt,
     get_review_prompt,
     get_review_prompt_multimodal,
     get_apply_review_prompt,
@@ -413,6 +414,58 @@ class KimiClient:
 
         except Exception as e:
             logger.error(f"[Kimi] 模块重新生成流式 API 调用失败: {e}")
+            yield {"type": "error", "error": str(e)}
+
+    async def regenerate_function_stream_async(
+        self,
+        module_name: str,
+        function_name: str,
+        existing_function_json: dict,
+        function_requirement: str = '',
+        adjustment: str = '',
+        requirement: str = '',
+        use_thinking: bool = False
+    ):
+        """
+        功能点级重新生成 — 异步流式。只重新生成该功能点的 cases。
+        """
+        messages = get_function_regenerate_prompt(
+            module_name=module_name,
+            function_name=function_name,
+            existing_function_json=existing_function_json,
+            function_requirement=function_requirement,
+            adjustment=adjustment,
+            requirement=requirement
+        )
+        if use_thinking:
+            extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
+        else:
+            extra_body = {"thinking": {"type": "disabled"}}
+        try:
+            stream = await self.async_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                extra_body=extra_body,
+                stream=True,
+                stream_options={"include_usage": True}
+            )
+            full_content = ""
+            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            async for chunk in stream:
+                if chunk.usage:
+                    usage = {
+                        "prompt_tokens": chunk.usage.prompt_tokens or 0,
+                        "completion_tokens": chunk.usage.completion_tokens or 0,
+                        "total_tokens": chunk.usage.total_tokens or 0,
+                    }
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        full_content += delta.content
+                        yield {"type": "chunk", "content": delta.content}
+            yield {"type": "done", "content": full_content, "usage": usage}
+        except Exception as e:
+            logger.error(f"[Kimi] 功能点重新生成流式 API 调用失败: {e}")
             yield {"type": "error", "error": str(e)}
 
     async def review_testcases_stream_async(

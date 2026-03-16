@@ -118,7 +118,7 @@
         <el-pagination
             v-show="total > 0"
             :current-page="currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 50]"
             :page-size="pageSize"
             :total="total"
             layout="total, sizes, prev, pager, next, jumper"
@@ -239,7 +239,8 @@ const taskFormData = ref({
 })
 
 const taskRules = {
-    name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }]
+    name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
+    requirement_name: [{ required: true, message: '请选择所属需求', trigger: 'change' }]
 }
 
 const searchForm = ref({
@@ -260,11 +261,12 @@ const getDefaultForm = () => ({
     task_time: []
 })
 
+/** 需求名称下拉（与需求管理、用例管理一致：page_size 2000，保证能搜到全部需求） */
 const loadRequirementOptions = () => {
-    getFunctionalRequirements({ page: 1, page_size: 1000 }).then(res => {
+    getFunctionalRequirements({ page: 1, page_size: 2000 }).then(res => {
         if (res.code === 0) {
-            const list = res.data.results || res.data || []
-            requirementOptions.value = list.map(item => item.name).filter(Boolean)
+            const list = res.data?.results || res.data || []
+            requirementOptions.value = Array.isArray(list) ? list.map(item => item.name).filter(Boolean) : []
         } else {
             requirementOptions.value = []
         }

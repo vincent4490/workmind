@@ -248,7 +248,7 @@ class FunctionalTestCaseViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(priority=priority)
         if source:
             queryset = queryset.filter(source=source)
-        return queryset.order_by('-updated_at')
+        return queryset.order_by('created_at')  # 正序：与导入顺序一致
     
     def list(self, request, *args, **kwargs):
         """获取功能测试用例列表"""
@@ -457,7 +457,7 @@ class FunctionalTestCaseViewSet(viewsets.ModelViewSet):
             if source:
                 queryset = queryset.filter(source=source)
 
-            cases = queryset.order_by('-updated_at')
+            cases = queryset.order_by('created_at')
             
             if not cases.exists():
                 return Response({
@@ -699,7 +699,7 @@ def functional_case_export(request):
         if source:
             queryset = queryset.filter(source=source)
 
-        cases = queryset.order_by('-updated_at')
+        cases = queryset.order_by('created_at')
         
         if not cases.exists():
             return Response({

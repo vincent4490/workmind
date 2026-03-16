@@ -190,7 +190,7 @@
         <el-pagination
             v-show="total > 0"
             :current-page="currentPage"
-            :page-sizes="[10, 20, 30, 50, 100, 200, 500, 2000]"
+            :page-sizes="[10, 20, 50]"
             :page-size="pageSize"
             :total="total"
             layout="total, sizes, prev, pager, next, jumper"
@@ -413,6 +413,9 @@ const userListLoading = ref(false)
 const requirementRules = {
     name: [
         { required: true, message: '请输入需求名称', trigger: 'blur' }
+    ],
+    test_team: [
+        { required: true, message: '请选择测试团队', trigger: 'change' }
     ]
 }
 

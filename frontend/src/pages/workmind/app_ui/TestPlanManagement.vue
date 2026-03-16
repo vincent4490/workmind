@@ -81,7 +81,7 @@
         <el-pagination
             v-show="total > 0"
             :current-page="currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 50]"
             :page-size="pageSize"
             :total="total"
             layout="total, sizes, prev, pager, next, jumper"

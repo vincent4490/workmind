@@ -78,3 +78,16 @@ class RegenerateModuleRequestSerializer(serializers.Serializer):
         if not module_requirement and not adjustment:
             raise serializers.ValidationError('请至少填写「补充需求」或「调整意见」中的一项')
         return attrs
+
+
+class UpdateCaseRequestSerializer(serializers.Serializer):
+    """单条用例编辑请求序列化器"""
+    record_id = serializers.IntegerField(required=True, help_text="生成记录 ID")
+    module_name = serializers.CharField(required=True, help_text="模块名称")
+    function_name = serializers.CharField(required=True, help_text="功能点名称")
+    case_index = serializers.IntegerField(required=True, min_value=0, help_text="用例在功能下的下标")
+    name = serializers.CharField(required=True, allow_blank=False, max_length=500, help_text="用例标题")
+    priority = serializers.CharField(required=False, default="P1", max_length=10, help_text="优先级 P0/P1/P2")
+    precondition = serializers.CharField(required=False, default="", allow_blank=True, max_length=2000, help_text="前置条件")
+    steps = serializers.CharField(required=False, default="", allow_blank=True, max_length=5000, help_text="测试步骤")
+    expected = serializers.CharField(required=False, default="", allow_blank=True, max_length=2000, help_text="预期结果")

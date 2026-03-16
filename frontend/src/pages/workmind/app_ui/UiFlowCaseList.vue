@@ -94,7 +94,7 @@
         <el-pagination
             v-show="caseTotal > 0"
             :current-page="caseCurrentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 50]"
             :page-size="casePageSize"
             :total="caseTotal"
             layout="total, sizes, prev, pager, next, jumper"
@@ -183,7 +183,7 @@
             <el-pagination
                 v-show="executionData.count !== 0"
                 :current-page="executionCurrentPage"
-                :page-sizes="[10, 20, 30, 40]"
+                :page-sizes="[10, 20, 50]"
                 :page-size="executionPageSize"
                 :total="executionData.count"
                 layout="total, sizes, prev, pager, next, jumper"

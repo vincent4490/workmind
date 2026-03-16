@@ -19,6 +19,7 @@ from .serializers import (
     AiTestcaseGenerationSerializer,
     GenerateRequestSerializer,
     RegenerateModuleRequestSerializer,
+    UpdateCaseRequestSerializer,
 )
 from .services.kimi_client import KimiClient
 from .services.xmind_builder import XMindBuilder
@@ -82,6 +83,67 @@ def _merge_module(result_json: dict, module_name: str, new_module_data: dict) ->
             merged["modules"][i] = new_module_data
             return merged
 
+    raise ValueError(f"模块 '{module_name}' 不存在于当前用例中")
+
+
+def _merge_function(result_json: dict, module_name: str, function_name: str, new_function_data: dict) -> dict:
+    """
+    将新生成的功能点数据替换到 result_json 的指定模块中。
+
+    Args:
+        result_json: DB 中已有的完整 JSON
+        module_name: 所属模块名
+        function_name: 要替换的功能点名
+        new_function_data: AI 新生成的单功能点 JSON (含 name, cases)
+
+    Returns:
+        合并后的完整 JSON（新 dict，不修改原始数据）
+    """
+    merged = copy.deepcopy(result_json)
+    for mod in merged["modules"]:
+        if mod["name"] != module_name:
+            continue
+        for j, func in enumerate(mod["functions"]):
+            if func["name"] == function_name:
+                mod["functions"][j] = new_function_data
+                return merged
+        raise ValueError(f"功能 '{function_name}' 在模块 '{module_name}' 中不存在")
+    raise ValueError(f"模块 '{module_name}' 不存在于当前用例中")
+
+
+def _merge_case(
+    result_json: dict,
+    module_name: str,
+    function_name: str,
+    case_index: int,
+    new_case_data: dict,
+) -> dict:
+    """
+    将指定功能下的某条用例替换为编辑后的数据。
+
+    Args:
+        result_json: DB 中已有的完整 JSON
+        module_name: 所属模块名
+        function_name: 所属功能点名
+        case_index: 用例在 functions[].cases 中的下标
+        new_case_data: 单条用例 JSON (含 name, priority, precondition, steps, expected)
+
+    Returns:
+        合并后的完整 JSON（新 dict）
+    """
+    merged = copy.deepcopy(result_json)
+    for mod in merged["modules"]:
+        if mod["name"] != module_name:
+            continue
+        for func in mod["functions"]:
+            if func["name"] != function_name:
+                continue
+            cases = func.get("cases") or []
+            if case_index < 0 or case_index >= len(cases):
+                raise ValueError(f"用例下标 {case_index} 越界（共 {len(cases)} 条）")
+            cases[case_index] = {**cases[case_index], **new_case_data}
+            return merged
+        raise ValueError(f"功能 '{function_name}' 在模块 '{module_name}' 中不存在")
     raise ValueError(f"模块 '{module_name}' 不存在于当前用例中")
 
 
@@ -779,8 +841,221 @@ async def regenerate_module_stream_view(request):
     response['Content-Encoding'] = 'identity'
     return _add_cors_headers(response)
 
-# Django 4.2 兼容：直接设置属性而非使用 @csrf_exempt 装饰器
-regenerate_module_stream_view.csrf_exempt = True
+
+async def regenerate_function_stream_view(request):
+    """
+    SSE 流式功能点级重新生成测试用例
+
+    POST /api/ai_testcase/regenerate-function-stream/
+    {
+        "record_id": 1,
+        "module_name": "落地页优化",
+        "function_name": "落地页视觉重设计",
+        "function_requirement": "",
+        "adjustment": "补充更多边界值用例",
+        "use_thinking": false
+    }
+    """
+    if request.method == 'OPTIONS':
+        return _add_cors_headers(HttpResponse(status=200))
+    if request.method != 'POST':
+        return _add_cors_headers(HttpResponse('Method not allowed', status=405))
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return _add_cors_headers(HttpResponse('Invalid JSON', status=400))
+
+    record_id = body.get('record_id')
+    module_name = (body.get('module_name') or '').strip()
+    function_name = (body.get('function_name') or '').strip()
+    function_requirement = (body.get('function_requirement') or '').strip()
+    adjustment = (body.get('adjustment') or '').strip()
+    use_thinking = body.get('use_thinking', False)
+
+    if not record_id:
+        return _add_cors_headers(HttpResponse('缺少 record_id', status=400))
+    if not module_name:
+        return _add_cors_headers(HttpResponse('缺少 module_name', status=400))
+    if not function_name:
+        return _add_cors_headers(HttpResponse('缺少 function_name', status=400))
+    if not function_requirement and not adjustment:
+        return _add_cors_headers(HttpResponse('请至少填写「补充需求」或「调整意见」中的一项', status=400))
+
+    from asgiref.sync import sync_to_async
+
+    try:
+        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id)
+    except AiTestcaseGeneration.DoesNotExist:
+        return _add_cors_headers(HttpResponse(f'记录不存在: id={record_id}', status=404))
+
+    if record.status != 'success':
+        return _add_cors_headers(HttpResponse(
+            f'该记录状态为 {record.status}，只有 success 状态的记录才能进行功能点重新生成', status=400
+        ))
+    if not record.result_json:
+        return _add_cors_headers(HttpResponse('该记录没有用例数据', status=400))
+
+    existing_modules = record.result_json.get('modules', [])
+    mod = next((m for m in existing_modules if m.get('name') == module_name), None)
+    if not mod:
+        return _add_cors_headers(HttpResponse(
+            json.dumps({'error': f"模块 '{module_name}' 不存在", 'available_modules': [m['name'] for m in existing_modules]},
+                      ensure_ascii=False), status=400, content_type='application/json'
+        ))
+    existing_function = next((f for f in mod.get('functions', []) if f.get('name') == function_name), None)
+    if not existing_function:
+        return _add_cors_headers(HttpResponse(
+            json.dumps({'error': f"功能 '{function_name}' 在模块 '{module_name}' 中不存在"},
+                      ensure_ascii=False), status=400, content_type='application/json'
+        ))
+
+    async def event_stream():
+        record.status = 'generating'
+        await sync_to_async(record.save)(update_fields=['status'])
+
+        yield f"data: {json.dumps({'type': 'start', 'record_id': record.id, 'module_name': module_name, 'function_name': function_name}, ensure_ascii=False)}\n\n"
+
+        try:
+            client = KimiClient()
+            gen = client.regenerate_function_stream_async(
+                module_name=module_name,
+                function_name=function_name,
+                existing_function_json=existing_function,
+                function_requirement=function_requirement,
+                adjustment=adjustment,
+                requirement=record.requirement or '',
+                use_thinking=use_thinking,
+            )
+            async for event in gen:
+                if event['type'] == 'chunk':
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': event['content']}, ensure_ascii=False)}\n\n"
+                elif event['type'] == 'done':
+                    full_content = event['content']
+                    usage = event['usage']
+                    function_data = KimiClient._parse_json(full_content)
+                    if function_data is None:
+                        record.status = 'success'
+                        await sync_to_async(record.save)(update_fields=['status'])
+                        yield f"data: {json.dumps({'type': 'error', 'error': 'AI 返回的内容无法解析为 JSON', 'record_id': record.id}, ensure_ascii=False)}\n\n"
+                        return
+                    if 'cases' not in function_data:
+                        record.status = 'success'
+                        await sync_to_async(record.save)(update_fields=['status'])
+                        yield f"data: {json.dumps({'type': 'error', 'error': 'AI 返回的 JSON 缺少 cases 字段', 'record_id': record.id}, ensure_ascii=False)}\n\n"
+                        return
+                    function_data['name'] = function_name
+                    try:
+                        merged_json = _merge_function(record.result_json, module_name, function_name, function_data)
+                    except ValueError as e:
+                        record.status = 'success'
+                        await sync_to_async(record.save)(update_fields=['status'])
+                        yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'record_id': record.id}, ensure_ascii=False)}\n\n"
+                        return
+                    record.result_json = merged_json
+                    record.count_stats()
+                    record.prompt_tokens += usage.get('prompt_tokens', 0)
+                    record.completion_tokens += usage.get('completion_tokens', 0)
+                    record.total_tokens += usage.get('total_tokens', 0)
+                    title = merged_json.get('title', f'testcase_{record.id}')
+                    xmind_path = os.path.join(XMIND_OUTPUT_DIR, f"{title}.xmind")
+                    await sync_to_async(XMindBuilder.build_and_save)(merged_json, xmind_path)
+                    record.xmind_file = xmind_path
+                    record.status = 'success'
+                    await sync_to_async(record.save)()
+                    yield f"data: {json.dumps({'type': 'done', 'record_id': record.id, 'module_name': module_name, 'function_name': function_name, 'module_count': record.module_count, 'case_count': record.case_count, 'usage': usage, 'data': merged_json}, ensure_ascii=False)}\n\n"
+                elif event['type'] == 'error':
+                    record.status = 'success'
+                    await sync_to_async(record.save)(update_fields=['status'])
+                    yield f"data: {json.dumps({'type': 'error', 'error': event['error'], 'record_id': record.id}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            logger.exception("[AI用例] 功能点重新生成异常: %s", e)
+            record.status = 'success'
+            await sync_to_async(record.save)(update_fields=['status'])
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e), 'record_id': record.id}, ensure_ascii=False)}\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    response['Content-Encoding'] = 'identity'
+    return _add_cors_headers(response)
+
+
+def update_case_view(request):
+    """
+    编辑单条用例（标题、前置条件、测试步骤、预期结果等），写回 result_json 并重建 XMind。
+
+    POST /api/ai_testcase/update-case/
+    Body: {
+        "record_id": 1,
+        "module_name": "模块名",
+        "function_name": "功能点名",
+        "case_index": 0,
+        "name": "用例标题",
+        "priority": "P0",
+        "precondition": "前置条件",
+        "steps": "测试步骤",
+        "expected": "预期结果"
+    }
+    """
+    if request.method == 'OPTIONS':
+        return _add_cors_headers(HttpResponse(status=200))
+    if request.method != 'POST':
+        return _add_cors_headers(
+            Response({'error': '仅支持 POST'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        )
+    try:
+        body = json.loads(request.body) if request.body else {}
+        ser = UpdateCaseRequestSerializer(data=body)
+        if not ser.is_valid():
+            return _add_cors_headers(Response(ser.errors, status=status.HTTP_400_BAD_REQUEST))
+        data = ser.validated_data
+        record_id = data['record_id']
+        module_name = data['module_name']
+        function_name = data['function_name']
+        case_index = data['case_index']
+        new_case = {
+            'name': data['name'],
+            'priority': data.get('priority') or 'P1',
+            'precondition': data.get('precondition') or '',
+            'steps': data.get('steps') or '',
+            'expected': data.get('expected') or '',
+        }
+        record = AiTestcaseGeneration.objects.get(id=record_id)
+        if not record.result_json or not record.result_json.get('modules'):
+            return _add_cors_headers(Response(
+                {'error': '该记录无有效用例数据'},
+                status=status.HTTP_400_BAD_REQUEST
+            ))
+        merged_json = _merge_case(
+            record.result_json,
+            module_name,
+            function_name,
+            case_index,
+            new_case,
+        )
+        record.result_json = merged_json
+        record.count_stats()
+        title = merged_json.get('title', f'testcase_{record.id}')
+        xmind_path = os.path.join(XMIND_OUTPUT_DIR, f'{title}.xmind')
+        XMindBuilder.build_and_save(merged_json, xmind_path)
+        record.xmind_file = xmind_path
+        record.save(update_fields=['result_json', 'module_count', 'case_count', 'xmind_file'])
+        return _add_cors_headers(Response({
+            'data': merged_json,
+            'module_count': record.module_count,
+            'case_count': record.case_count,
+        }, status=status.HTTP_200_OK))
+    except AiTestcaseGeneration.DoesNotExist:
+        return _add_cors_headers(Response({'error': '记录不存在'}, status=status.HTTP_404_NOT_FOUND))
+    except ValueError as e:
+        return _add_cors_headers(Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST))
+    except Exception as e:
+        logger.exception("[AI用例] 更新用例异常: %s", e)
+        return _add_cors_headers(Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR))
+
+
+update_case_view.csrf_exempt = True
 
 
 async def review_stream_view(request):

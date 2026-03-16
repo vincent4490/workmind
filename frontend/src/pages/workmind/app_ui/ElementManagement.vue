@@ -164,7 +164,7 @@
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
         :total="total"
-        :page-sizes="[10, 20, 50, 100]"
+        :page-sizes="[10, 20, 50]"
         layout="total, sizes, prev, pager, next, jumper"
         @current-change="loadElements"
         @size-change="loadElements"

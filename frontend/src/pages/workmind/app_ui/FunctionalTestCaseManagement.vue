@@ -32,7 +32,7 @@
                     type="info"
                     :icon="Refresh"
                     :loading="loading"
-                    @click="loadCases"
+                    @click="() => { loadRequirementOptions(); loadCases() }"
                 >
                     刷新
                 </el-button>
@@ -142,7 +142,7 @@
         <el-pagination
             v-show="total > 0"
             :current-page="currentPage"
-            :page-sizes="[10, 20, 30, 50]"
+            :page-sizes="[10, 20, 50]"
             :page-size="pageSize"
             :total="total"
             layout="total, sizes, prev, pager, next, jumper"
@@ -436,6 +436,7 @@ const caseFormData = ref({
 })
 
 const caseRules = {
+    title: [{ required: true, message: '请选择需求名称', trigger: 'change' }],
     name: [{ required: true, message: '请输入用例名称', trigger: 'blur' }],
     priority: [{ required: true, message: '请选择优先级', trigger: 'change' }]
 }
@@ -484,12 +485,15 @@ const loadRequirements = () => {
     }).catch(() => { requirementList.value = [] })
 }
 
-/** 加载需求名称下拉（搜索用，与任务管理一致） */
+/** 加载需求名称下拉（与需求管理一致：同一接口、同一解析、page_size 2000，保证能搜到全部需求如「助农贷款数字人视频生成系统」） */
 const loadRequirementOptions = () => {
-    getFunctionalRequirements({ page: 1, page_size: 1000 }).then(res => {
-        const list = res.results || res.data?.results || res.data || []
-        const arr = Array.isArray(list) ? list : []
-        requirementOptions.value = arr.map(item => item.name).filter(Boolean)
+    getFunctionalRequirements({ page: 1, page_size: 2000 }).then(res => {
+        if (res && res.code === 0) {
+            const list = res.data?.results || res.data || []
+            requirementOptions.value = Array.isArray(list) ? list.map(item => item.name).filter(Boolean) : []
+        } else {
+            requirementOptions.value = []
+        }
     }).catch(() => { requirementOptions.value = [] })
 }
 

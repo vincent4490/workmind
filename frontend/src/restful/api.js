@@ -574,6 +574,55 @@ export const aiRegenerateModuleStream = async (data, onChunk, onDone, onError, o
     }
 };
 
+/** 流式功能点重新生成（SSE） */
+export const aiRegenerateFunctionStream = async (data, onChunk, onDone, onError, onStart) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    try {
+        const response = await fetch(sseBase + '/api/ai_testcase/regenerate-function-stream/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        if (event.type === 'start' && onStart) onStart(event);
+                        else if (event.type === 'chunk') onChunk(event.content);
+                        else if (event.type === 'done') onDone(event);
+                        else if (event.type === 'error') onError(event.error);
+                    } catch (e) {}
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};
+
+/** 编辑单条用例（标题、前置条件、测试步骤、预期结果），写回记录并重建 XMind */
+export const aiUpdateCase = (data) => {
+    return axios.post('/api/ai_testcase/update-case/', data).then(res => res.data);
+};
+
 // 流式用例评审（SSE）
 export const aiReviewTestcaseStream = async (data, onChunk, onDone, onError, onStart) => {
     const token = (await import('../store/state')).default.token;
