@@ -336,8 +336,10 @@ LOGGING = {
 CELERY_BROKER_URL = MQ_URL  # 消息队列地址
 CELERY_RESULT_BACKEND = "django-db"  # celery结果存储到数据库中
 CELERY_TIMEZONE = TIME_ZONE  # celery 时区问题
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"  # Backend数据库
-DJANGO_CELERY_BEAT_TZ_AWARE = False  # 时区设置
+# 使用自定义调度器，避免“小时窗口”优化导致 crontab 任务被误排除不触发
+CELERY_BEAT_SCHEDULER = "backend.beat_scheduler.WorkmindDatabaseScheduler"
+# True 时 Crontab 的 timezone（如 Asia/Shanghai）才生效，否则 USE_TZ=False 下可能不按点触发（见 django-celery-beat#798）
+DJANGO_CELERY_BEAT_TZ_AWARE = True
 CELERY_ENABLE_UTC = False  # 时区设置
 
 # 设置请求体的最大大小

@@ -38,12 +38,14 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
     pagination_class = pagination.MyPageNumberPagination
     
     def get_queryset(self):
-        """根据需求名称、测试团队、测试人员、创建时间过滤"""
+        """根据需求名称、测试团队、测试人员、状态、标签、创建时间过滤"""
         name = self.request.query_params.get('name', '').strip()
         requirement_name = self.request.query_params.get('requirement_name', '').strip()
         keyword = name or requirement_name
         test_team = self.request.query_params.get('test_team', '').strip()
         testers = self.request.query_params.get('testers', '').strip()
+        status_val = self.request.query_params.get('status', '').strip()
+        tags_val = self.request.query_params.get('tags', '').strip()
         created_at_after = self.request.query_params.get('created_at_after', '').strip()
         created_at_before = self.request.query_params.get('created_at_before', '').strip()
 
@@ -54,6 +56,10 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(test_team=test_team)
         if testers:
             queryset = queryset.filter(testers__icontains=testers)
+        if status_val:
+            queryset = queryset.filter(status=status_val)
+        if tags_val:
+            queryset = queryset.filter(tags__icontains=tags_val)
         if created_at_after:
             queryset = queryset.filter(created_at__date__gte=created_at_after)
         if created_at_before:
@@ -82,6 +88,36 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
             'msg': 'success',
             'data': options
         })
+
+    @action(detail=False, methods=['get'], url_path='status-options')
+    def status_options(self, request):
+        """返回所有出现过的状态（用于筛选下拉），strip 后去重避免多个「未开始」"""
+        values = (
+            FunctionalRequirement.objects.all()
+            .values_list('status', flat=True)
+            .distinct()
+        )
+        options = sorted(set((v or '').strip() for v in values if (v or '').strip()))
+        return Response({'code': 0, 'msg': 'success', 'data': options})
+
+    @action(detail=False, methods=['get'], url_path='tag-options')
+    def tag_options(self, request):
+        """返回所有出现过的标签（tags 为逗号分隔，拆分去重）"""
+        values = (
+            FunctionalRequirement.objects.all()
+            .values_list('tags', flat=True)
+            .distinct()
+        )
+        seen = set()
+        for v in values:
+            if not v:
+                continue
+            for part in str(v).replace('，', ',').split(','):
+                p = part.strip()
+                if p and p not in seen:
+                    seen.add(p)
+        options = sorted(seen)
+        return Response({'code': 0, 'msg': 'success', 'data': options})
 
     @action(detail=False, methods=['get'], url_path='tester-options')
     def tester_options(self, request):

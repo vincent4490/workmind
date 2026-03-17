@@ -1,0 +1,22 @@
+# Celery Worker：执行异步任务（含 beat 定时任务 + 默认队列）
+# 安装：sudo cp /data/workmind/deployment/systemd/celery-worker.service /etc/systemd/system/
+#       sudo systemctl daemon-reload && sudo systemctl enable celery-worker && sudo systemctl start celery-worker
+# 队列：beat_tasks（提测/测试延期标签同步等定时任务）、work_queue（UI 测试等）
+
+[Unit]
+Description=Workmind Celery Worker
+After=network.target mysql.service redis.service mariadb.service rabbitmq-server.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/data/workmind/backend
+Environment="PATH=/data/workmind/backend/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/data/workmind/.env
+ExecStart=/data/workmind/backend/venv/bin/celery -A backend worker -Q beat_tasks,work_queue -l info
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

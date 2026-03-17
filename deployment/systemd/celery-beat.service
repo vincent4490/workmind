@@ -1,0 +1,22 @@
+# Celery Beat：按数据库定时规则到点发送任务到队列
+# 安装：sudo cp /data/workmind/deployment/systemd/celery-beat.service /etc/systemd/system/
+#       sudo systemctl daemon-reload && sudo systemctl enable celery-beat && sudo systemctl start celery-beat
+# 依赖：先执行一次 python manage.py setup_delayed_tag_beat（并确保 RabbitMQ、MySQL、Redis 可用）
+
+[Unit]
+Description=Workmind Celery Beat
+After=network.target mysql.service redis.service mariadb.service rabbitmq-server.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/data/workmind/backend
+Environment="PATH=/data/workmind/backend/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/data/workmind/.env
+ExecStart=/data/workmind/backend/venv/bin/celery -A backend beat -l info
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -265,6 +265,16 @@ export const getFunctionalRequirementTesterOptions = () => {
     return axios.get("/api/ui_test/functional-requirements/tester-options/").then(res => res.data);
 };
 
+/** 需求管理：获取所有状态选项（用于筛选下拉） */
+export const getFunctionalRequirementStatusOptions = () => {
+    return axios.get("/api/ui_test/functional-requirements/status-options/").then(res => res.data);
+};
+
+/** 需求管理：获取所有标签选项（用于筛选下拉） */
+export const getFunctionalRequirementTagOptions = () => {
+    return axios.get("/api/ui_test/functional-requirements/tag-options/").then(res => res.data);
+};
+
 export const createFunctionalRequirement = params => {
     return axios.post("/api/ui_test/functional-requirements/", params).then(res => res.data);
 };

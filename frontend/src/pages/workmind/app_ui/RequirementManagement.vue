@@ -49,7 +49,7 @@
                     @change="loadRequirements"
                 >
                     <el-option
-                        v-for="item in testTeamOptions"
+                        v-for="item in TEST_TEAM_OPTIONS"
                         :key="item"
                         :label="item"
                         :value="item"
@@ -66,9 +66,42 @@
                     @change="loadRequirements"
                 >
                     <el-option
-                        v-for="item in testerOptions"
+                        v-for="u in userList"
+                        :key="u.id"
+                        :label="u.name || u.username"
+                        :value="u.username"
+                    />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="状态">
+                <el-select
+                    v-model="searchForm.status"
+                    placeholder="请选择状态"
+                    clearable
+                    style="width: 120px;"
+                    @change="loadRequirements"
+                >
+                    <el-option
+                        v-for="item in STATUS_OPTIONS"
                         :key="item"
-                        :label="getTesterOptionLabel(item)"
+                        :label="item"
+                        :value="item"
+                    />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="标签">
+                <el-select
+                    v-model="searchForm.tags"
+                    placeholder="请选择标签"
+                    clearable
+                    filterable
+                    style="width: 120px;"
+                    @change="loadRequirements"
+                >
+                    <el-option
+                        v-for="item in TAG_OPTIONS"
+                        :key="item"
+                        :label="item"
                         :value="item"
                     />
                 </el-select>
@@ -251,8 +284,8 @@
                         style="width: 200px;"
                     >
                         <el-option label="正常" value="正常" />
-                        <el-option label="延期" value="延期" />
-                        <el-option label="暂停" value="暂停" />
+                        <el-option label="提测延期" value="提测延期" />
+                        <el-option label="测试延期" value="测试延期" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="备注" prop="remark">
@@ -314,7 +347,7 @@
                         style="width: 100%;"
                     >
                         <el-option
-                            v-for="item in testTeamOptions"
+                            v-for="item in TEST_TEAM_OPTIONS"
                             :key="item"
                             :label="item"
                             :value="item"
@@ -362,8 +395,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
     getFunctionalRequirements,
-    getFunctionalRequirementTestTeamOptions,
-    getFunctionalRequirementTesterOptions,
     createFunctionalRequirement,
     updateFunctionalRequirement,
     deleteFunctionalRequirement,
@@ -379,8 +410,6 @@ const loading = ref(false)
 const saving = ref(false)
 const requirementList = ref([])
 const requirementOptions = ref([])
-const testTeamOptions = ref([])
-const testerOptions = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -423,8 +452,15 @@ const searchForm = ref({
     name: '',
     test_team: '',
     testers: '',
+    status: '',
+    tags: '',
     created_at: null
 })
+
+// 状态、标签、测试团队与「新增需求」表单一致，固定枚举（不随数据计划）
+const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '测试中', '验收中', '已上线']
+const TAG_OPTIONS = ['正常', '提测延期', '测试延期']
+const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌']
 
 // 方法
 const getDefaultForm = () => ({
@@ -462,30 +498,6 @@ const loadRequirementOptions = () => {
     })
 }
 
-const loadTestTeamOptions = () => {
-    getFunctionalRequirementTestTeamOptions().then(res => {
-        if (res.code === 0 && Array.isArray(res.data)) {
-            testTeamOptions.value = res.data
-        } else {
-            testTeamOptions.value = []
-        }
-    }).catch(() => {
-        testTeamOptions.value = []
-    })
-}
-
-const loadTesterOptions = () => {
-    getFunctionalRequirementTesterOptions().then(res => {
-        if (res.code === 0 && Array.isArray(res.data)) {
-            testerOptions.value = res.data
-        } else {
-            testerOptions.value = []
-        }
-    }).catch(() => {
-        testerOptions.value = []
-    })
-}
-
 const loadRequirements = () => {
     loading.value = true
     const params = {
@@ -500,6 +512,12 @@ const loadRequirements = () => {
     }
     if (searchForm.value.testers) {
         params.testers = searchForm.value.testers
+    }
+    if (searchForm.value.status) {
+        params.status = searchForm.value.status
+    }
+    if (searchForm.value.tags) {
+        params.tags = searchForm.value.tags
     }
     if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
         params.created_at_after = searchForm.value.created_at[0]
@@ -532,6 +550,8 @@ const resetSearch = () => {
     searchForm.value.name = ''
     searchForm.value.test_team = ''
     searchForm.value.testers = ''
+    searchForm.value.status = ''
+    searchForm.value.tags = ''
     searchForm.value.created_at = null
     loadRequirements()
 }
@@ -573,15 +593,6 @@ const personFieldToDisplay = (val) => {
     return names.join('、')
 }
 
-/** 测试人员筛选项展示：用 name，无则用 username */
-const getTesterOptionLabel = (username) => {
-    if (!username) return ''
-    const list = userList.value || []
-    const key = String(username).trim().toLowerCase()
-    const u = list.find(x => String(x.username || x.id || '').toLowerCase() === key)
-    return u ? (u.name || u.username || username) : username
-}
-
 const formatPersonField = (val) => {
     if (!val || !Array.isArray(val)) return ''
     return val.filter(Boolean).join(',')
@@ -620,8 +631,6 @@ const deleteRequirement = (row) => {
             if (res.code === 0) {
                 ElMessage.success('删除成功')
                 loadRequirementOptions()
-                loadTestTeamOptions()
-                loadTesterOptions()
                 loadRequirements()
             } else {
                 ElMessage.error(res.msg || '删除失败')
@@ -660,8 +669,6 @@ const saveRequirement = () => {
                 ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
                 dialogVisible.value = false
                 loadRequirementOptions()
-                loadTestTeamOptions()
-                loadTesterOptions()
                 loadRequirements()
             } else {
                 ElMessage.error(res.msg || (isEdit.value ? '更新失败' : '创建失败'))
@@ -844,8 +851,8 @@ const formatTags = (tags) => {
 const getTagType = (tag) => {
     const typeMap = {
         '正常': 'success',
-        '延期': 'warning',
-        '暂停': 'danger'
+        '提测延期': 'warning',
+        '测试延期': 'warning'
     }
     return typeMap[tag] || 'info'
 }
@@ -924,8 +931,6 @@ const loadUserList = () => {
 onMounted(() => {
     loadUserList()
     loadRequirementOptions()
-    loadTestTeamOptions()
-    loadTesterOptions()
     loadRequirements()
 })
 </script>

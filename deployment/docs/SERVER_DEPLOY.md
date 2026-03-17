@@ -135,7 +135,54 @@ sudo systemctl status workmind
 
 日志：`journalctl -u workmind -f`
 
-## 八、一键部署脚本（可选）
+## 八、Celery（定时任务与异步任务）
+
+若需使用**提测/测试延期标签同步**等定时任务及 UI 测试等异步任务，需在服务器上运行 **Celery Beat** 和 **Celery Worker**。项目使用自定义调度器 `backend.beat_scheduler.WorkmindDatabaseScheduler`（已在 settings 中配置），部署时无需额外设置。
+
+### 8.1 一次性：创建定时任务配置
+
+在**首次部署或修改执行时间**时执行一次（在 backend 目录、已激活 venv 下）：
+
+```bash
+cd /data/workmind/backend
+source venv/bin/activate
+export PYTHONPATH=$(pwd)
+python manage.py setup_delayed_tag_beat
+```
+
+会在数据库中创建/更新「提测延期标签同步」定时任务，执行时间由 `apps/ui_test/management/commands/setup_delayed_tag_beat.py` 中的 `minute`/`hour` 决定（例如每天 10:40）。修改后需重新执行本命令，并**重启 Beat** 使新时间生效。
+
+### 8.2 使用 Systemd 常驻运行 Beat 与 Worker
+
+1. 安装两个服务文件：
+
+```bash
+sudo cp /data/workmind/deployment/systemd/celery-beat.service /etc/systemd/system/
+sudo cp /data/workmind/deployment/systemd/celery-worker.service /etc/systemd/system/
+sudo systemctl daemon-reload
+```
+
+2. 开机自启并启动：
+
+```bash
+sudo systemctl enable celery-beat celery-worker
+sudo systemctl start celery-beat celery-worker
+sudo systemctl status celery-beat celery-worker
+```
+
+3. 查看日志：
+
+```bash
+journalctl -u celery-beat -f
+journalctl -u celery-worker -f
+```
+
+- **Beat**：按数据库中的定时规则到点往 `beat_tasks` 队列发任务。
+- **Worker**：消费 `beat_tasks` 与 `work_queue`，执行定时任务（如标签同步）和普通异步任务（如 UI 测试）。
+
+修改定时任务时间后，需执行 `sudo systemctl restart celery-beat` 使新时间生效。
+
+## 九、一键部署脚本（可选）
 
 在服务器上执行：
 
@@ -147,17 +194,18 @@ chmod +x deployment/scripts/deploy.sh
 
 脚本会：创建 venv、安装后端依赖、执行 migrate、collectstatic、安装前端依赖并 build。**不会**自动配置 Nginx 或 systemd，需按第六、七步手动完成。
 
-## 九、目录与权限
+## 十、目录与权限
 
 - 确保 Nginx 运行用户对以下目录有读权限：  
   `/data/workmind/frontend/dist`、`/data/workmind/backend/static_root`
 - 若使用上传/导出功能，确保应用对 `backend/apps/ai_testcase/output`、`backend/apps/ai_testcase/uploads` 有写权限。
 
-## 十、常见问题
+## 十一、常见问题
 
 - **502 Bad Gateway**：检查 Daphne 是否在 8009 端口监听：`ss -tlnp | grep 8009`，并查看 `journalctl -u workmind`。
 - **静态 404**：确认已执行 `collectstatic`，且 Nginx 中 `alias`/`root` 路径正确。
 - **WebSocket 连不上**：确认 Nginx 中 `/ws/` 已按示例配置了 `proxy_http_version 1.1` 与 `Upgrade`、`Connection`。
 - **跨域**：后端已使用 `django-cors-headers`，生产环境建议在 `ALLOWED_HOSTS` 和 Nginx 中限定域名，不要用 `*`。
+- **定时任务未执行**：确认 Beat 与 Worker 均已启动（`systemctl status celery-beat celery-worker`），且修改过执行时间后已执行 `systemctl restart celery-beat`。
 
 部署完成后，访问 `http://你的域名或IP` 即可使用前端；API 与 WebSocket 通过同一 Nginx 转发到后端 8009 端口。
