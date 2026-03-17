@@ -14,7 +14,7 @@ Group=root
 WorkingDirectory=/data/workmind/backend
 Environment="PATH=/data/workmind/backend/venv/bin:/usr/local/bin:/usr/bin:/bin"
 EnvironmentFile=/data/workmind/.env
-ExecStart=/data/workmind/backend/venv/bin/celery -A backend worker -Q beat_tasks,work_queue -l info
+ExecStart=/data/workmind/backend/venv/bin/celery -A backend worker -Q beat_tasks,work_queue -l info -n worker@%h
 Restart=on-failure
 RestartSec=10
 
