@@ -186,7 +186,7 @@
                         range-separator="-"
                         start-placeholder="开始日期"
                         end-placeholder="结束日期"
-                        value-format="YYYY-MM-DD"
+                        value-format="YYYY/M/D"
                         style="width: 100%;"
                     />
                 </el-form-item>
@@ -359,21 +359,109 @@ const personFieldToDisplay = (val) => {
     return names.join('、')
 }
 
-const parseTaskTime = (val) => {
-    if (!val) return []
-    if (Array.isArray(val)) return val
-    const str = String(val).trim()
-    const m = str.match(/^(.+?)\s*-\s*(.+)$/)
-    if (m && m.length === 3) {
-        const [, start, end] = m
-        return [start.trim(), end.trim()].filter(Boolean)
+/** 与需求管理「开发时间 / 测试时间」一致 */
+const convertToStandardFormat = (dateStr) => {
+    if (!dateStr) return null
+    let str = dateStr.trim()
+
+    // 兼容后端返回带时间的字符串：YYYY-MM-DD HH:mm:ss
+    const dateTimePrefixMatch = str.match(/^(\d{4}-\d{1,2}-\d{1,2})\b/)
+    if (dateTimePrefixMatch && dateTimePrefixMatch[1]) {
+        str = dateTimePrefixMatch[1]
+    }
+
+    if (str.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+        return str
+    }
+    const singleDateMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+    if (singleDateMatch) {
+        const [, year, month, day] = singleDateMatch
+        return `${year}/${parseInt(month)}/${parseInt(day)}`
+    }
+    try {
+        const date = new Date(str)
+        if (!isNaN(date.getTime())) {
+            const year = date.getFullYear()
+            const month = date.getMonth() + 1
+            const day = date.getDate()
+            return `${year}/${month}/${day}`
+        }
+    } catch (e) {}
+    return null
+}
+
+/**
+ * 解析任务时间区间字符串为 [YYYY/M/D, YYYY/M/D]，供 el-date-picker 回显。
+ *
+ * 注意：不能用 /^(.+?)[\s]*-[\s]*(.+)$/ —— 对 "2024-03-03 - 2024-03-05" 会在第一个「年-月」的横杠处截断，
+ * 得到 ("2024", "03-03 - 2024-03-05")，前半段不含日期分隔符，解析失败，编辑页永远不回显。
+ */
+const parseTimeRange = (value) => {
+    if (!value) return []
+    if (Array.isArray(value)) {
+        if (value.length < 2 || !value[0] || !value[1]) return []
+        const startFormatted = convertToStandardFormat(String(value[0]))
+        const endFormatted = convertToStandardFormat(String(value[1]))
+        return startFormatted && endFormatted ? [startFormatted, endFormatted] : []
+    }
+    // 归一化：把换行/多空格统一成单空格，避免 split/regex 失效
+    const str = String(value).replace(/\s+/g, ' ').trim()
+
+    // 支持 ~ / ～ 分隔（有些接口/人手录入会用波浪线）
+    if (str.includes(' ~ ')) {
+        const parts = str.split(' ~ ').map(s => s.trim()).filter(Boolean)
+        if (parts.length === 2) {
+            const a = convertToStandardFormat(parts[0])
+            const b = convertToStandardFormat(parts[1])
+            if (a && b) return [a, b]
+        }
+    }
+    if (str.includes(' ～ ')) {
+        const parts = str.split(' ～ ').map(s => s.trim()).filter(Boolean)
+        if (parts.length === 2) {
+            const a = convertToStandardFormat(parts[0])
+            const b = convertToStandardFormat(parts[1])
+            if (a && b) return [a, b]
+        }
+    }
+
+    // 接口/列表常见：2024-03-03 - 2024-03-05（中间是「空格-空格」）
+    if (str.includes(' - ')) {
+        const parts = str.split(' - ').map(s => s.trim()).filter(Boolean)
+        if (parts.length === 2) {
+            const a = convertToStandardFormat(parts[0])
+            const b = convertToStandardFormat(parts[1])
+            if (a && b) return [a, b]
+        }
+    }
+
+    // 两段完整 YYYY-MM-DD（中间可有空格）
+    const isoPair = str.match(/^(\d{4}-\d{1,2}-\d{1,2})\s*-\s*(\d{4}-\d{1,2}-\d{1,2})$/)
+    if (isoPair) {
+        const a = convertToStandardFormat(isoPair[1])
+        const b = convertToStandardFormat(isoPair[2])
+        if (a && b) return [a, b]
+    }
+
+    // 需求管理保存格式：2024/1/1-2024/1/5
+    const slashPair = str.match(/^(\d{4}\/\d{1,2}\/\d{1,2})-(\d{4}\/\d{1,2}\/\d{1,2})$/)
+    if (slashPair) {
+        return [slashPair[1], slashPair[2]]
+    }
+
+    // 其它「后半段明显是日期」的兜底（避免再误匹配年-月之间的横杠）
+    const tail = str.match(/^(.+?)\s+-\s+(.+)$/)
+    if (tail) {
+        const a = convertToStandardFormat(tail[1].trim())
+        const b = convertToStandardFormat(tail[2].trim())
+        if (a && b) return [a, b]
     }
     return []
 }
 
-const formatTaskTime = (val) => {
-    if (!val || val.length !== 2) return ''
-    return `${val[0]} - ${val[1]}`
+const formatTimeRange = (value) => {
+    if (!value || value.length !== 2) return ''
+    return `${value[0]}-${value[1]}`
 }
 
 const showAddDialog = () => {
@@ -393,7 +481,7 @@ const editTask = (row) => {
         status: row.status || '未开始',
         remark: row.remark || '',
         man_days: row.man_days || '',
-        task_time: parseTaskTime(row.task_time)
+        task_time: parseTimeRange(row.task_time)
     }
     dialogVisible.value = true
 }
@@ -427,7 +515,7 @@ const saveTask = () => {
             status: taskFormData.value.status || '未开始',
             remark: taskFormData.value.remark || '',
             man_days: taskFormData.value.man_days || '',
-            task_time: formatTaskTime(taskFormData.value.task_time)
+            task_time: formatTimeRange(taskFormData.value.task_time)
         }
         const request = isEdit.value
             ? updateTask(taskFormData.value.id, params)
@@ -462,15 +550,46 @@ const formatDate = (date) => {
     return new Date(date).toLocaleString('zh-CN')
 }
 
+const formatSingleDate = (dateStr) => {
+    if (!dateStr) return '-'
+    const str = String(dateStr).trim()
+    if (str.includes('/')) {
+        const parts = str.split('/').map(item => item.trim())
+        if (parts.length === 3) {
+            const [y, m, d] = parts
+            return `${y}/${Number(m)}/${Number(d)}`
+        }
+    }
+    if (str.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+        const [year, month, day] = str.split('-')
+        return `${year}/${Number(month)}/${Number(day)}`
+    }
+    try {
+        const date = new Date(str)
+        if (!isNaN(date.getTime())) {
+            const year = date.getFullYear()
+            const month = date.getMonth() + 1
+            const day = date.getDate()
+            return `${year}/${month}/${day}`
+        }
+    } catch (e) {}
+    return str
+}
+
 const formatDisplayDate = (dateStr) => {
     if (!dateStr) return '-'
     const str = String(dateStr).trim()
-    const m = str.match(/^(.+?)\s*-\s*(.+)$/)
-    if (m && m.length === 3) {
-        const [, start, end] = m
-        return `${start.trim()} ~ ${end.trim()}`
+    const rangeMatch = str.match(/^(.+?)[\s]*-[\s]*(.+)$/)
+    if (rangeMatch) {
+        const [, start, end] = rangeMatch
+        if ((start.includes('/') || start.includes('-')) &&
+            (end.includes('/') || end.includes('-'))) {
+            const formattedStart = formatSingleDate(start.trim())
+            const formattedEnd = formatSingleDate(end.trim())
+            return `${formattedStart} ~ ${formattedEnd}`
+        }
     }
-    return str
+    return formatSingleDate(str)
 }
 
 onMounted(() => {
