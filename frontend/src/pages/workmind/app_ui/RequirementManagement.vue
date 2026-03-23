@@ -270,6 +270,7 @@
                         <el-option label="未开始" value="未开始" />
                         <el-option label="已评审" value="已评审" />
                         <el-option label="开发中" value="开发中" />
+                        <el-option label="已暂停" value="已暂停" />
                         <el-option label="测试中" value="测试中" />
                         <el-option label="验收中" value="验收中" />
                         <el-option label="已上线" value="已上线" />
@@ -458,7 +459,7 @@ const searchForm = ref({
 })
 
 // 状态、标签、测试团队与「新增需求」表单一致，固定枚举（不随数据计划）
-const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '测试中', '验收中', '已上线']
+const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '已暂停', '测试中', '验收中', '已上线']
 const TAG_OPTIONS = ['正常', '提测延期', '测试延期']
 const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌']
 
@@ -833,6 +834,7 @@ const getStatusType = (status) => {
         '未开始': 'info',
         '已评审': 'warning',
         '开发中': 'primary',
+        '已暂停': 'info',
         '测试中': 'success',
         '验收中': 'warning',
         '已上线': 'danger'

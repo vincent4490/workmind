@@ -11,10 +11,10 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-# 提测延期：已提测或已结束则不算
-STATUS_NOT_SUBMIT_DELAYED = ('测试中', '已上线', '验收中')
-# 测试延期：已上线或验收中则不算
-STATUS_NOT_TEST_DELAYED = ('已上线', '验收中')
+# 提测延期：已提测或已结束则不算（已暂停视为有意停顿，不自动打提测延期）
+STATUS_NOT_SUBMIT_DELAYED = ('测试中', '已上线', '验收中', '已暂停')
+# 测试延期：已上线或验收中则不算（已暂停同理）
+STATUS_NOT_TEST_DELAYED = ('已上线', '验收中', '已暂停')
 
 TAG_SUBMIT_DELAYED = '提测延期'
 TAG_TEST_DELAYED = '测试延期'
@@ -112,8 +112,8 @@ def sync_delayed_requirement_tags():
     """
     提测延期 + 测试延期 标签同步：每天 0:10 执行。
     替换逻辑（不追加）：标签设为当前应有的延期标签，仅可能为「提测延期」「测试延期」或两者，否则置空。
-    - 提测延期：提测时间 < 今日 且 状态 not in ['测试中','已上线','验收中'] → 标签含「提测延期」
-    - 测试延期：测试时间结束日 < 今日 且 状态 not in ['已上线','验收中'] → 标签含「测试延期」
+    - 提测延期：提测时间 < 今日 且 状态 not in ['测试中','已上线','验收中','已暂停'] → 标签含「提测延期」
+    - 测试延期：测试时间结束日 < 今日 且 状态 not in ['已上线','验收中','已暂停'] → 标签含「测试延期」
     """
     from apps.ui_test.models import FunctionalRequirement
 
