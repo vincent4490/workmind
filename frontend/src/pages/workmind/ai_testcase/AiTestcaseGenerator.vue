@@ -141,11 +141,51 @@
                 <!-- 流式输出面板 -->
                 <el-card v-if="streamContent || generating" class="stream-card" shadow="hover">
                     <template #header>
-                        <div class="card-header">
+                        <div class="card-header card-header-result">
                             <span class="card-title">
                                 <el-icon><Document /></el-icon>
                                 {{ generating ? 'AI 正在生成...' : '生成结果' }}
                             </span>
+                            <div v-if="currentResult" class="result-tree-toolbar result-tree-toolbar--header">
+                                <el-select
+                                    v-model="filterModule"
+                                    placeholder="全部模块"
+                                    clearable
+                                    filterable
+                                    size="small"
+                                    class="result-filter-select"
+                                >
+                                    <el-option
+                                        v-for="name in moduleOptions"
+                                        :key="name"
+                                        :label="name"
+                                        :value="name"
+                                    />
+                                </el-select>
+                                <el-select
+                                    v-model="filterFunction"
+                                    placeholder="全部功能"
+                                    clearable
+                                    filterable
+                                    size="small"
+                                    class="result-filter-select"
+                                >
+                                    <el-option
+                                        v-for="name in functionOptions"
+                                        :key="name"
+                                        :label="name"
+                                        :value="name"
+                                    />
+                                </el-select>
+                                <el-button
+                                    text
+                                    type="primary"
+                                    size="small"
+                                    @click="showCaseDetails = !showCaseDetails"
+                                >
+                                    {{ showCaseDetails ? '收起详情' : '展开详情' }}
+                                </el-button>
+                            </div>
                             <span v-if="generating" class="stream-indicator">
                                 <span class="typing-dot"></span>
                                 <span class="typing-dot"></span>
@@ -167,7 +207,7 @@
                     <!-- 树形预览（生成完成后） -->
                     <div v-if="currentResult" class="result-preview">
                         <el-tree
-                            :data="treeData"
+                            :data="displayTreeData"
                             :props="treeProps"
                             default-expand-all
                             :expand-on-click-node="false"
@@ -217,7 +257,10 @@
                                         </el-button>
                                     </div>
                                     <!-- 用例同一层：标题后直接跟前置条件、测试步骤、预期结果，不增加树层级 -->
-                                    <div v-if="data.nodeType === 'case' && (data.precondition || data.steps || data.expected)" class="tree-case-inline">
+                                    <div
+                                        v-if="showCaseDetails && data.nodeType === 'case' && (data.precondition || data.steps || data.expected)"
+                                        class="tree-case-inline"
+                                    >
                                         <span v-if="data.precondition" class="case-inline-item"><em>前置条件：</em>{{ data.precondition }}</span>
                                         <span v-if="data.steps" class="case-inline-item"><em>测试步骤：</em><span class="case-inline-steps">{{ data.steps }}</span></span>
                                         <span v-if="data.expected" class="case-inline-item"><em>预期结果：</em>{{ data.expected }}</span>
@@ -246,11 +289,51 @@
                 <!-- 旧的结果卡片（从历史记录查看时） -->
                 <el-card v-if="!streamContent && currentResult" class="result-card" shadow="hover">
                     <template #header>
-                        <div class="card-header">
+                        <div class="card-header card-header-result">
                             <span class="card-title">
                                 <el-icon><Document /></el-icon>
                                 生成结果
                             </span>
+                            <div class="result-tree-toolbar result-tree-toolbar--header">
+                                <el-select
+                                    v-model="filterModule"
+                                    placeholder="全部模块"
+                                    clearable
+                                    filterable
+                                    size="small"
+                                    class="result-filter-select"
+                                >
+                                    <el-option
+                                        v-for="name in moduleOptions"
+                                        :key="name"
+                                        :label="name"
+                                        :value="name"
+                                    />
+                                </el-select>
+                                <el-select
+                                    v-model="filterFunction"
+                                    placeholder="全部功能"
+                                    clearable
+                                    filterable
+                                    size="small"
+                                    class="result-filter-select"
+                                >
+                                    <el-option
+                                        v-for="name in functionOptions"
+                                        :key="name"
+                                        :label="name"
+                                        :value="name"
+                                    />
+                                </el-select>
+                                <el-button
+                                    text
+                                    type="primary"
+                                    size="small"
+                                    @click="showCaseDetails = !showCaseDetails"
+                                >
+                                    {{ showCaseDetails ? '收起详情' : '展开详情' }}
+                                </el-button>
+                            </div>
                             <div class="result-stats">
                                 <el-tag type="info" size="small">{{ currentResult.module_count }} 个模块</el-tag>
                                 <el-tag type="success" size="small">{{ currentResult.case_count }} 条用例</el-tag>
@@ -264,7 +347,7 @@
                     <!-- 用例树状预览 -->
                     <div class="result-preview">
                         <el-tree
-                            :data="treeData"
+                            :data="displayTreeData"
                             :props="treeProps"
                             default-expand-all
                             :expand-on-click-node="false"
@@ -318,7 +401,10 @@
                                             调整
                                         </el-button>
                                     </div>
-                                    <div v-if="data.nodeType === 'case' && (data.precondition || data.steps || data.expected)" class="tree-case-inline">
+                                    <div
+                                        v-if="showCaseDetails && data.nodeType === 'case' && (data.precondition || data.steps || data.expected)"
+                                        class="tree-case-inline"
+                                    >
                                         <span v-if="data.precondition" class="case-inline-item"><em>前置条件：</em>{{ data.precondition }}</span>
                                         <span v-if="data.steps" class="case-inline-item"><em>测试步骤：</em><span class="case-inline-steps">{{ data.steps }}</span></span>
                                         <span v-if="data.expected" class="case-inline-item"><em>预期结果：</em>{{ data.expected }}</span>
@@ -866,7 +952,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -981,11 +1067,64 @@ const reviewDimResults = ref([])     // 每个维度的结果 [{key, label, item
 // 树形配置
 const treeProps = { label: 'label', children: 'children' }
 
+// 生成结果：模块/功能筛选 + 全局展开用例详情（前置条件、步骤、预期结果）
+const filterModule = ref('')
+const filterFunction = ref('')
+const showCaseDetails = ref(true)
+
 // 计算属性
 const treeData = computed(() => {
     if (!currentResult.value?.data) return []
     return buildTreeData(currentResult.value.data)
 })
+
+const moduleOptions = computed(() => {
+    const modules = currentResult.value?.data?.modules || []
+    return modules.map(m => m.name).filter(Boolean)
+})
+
+const functionOptions = computed(() => {
+    const modules = currentResult.value?.data?.modules || []
+    const modName = filterModule.value
+    if (modName) {
+        const mod = modules.find(m => m.name === modName)
+        if (!mod) return []
+        return (mod.functions || []).map(f => f.name).filter(Boolean)
+    }
+    const seen = new Set()
+    const out = []
+    for (const m of modules) {
+        for (const f of m.functions || []) {
+            const n = f.name
+            if (n && !seen.has(n)) {
+                seen.add(n)
+                out.push(n)
+            }
+        }
+    }
+    return out
+})
+
+const displayTreeData = computed(() => {
+    const raw = treeData.value
+    return filterTreeData(raw, filterModule.value, filterFunction.value)
+})
+
+watch(filterModule, () => {
+    const opts = functionOptions.value
+    if (filterFunction.value && !opts.includes(filterFunction.value)) {
+        filterFunction.value = ''
+    }
+})
+
+watch(
+    () => currentResult.value?.id,
+    () => {
+        filterModule.value = ''
+        filterFunction.value = ''
+        showCaseDetails.value = true
+    }
+)
 
 const jsonPreview = computed(() => {
     if (!currentResult.value?.data) return ''
@@ -1014,6 +1153,26 @@ function buildTreeData(data) {
             }))
         }))
     }))
+}
+
+/** 按模块名、功能名过滤树（与筛选下拉联动） */
+function filterTreeData(nodes, moduleName, functionName) {
+    if (!nodes?.length) return []
+    if (!moduleName && !functionName) return nodes
+    return nodes
+        .filter(m => !moduleName || m.label === moduleName)
+        .map(m => {
+            let funcs = (m.children || []).filter(f => !functionName || f.label === functionName)
+            funcs = funcs
+                .map(f => ({
+                    ...f,
+                    children: [...(f.children || [])]
+                }))
+                .filter(f => (f.children || []).length > 0)
+            if (funcs.length === 0) return null
+            return { ...m, children: funcs }
+        })
+        .filter(Boolean)
 }
 
 // 文件上传校验
@@ -1853,6 +2012,12 @@ onUnmounted(() => {
     gap: 8px;
 }
 
+/* 生成结果：标题 + 筛选/展开 与统计同一行，窄屏可换行 */
+.card-header-result {
+    flex-wrap: wrap;
+    row-gap: 8px;
+}
+
 .card-title {
     font-size: 15px;
     font-weight: 600;
@@ -2116,6 +2281,23 @@ onUnmounted(() => {
     max-height: 400px;
     overflow-y: auto;
     padding: 8px 0;
+}
+
+.result-tree-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.result-tree-toolbar--header {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-bottom: 0;
+}
+
+.result-filter-select {
+    width: 180px;
 }
 
 :deep(.el-tree-node__content) {
