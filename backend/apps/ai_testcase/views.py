@@ -1483,3 +1483,120 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
             'base_url': getattr(settings, 'KIMI_BASE_URL', 'https://api.moonshot.cn/v1'),
             'api_key_prefix': api_key[:8] + '...' if api_key else '',
         })
+
+
+# ============ Agent 智能体生成入口 ============
+
+async def agent_generate_stream_view(request):
+    """
+    SSE 流式 Agent 智能体生成测试用例
+
+    与 generate-stream 的区别：Agent 会自动进行需求分析、策略规划、
+    分模块生成、自评审和自动修订，直到用例质量达标。
+
+    POST /api/ai_testcase/agent-generate-stream/
+    支持 JSON 和 FormData 两种提交方式（与 generate-stream 一致）
+
+    Response: text/event-stream
+        data: {"type": "agent_start", "record_id": 1, "nodes": [...]}
+        data: {"type": "agent_node_done", "node": "analyze_requirement", ...}
+        data: {"type": "agent_review", "score": 0.65, ...}
+        data: {"type": "agent_refining", "iteration": 2}
+        data: {"type": "agent_done", "record_id": 1, "data": {...}, ...}
+        data: {"type": "error", "error": "..."}
+    """
+    if request.method == 'OPTIONS':
+        resp = HttpResponse(status=200)
+        return _add_cors_headers(resp)
+
+    if request.method != 'POST':
+        return _add_cors_headers(HttpResponse('Method not allowed', status=405))
+
+    extracted_texts = []
+    images = []
+    file_warnings = []
+    content_type = request.content_type or ''
+    uploaded_files = []
+
+    if 'multipart' in content_type:
+        from asgiref.sync import sync_to_async
+
+        _post = await sync_to_async(lambda: request.POST)()
+        _files = await sync_to_async(lambda: request.FILES)()
+
+        requirement = _post.get('requirement', '').strip()
+        use_thinking = _post.get('use_thinking', 'false').lower() in ('true', '1', 'yes')
+        mode = _post.get('mode', 'comprehensive')
+        uploaded_files = _files.getlist('files')
+
+        if uploaded_files:
+            try:
+                processor = FileProcessor()
+                file_result = await sync_to_async(processor.process_files)(uploaded_files)
+                extracted_texts = file_result['texts']
+                images = file_result['images']
+                file_warnings = file_result['warnings']
+            except FileProcessError as e:
+                return _add_cors_headers(HttpResponse(str(e), status=400))
+            except Exception as e:
+                logger.exception(f"[Agent] 文件处理异常: {e}")
+                return _add_cors_headers(HttpResponse(f'文件处理失败: {str(e)}', status=400))
+    else:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return _add_cors_headers(HttpResponse('Invalid JSON', status=400))
+
+        requirement = body.get('requirement', '').strip()
+        use_thinking = body.get('use_thinking', False)
+        mode = body.get('mode', 'comprehensive')
+
+    if not requirement and not extracted_texts and not images:
+        return _add_cors_headers(HttpResponse('请输入需求描述或上传文件', status=400))
+
+    requirement_summary = requirement
+    if not requirement_summary and extracted_texts:
+        requirement_summary = f"[附件] {', '.join(t['source'] for t in extracted_texts[:3])}"
+    if images and not requirement_summary:
+        requirement_summary = f"[图片] {', '.join(img['source'] for img in images[:3])}"
+
+    async def event_stream():
+        from asgiref.sync import sync_to_async
+        from .workflows.executor import TestcaseAgentExecutor
+
+        record = await sync_to_async(AiTestcaseGeneration.objects.create)(
+            requirement=requirement_summary,
+            use_thinking=use_thinking,
+            status='generating',
+            generation_mode='agent',
+        )
+
+        if uploaded_files:
+            saved_paths = await sync_to_async(_save_uploaded_files)(uploaded_files, record.id)
+            record.source_files = saved_paths
+            await sync_to_async(record.save)(update_fields=['source_files'])
+
+        if file_warnings:
+            yield f"data: {json.dumps({'type': 'warnings', 'warnings': file_warnings}, ensure_ascii=False)}\n\n"
+
+        async for event in TestcaseAgentExecutor.run(
+            record=record,
+            requirement=requirement or requirement_summary,
+            extracted_texts=extracted_texts,
+            images=images,
+            use_thinking=use_thinking,
+            mode=mode,
+        ):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    response = StreamingHttpResponse(
+        event_stream(),
+        content_type='text/event-stream'
+    )
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    response['Content-Encoding'] = 'identity'
+    return _add_cors_headers(response)
+
+
+agent_generate_stream_view.csrf_exempt = True

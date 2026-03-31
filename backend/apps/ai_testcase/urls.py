@@ -10,6 +10,7 @@ from .views import (
     update_case_view,
     review_stream_view,
     apply_review_stream_view,
+    agent_generate_stream_view,
 )
 
 router = DefaultRouter()
@@ -23,5 +24,6 @@ urlpatterns = [
     path('update-case/', update_case_view, name='ai-testcase-update-case'),
     path('review-stream/', review_stream_view, name='ai-testcase-review-stream'),
     path('apply-review-stream/', apply_review_stream_view, name='ai-testcase-apply-review-stream'),
+    path('agent-generate-stream/', agent_generate_stream_view, name='ai-testcase-agent-generate-stream'),
     path('', include(router.urls)),
 ]

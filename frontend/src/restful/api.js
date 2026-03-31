@@ -1327,4 +1327,78 @@ export const aiGenerateTestcaseStream = async (data, onChunk, onDone, onError, o
     }
 };
 
+// Agent 智能体流式生成测试用例（SSE）
+// 后端 /api/ai_testcase/agent-generate-stream/
+// 事件类型：agent_start, agent_node_done, agent_review, agent_refining, agent_done, error, warnings
+export const aiAgentGenerateTestcaseStream = async (data, callbacks) => {
+    const token = (await import('../store/state')).default.token;
+    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const isFormData = data instanceof FormData;
 
+    const { onStart, onNodeDone, onReview, onRefining, onDone, onError, onWarnings } = callbacks;
+
+    try {
+        const response = await fetch(sseBase + '/api/ai_testcase/agent-generate-stream/', {
+            method: 'POST',
+            headers: {
+                ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: isFormData ? data : JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.slice(6));
+                        switch (event.type) {
+                            case 'agent_start':
+                                if (onStart) onStart(event);
+                                break;
+                            case 'agent_node_done':
+                                if (onNodeDone) onNodeDone(event);
+                                break;
+                            case 'agent_review':
+                                if (onReview) onReview(event);
+                                break;
+                            case 'agent_refining':
+                                if (onRefining) onRefining(event);
+                                break;
+                            case 'agent_done':
+                                if (onDone) onDone(event);
+                                break;
+                            case 'warnings':
+                                if (onWarnings) onWarnings(event.warnings);
+                                break;
+                            case 'error':
+                                onError(event.error);
+                                break;
+                        }
+                    } catch (e) {
+                        // 忽略解析失败的行
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        onError(err.message || '网络连接失败');
+    }
+};

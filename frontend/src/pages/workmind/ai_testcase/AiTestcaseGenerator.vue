@@ -27,12 +27,19 @@
                                 <el-icon><Edit /></el-icon>
                                 需求描述
                             </span>
-                            <el-switch
-                                v-model="useThinking"
-                                active-text="思考模式"
-                                inactive-text=""
-                                style="margin-left: auto;"
-                            />
+                            <div style="margin-left: auto; display: flex; align-items: center; gap: 16px;">
+                                <el-switch
+                                    v-model="useAgentMode"
+                                    active-text="Agent 生成"
+                                    inactive-text=""
+                                    :disabled="generating"
+                                />
+                                <el-switch
+                                    v-model="useThinking"
+                                    active-text="思考模式"
+                                    inactive-text=""
+                                />
+                            </div>
                         </div>
                     </template>
 
@@ -127,7 +134,7 @@
                             @click="handleGenerate"
                         >
                             <el-icon v-if="!generating"><MagicStick /></el-icon>
-                            {{ generating ? '正在生成中...' : '智能生成用例' }}
+                            {{ generating ? '正在生成中...' : (useAgentMode ? 'Agent 智能生成' : '智能生成用例') }}
                         </el-button>
                         <el-button size="large" @click="handleClear" :disabled="generating">
                             清空
@@ -138,8 +145,143 @@
                     </div>
                 </el-card>
 
-                <!-- 流式输出面板 -->
-                <el-card v-if="streamContent || generating" class="stream-card" shadow="hover">
+                <!-- Agent 进度面板 -->
+                <el-card v-if="agentProgress.active" class="agent-progress-card" shadow="hover">
+                    <template #header>
+                        <div class="card-header">
+                            <span class="card-title">
+                                <el-icon><Setting /></el-icon>
+                                Agent 工作流进度
+                            </span>
+                            <span v-if="agentProgress.review" class="agent-score-badge" :class="agentProgress.review.score >= 0.8 ? 'score-pass' : 'score-fail'">
+                                评审分数: {{ (agentProgress.review.score * 100).toFixed(0) }}分
+                            </span>
+                        </div>
+                    </template>
+                    <el-steps :active="agentProgress.currentIndex" finish-status="success" align-center>
+                        <el-step title="需求分析" />
+                        <el-step title="策略规划" />
+                        <el-step title="分模块生成" />
+                        <el-step title="评审打分" />
+                        <el-step title="完成" />
+                    </el-steps>
+
+                    <!-- 步骤 1：需求分析结果 -->
+                    <div v-if="agentProgress.analysisData" class="agent-step-content">
+                        <div class="step-section-title">识别到 {{ agentProgress.analysisData.modules?.length || 0 }} 个模块</div>
+                        <div class="module-tags">
+                            <el-tag
+                                v-for="mod in agentProgress.analysisData.modules"
+                                :key="mod.name"
+                                :type="{ simple: 'success', medium: '', complex: 'warning', critical: 'danger' }[mod.complexity] || ''"
+                                effect="light"
+                                class="module-tag"
+                            >
+                                {{ mod.name }}
+                                <span class="complexity-label">{{ { simple: '简单', medium: '中等', complex: '复杂', critical: '关键' }[mod.complexity] || mod.complexity }}</span>
+                            </el-tag>
+                        </div>
+                        <div v-if="agentProgress.analysisData.global_rules?.length" class="step-rules">
+                            <span class="rules-label">全局规则：</span>
+                            <span v-for="(rule, i) in agentProgress.analysisData.global_rules" :key="i" class="rule-item">{{ rule }}</span>
+                        </div>
+                    </div>
+
+                    <!-- 步骤 2：策略规划结果 -->
+                    <div v-if="agentProgress.strategyData" class="agent-step-content">
+                        <div class="step-section-title">测试策略</div>
+                        <el-table :data="agentProgress.strategyData.strategies" size="small" stripe class="strategy-table">
+                            <el-table-column prop="module_name" label="模块" width="120" />
+                            <el-table-column label="测试方法">
+                                <template #default="{ row }">
+                                    <el-tag v-for="m in row.methods" :key="m" size="small" type="info" class="method-tag">{{ m }}</el-tag>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="用例数" width="90">
+                                <template #default="{ row }">
+                                    {{ row.case_count_range?.[0] || '?' }}-{{ row.case_count_range?.[1] || '?' }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="special_focus" label="重点关注" show-overflow-tooltip />
+                        </el-table>
+                    </div>
+
+                    <!-- 步骤 3：分模块生成进度 -->
+                    <div v-if="agentProgress.moduleProgress.length > 0" class="agent-step-content">
+                        <div class="step-section-title">
+                            已生成 {{ agentProgress.moduleProgress.length }} 个模块
+                            <span class="step-section-sub">
+                                （共 {{ agentProgress.moduleProgress.reduce((s, m) => s + m.caseCount, 0) }} 条用例）
+                            </span>
+                        </div>
+                        <div class="module-progress-list">
+                            <div v-for="(mp, i) in agentProgress.moduleProgress" :key="i" class="module-progress-item">
+                                <el-icon class="module-done-icon"><CircleCheck /></el-icon>
+                                <span class="module-progress-name">{{ mp.name }}</span>
+                                <span class="module-progress-stats">{{ mp.functionCount }} 个功能点 · {{ mp.caseCount }} 条用例</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 步骤 4：评审结果 -->
+                    <div v-if="agentProgress.review" class="agent-step-content">
+                        <div class="step-section-title">评审结果</div>
+                        <div class="agent-review-info">
+                            <div class="review-detail">
+                                <span class="review-label">总体评价：</span>
+                                <span>{{ agentProgress.review.feedback || '无' }}</span>
+                            </div>
+                            <div class="review-detail">
+                                <span class="review-label">迭代轮次：</span>
+                                <span>{{ agentProgress.review.iteration }} / {{ agentProgress.review.max }}</span>
+                            </div>
+                            <div v-if="agentProgress.reviewIssues.length > 0" class="review-issues-list">
+                                <div v-for="(issue, i) in agentProgress.reviewIssues.slice(0, 5)" :key="i" class="review-issue-item">
+                                    <el-tag :type="{ high: 'danger', medium: 'warning', low: 'info' }[issue.severity] || 'info'" size="small">
+                                        {{ issue.severity === 'high' ? '严重' : issue.severity === 'medium' ? '中等' : '轻微' }}
+                                    </el-tag>
+                                    <span class="issue-desc">{{ issue.description }}</span>
+                                </div>
+                                <div v-if="agentProgress.reviewIssues.length > 5" class="review-issues-more">
+                                    ...还有 {{ agentProgress.reviewIssues.length - 5 }} 条
+                                </div>
+                            </div>
+                            <div v-if="agentProgress.refining" class="review-detail refining-hint">
+                                <el-icon class="is-loading"><Refresh /></el-icon>
+                                <span>正在根据评审意见修订用例...</span>
+                            </div>
+                        </div>
+                    </div>
+                </el-card>
+
+                <!-- Agent 活动日志面板 -->
+                <el-card v-if="agentProgress.active && agentLog.length > 0" class="agent-log-card" shadow="hover">
+                    <template #header>
+                        <div class="card-header">
+                            <span class="card-title">
+                                <el-icon><Document /></el-icon>
+                                执行日志
+                            </span>
+                            <span class="log-count">{{ agentLog.length }} 条</span>
+                        </div>
+                    </template>
+                    <div ref="agentLogRef" class="agent-log-container">
+                        <div v-for="(entry, i) in agentLog" :key="i" class="agent-log-entry" :class="'log-' + entry.level">
+                            <span class="log-time">{{ entry.time }}</span>
+                            <span class="log-icon">{{ entry.icon }}</span>
+                            <span class="log-text">{{ entry.text }}</span>
+                            <span v-if="entry.duration" class="log-duration">({{ entry.duration }})</span>
+                        </div>
+                        <div v-if="generating && !agentProgress.review" class="agent-log-entry log-running">
+                            <span class="log-time">{{ currentTimeStr }}</span>
+                            <span class="log-icon">⏳</span>
+                            <span class="log-text log-blink">{{ agentProgress.currentNode || '处理中' }}...</span>
+                        </div>
+                    </div>
+                </el-card>
+
+                <!-- 流式输出面板（直接生成模式） -->
+                <el-card v-if="(streamContent || generating) && !agentProgress.active" class="stream-card" shadow="hover">
                     <template #header>
                         <div class="card-header card-header-result">
                             <span class="card-title">
@@ -962,6 +1104,7 @@ import {
 } from '@element-plus/icons-vue'
 import {
     aiGenerateTestcaseStream,
+    aiAgentGenerateTestcaseStream,
     aiRegenerateModuleStream,
     aiRegenerateFunctionStream,
     aiUpdateCase,
@@ -981,7 +1124,23 @@ const router = useRouter()
 const requirement = ref('')
 const useThinking = ref(false)
 const generationMode = ref('comprehensive')  // 新增：生成模式
+const useAgentMode = ref(false)
 const generating = ref(false)
+
+// Agent 进度状态
+const agentProgress = ref({
+    active: false,
+    nodes: [],
+    currentNode: '',
+    currentIndex: 0,
+    totalNodes: 0,
+    review: null,
+    refining: false,
+    analysisData: null,
+    strategyData: null,
+    moduleProgress: [],
+    reviewIssues: [],
+})
 const currentResult = ref(null)
 const configStatus = ref({ configured: false, model: '', base_url: '', api_key_prefix: '' })
 
@@ -993,6 +1152,10 @@ const fileWarnings = ref([])
 // 流式输出
 const streamContent = ref('')
 const streamOutputRef = ref(null)
+
+// Agent 活动日志
+const agentLog = ref([])
+const agentLogRef = ref(null)
 
 // 计时器
 const elapsedTime = ref(0)
@@ -1126,6 +1289,21 @@ watch(
     }
 )
 
+const currentTimeStr = computed(() => {
+    const now = new Date()
+    return now.toLocaleTimeString('zh-CN', { hour12: false })
+})
+
+function appendAgentLog(icon, text, level = 'info', duration = '') {
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+    agentLog.value.push({ time, icon, text, level, duration })
+    nextTick(() => {
+        if (agentLogRef.value) {
+            agentLogRef.value.scrollTop = agentLogRef.value.scrollHeight
+        }
+    })
+}
+
 const jsonPreview = computed(() => {
     if (!currentResult.value?.data) return ''
     return JSON.stringify(currentResult.value.data, null, 2)
@@ -1199,7 +1377,8 @@ function handleClear() {
     requirement.value = ''
     fileList.value = []
     fileWarnings.value = []
-    generationMode.value = 'comprehensive'  // 重置为默认模式
+    generationMode.value = 'comprehensive'
+    agentProgress.value = { active: false, nodes: [], currentNode: '', currentIndex: 0, totalNodes: 0, review: null, refining: false, analysisData: null, strategyData: null, moduleProgress: [], reviewIssues: [] }
 }
 
 // 生成用例（流式）
@@ -1218,6 +1397,8 @@ async function handleGenerate() {
     streamContent.value = ''
     fileWarnings.value = []
     elapsedTime.value = 0
+    agentProgress.value = { active: false, nodes: [], currentNode: '', currentIndex: 0, totalNodes: 0, review: null, refining: false, analysisData: null, strategyData: null, moduleProgress: [], reviewIssues: [] }
+    agentLog.value = []
 
     // 启动计时器
     timerInterval = setInterval(() => {
@@ -1228,11 +1409,10 @@ async function handleGenerate() {
     const formData = new FormData()
     formData.append('requirement', requirement.value.trim())
     formData.append('use_thinking', useThinking.value)
-    formData.append('mode', generationMode.value)  // 新增：传递生成模式
+    formData.append('mode', generationMode.value)
 
     // 添加文件
     for (const file of fileList.value) {
-        // Element Plus upload 组件的文件对象结构：file.raw 是原始 File 对象
         const rawFile = file.raw || file
         if (rawFile instanceof File) {
             formData.append('files', rawFile)
@@ -1241,35 +1421,38 @@ async function handleGenerate() {
         }
     }
 
+    if (useAgentMode.value) {
+        await handleAgentGenerate(formData)
+    } else {
+        await handleDirectGenerate(formData)
+    }
+}
+
+// 直接生成（原逻辑）
+async function handleDirectGenerate(formData) {
     await aiGenerateTestcaseStream(
         formData,
-        // onChunk — 每收到一个片段
         (content) => {
             streamContent.value += content
-            // 自动滚动到底部
             nextTick(() => {
                 if (streamOutputRef.value) {
                     streamOutputRef.value.scrollTop = streamOutputRef.value.scrollHeight
                 }
             })
         },
-        // onDone — 生成完成
         (result) => {
             stopTimer()
             generating.value = false
-            // 后端 SSE 返回 record_id，统一映射为 id
             currentResult.value = { ...result, id: result.record_id }
             ElMessage.success(`生成成功！共 ${result.module_count} 个模块，${result.case_count} 条用例`)
             loadHistory()
         },
-        // onError — 出错
         (error) => {
             stopTimer()
             generating.value = false
             ElMessage.error(`生成失败：${error}`)
             loadHistory()
         },
-        // onStart — 接收 start 事件（含文件处理警告）
         (startData) => {
             if (startData.warnings && startData.warnings.length > 0) {
                 fileWarnings.value = startData.warnings
@@ -1280,6 +1463,133 @@ async function handleGenerate() {
             }
         }
     )
+}
+
+// Agent 智能体生成
+async function handleAgentGenerate(formData) {
+    agentProgress.value.active = true
+
+    const nodeNameMap = {
+        'analyze_requirement': '需求分析',
+        'plan_test_strategy': '策略规划',
+        'generate_by_module': '分模块生成',
+        'merge_and_review': '评审打分',
+        'refine_cases': '修订用例',
+        'finalize': '完成',
+    }
+
+    function getStepIndex(nodeName) {
+        if (nodeName === 'analyze_requirement') return 1
+        if (nodeName === 'plan_test_strategy') return 2
+        if (nodeName === 'generate_by_module' || nodeName.startsWith('generate_module:')) return 3
+        if (nodeName === 'merge_and_review') return 4
+        if (nodeName === 'refine_cases') return 4
+        if (nodeName === 'finalize') return 5
+        return 0
+    }
+
+    let lastNodeTime = Date.now()
+
+    await aiAgentGenerateTestcaseStream(formData, {
+        onStart: (event) => {
+            agentProgress.value.nodes = event.nodes || []
+            agentProgress.value.totalNodes = event.nodes?.length || 0
+            lastNodeTime = Date.now()
+            appendAgentLog('🚀', 'Agent 工作流已启动', 'info')
+            appendAgentLog('🔍', '开始分析需求...', 'running')
+        },
+        onNodeDone: (event) => {
+            const displayName = nodeNameMap[event.node] || event.node
+            const elapsed = Math.round((Date.now() - lastNodeTime) / 1000)
+            const durationStr = `${elapsed}s`
+            lastNodeTime = Date.now()
+
+            agentProgress.value.currentNode = displayName
+            agentProgress.value.currentIndex = getStepIndex(event.node || event.current_node)
+            agentProgress.value.refining = false
+
+            if (event.node === 'analyze_requirement' && event.data) {
+                agentProgress.value.analysisData = event.data
+                const modCount = event.data.modules?.length || 0
+                appendAgentLog('✅', `需求分析完成 — 识别到 ${modCount} 个模块`, 'success', durationStr)
+                appendAgentLog('📋', '开始规划测试策略...', 'running')
+            } else if (event.node === 'plan_test_strategy' && event.data) {
+                agentProgress.value.strategyData = event.data
+                appendAgentLog('✅', '策略规划完成', 'success', durationStr)
+                appendAgentLog('🔨', '开始分模块生成用例...', 'running')
+            } else if ((event.node === 'generate_by_module' || event.node?.startsWith('generate_module:')) && event.data) {
+                if (event.data.module_name) {
+                    agentProgress.value.moduleProgress.push({
+                        name: event.data.module_name,
+                        functionCount: event.data.function_count || 0,
+                        caseCount: event.data.case_count || 0,
+                    })
+                    appendAgentLog('✅', `模块「${event.data.module_name}」完成 — ${event.data.function_count || 0} 个功能点, ${event.data.case_count || 0} 条用例`, 'success', durationStr)
+                    const completed = event.data.completed || agentProgress.value.moduleProgress.length
+                    const total = event.data.total || completed
+                    if (completed < total) {
+                        appendAgentLog('🔨', `继续生成下一个模块 (${completed}/${total})...`, 'running')
+                    } else {
+                        appendAgentLog('📝', '所有模块生成完毕，开始评审打分...', 'running')
+                    }
+                }
+            } else if (event.node === 'merge_and_review') {
+                appendAgentLog('📝', '评审分析完成', 'info', durationStr)
+            } else if (event.node === 'refine_cases') {
+                appendAgentLog('🔧', '修订完成，重新评审...', 'info', durationStr)
+            } else if (event.node === 'finalize') {
+                appendAgentLog('✨', '流程已完成', 'success')
+            }
+        },
+        onReview: (event) => {
+            agentProgress.value.review = {
+                score: event.score,
+                feedback: event.feedback,
+                iteration: event.iteration,
+                max: event.max,
+            }
+            agentProgress.value.reviewIssues = event.issues || []
+            const scorePercent = (event.score * 100).toFixed(0)
+            if (event.score >= 0.8) {
+                appendAgentLog('🎉', `评审通过！分数: ${scorePercent}分`, 'success')
+                ElMessage.success(`评审通过！分数: ${scorePercent}分`)
+            } else {
+                appendAgentLog('⚠️', `评审分数: ${scorePercent}分，未达标，将自动修订（第 ${event.iteration}/${event.max} 轮）`, 'warn')
+                ElMessage.warning(`评审分数: ${scorePercent}分，将自动修订（第 ${event.iteration}/${event.max} 轮）`)
+            }
+        },
+        onRefining: (event) => {
+            agentProgress.value.refining = true
+            lastNodeTime = Date.now()
+            appendAgentLog('🔧', `根据评审意见修订用例（第 ${event.iteration || '?'} 轮）...`, 'running')
+        },
+        onDone: (event) => {
+            stopTimer()
+            generating.value = false
+            agentProgress.value.currentIndex = 5
+            agentProgress.value.refining = false
+            currentResult.value = { ...event, id: event.record_id }
+            const scoreText = event.review_score ? ` · 评审 ${(event.review_score * 100).toFixed(0)}分` : ''
+            const iterText = event.iterations > 0 ? ` · 经过 ${event.iterations} 轮修订` : ''
+            appendAgentLog('🏁', `Agent 生成完成！${event.module_count} 个模块, ${event.case_count} 条用例${scoreText}${iterText}`, 'done')
+            ElMessage.success(`Agent 生成成功！共 ${event.module_count} 个模块，${event.case_count} 条用例`)
+            loadHistory()
+        },
+        onError: (error) => {
+            stopTimer()
+            generating.value = false
+            agentProgress.value.active = false
+            appendAgentLog('❌', `失败：${error}`, 'error')
+            ElMessage.error(`Agent 生成失败：${error}`)
+            loadHistory()
+        },
+        onWarnings: (warnings) => {
+            if (warnings && warnings.length > 0) {
+                fileWarnings.value = warnings
+                appendAgentLog('⚠️', `文件处理警告: ${warnings.join('; ')}`, 'warn')
+            }
+        },
+    })
 }
 
 function stopTimer() {
@@ -2726,6 +3036,273 @@ onUnmounted(() => {
 
 .history-list::-webkit-scrollbar-thumb,
 .result-preview::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 2px;
+}
+
+/* Agent 进度面板 */
+.agent-progress-card {
+    margin-bottom: 16px;
+    border-left: 3px solid #409eff;
+}
+
+.agent-progress-card .el-steps {
+    padding: 12px 0;
+}
+
+.agent-score-badge {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 12px;
+}
+
+.agent-score-badge.score-pass {
+    background: #f0f9eb;
+    color: #67c23a;
+}
+
+.agent-score-badge.score-fail {
+    background: #fef0f0;
+    color: #f56c6c;
+}
+
+/* Agent 步骤内容区 */
+.agent-step-content {
+    margin-top: 16px;
+    padding: 14px;
+    background: #f5f7fa;
+    border-radius: 8px;
+    border-left: 3px solid #e4e7ed;
+}
+
+.agent-step-content + .agent-step-content {
+    margin-top: 12px;
+}
+
+.step-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 10px;
+}
+
+.step-section-sub {
+    font-weight: 400;
+    color: #909399;
+    font-size: 13px;
+}
+
+.module-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.module-tag {
+    font-size: 13px;
+    padding: 4px 12px;
+}
+
+.module-tag .complexity-label {
+    margin-left: 4px;
+    opacity: 0.7;
+    font-size: 11px;
+}
+
+.step-rules {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #606266;
+}
+
+.rules-label {
+    color: #909399;
+}
+
+.rule-item {
+    display: inline-block;
+    margin: 2px 4px;
+    padding: 1px 6px;
+    background: #ecf5ff;
+    color: #409eff;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.strategy-table {
+    margin-top: 4px;
+}
+
+.method-tag {
+    margin: 1px 3px;
+}
+
+/* 分模块生成进度 */
+.module-progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.module-progress-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 4px 0;
+}
+
+.module-done-icon {
+    color: #67c23a;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.module-progress-name {
+    font-weight: 500;
+    color: #303133;
+}
+
+.module-progress-stats {
+    color: #909399;
+    font-size: 12px;
+}
+
+/* 评审问题列表 */
+.review-issues-list {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.review-issue-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.issue-desc {
+    color: #606266;
+    line-height: 1.5;
+}
+
+.review-issues-more {
+    font-size: 12px;
+    color: #909399;
+    padding-left: 4px;
+}
+
+.agent-review-info {
+    padding: 12px;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #ebeef5;
+}
+
+.review-detail {
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.review-detail:last-child {
+    margin-bottom: 0;
+}
+
+.review-label {
+    color: #909399;
+    flex-shrink: 0;
+}
+
+.refining-hint {
+    color: #e6a23c;
+    font-weight: 500;
+}
+
+/* Agent 活动日志 */
+.agent-log-card {
+    margin-bottom: 16px;
+}
+
+.log-count {
+    font-size: 12px;
+    color: #909399;
+}
+
+.agent-log-container {
+    max-height: 280px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    padding: 4px 0;
+}
+
+.agent-log-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.agent-log-entry:hover {
+    background: #f5f7fa;
+}
+
+.log-time {
+    color: #c0c4cc;
+    font-size: 12px;
+    flex-shrink: 0;
+    min-width: 70px;
+}
+
+.log-icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.log-text {
+    color: #303133;
+    flex: 1;
+}
+
+.log-duration {
+    color: #c0c4cc;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.log-success .log-text { color: #67c23a; }
+.log-warn .log-text { color: #e6a23c; }
+.log-error .log-text { color: #f56c6c; }
+.log-done .log-text { color: #409eff; font-weight: 600; }
+.log-running .log-text { color: #909399; }
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.log-blink {
+    animation: blink 1.5s ease-in-out infinite;
+}
+
+.agent-log-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.agent-log-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.agent-log-container::-webkit-scrollbar-thumb {
     background: #dcdfe6;
     border-radius: 2px;
 }

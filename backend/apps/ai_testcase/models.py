@@ -39,6 +39,24 @@ class AiTestcaseGeneration(models.Model):
     # XMind 文件路径
     xmind_file = models.CharField(max_length=500, null=True, blank=True, verbose_name="XMind文件路径")
 
+    # Agent 智能体模式字段
+    GENERATION_MODE_CHOICES = [
+        ('direct', '直接生成'),
+        ('agent', '智能体生成'),
+    ]
+    generation_mode = models.CharField(
+        max_length=10, choices=GENERATION_MODE_CHOICES, default='direct',
+        verbose_name="生成模式"
+    )
+    agent_state = models.JSONField(
+        null=True, blank=True,
+        verbose_name="Agent 工作流中间状态",
+        help_text="LangGraph 图执行的快照状态"
+    )
+    iteration_count = models.IntegerField(default=0, verbose_name="评审-修订迭代次数")
+    review_score = models.FloatField(null=True, blank=True, verbose_name="最终评审分数")
+    review_feedback = models.TextField(null=True, blank=True, verbose_name="评审反馈内容")
+
     # 统计
     module_count = models.IntegerField(default=0, verbose_name="模块数")
     case_count = models.IntegerField(default=0, verbose_name="用例数")

@@ -240,38 +240,6 @@ class KimiClient:
             logger.error(f"[Kimi] 多模态流式 API 调用失败: {e}")
             yield {"type": "error", "error": str(e)}
 
-        try:
-            stream = await self.async_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                extra_body=extra_body,
-                stream=True,
-                stream_options={"include_usage": True}
-            )
-
-            full_content = ""
-            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
-            async for chunk in stream:
-                if chunk.usage:
-                    usage = {
-                        "prompt_tokens": chunk.usage.prompt_tokens or 0,
-                        "completion_tokens": chunk.usage.completion_tokens or 0,
-                        "total_tokens": chunk.usage.total_tokens or 0,
-                    }
-
-                if chunk.choices and len(chunk.choices) > 0:
-                    delta = chunk.choices[0].delta
-                    if delta and delta.content:
-                        full_content += delta.content
-                        yield {"type": "chunk", "content": delta.content}
-
-            yield {"type": "done", "content": full_content, "usage": usage}
-
-        except Exception as e:
-            logger.error(f"[Kimi] 多模态流式 API 调用失败: {e}")
-            yield {"type": "error", "error": str(e)}
-
     async def generate_testcases_from_structure_stream_async(
         self,
         structure: dict,
@@ -648,6 +616,64 @@ class KimiClient:
         except Exception as e:
             logger.error(f"[Kimi] 采纳评审意见流式 API 调用失败: {e}")
             yield {"type": "error", "error": str(e)}
+
+    async def run_validated_async(
+        self,
+        messages: list,
+        use_thinking: bool = False,
+        max_retries: int = 2,
+    ) -> dict:
+        """
+        非流式调用 + JSON 解析 + 校验重试（Agent 节点使用）。
+
+        如果 LLM 返回的内容无法解析为 JSON，会把解析错误追加到对话中
+        让模型修正输出，最多重试 max_retries 次。
+
+        Returns:
+            {"success": bool, "data": dict|None, "raw": str, "usage": dict, "error": str|None}
+        """
+        total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+        if use_thinking:
+            extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
+        else:
+            extra_body = {"thinking": {"type": "disabled"}}
+
+        conv = list(messages)
+        last_raw = ""
+
+        for attempt in range(1 + max_retries):
+            try:
+                response = await self.async_client.chat.completions.create(
+                    model=self.model,
+                    messages=conv,
+                    extra_body=extra_body,
+                )
+                content = response.choices[0].message.content or ""
+                last_raw = content
+                usage = {
+                    "prompt_tokens": response.usage.prompt_tokens or 0,
+                    "completion_tokens": response.usage.completion_tokens or 0,
+                    "total_tokens": response.usage.total_tokens or 0,
+                }
+                total_usage["prompt_tokens"] += usage["prompt_tokens"]
+                total_usage["completion_tokens"] += usage["completion_tokens"]
+                total_usage["total_tokens"] += usage["total_tokens"]
+
+                data = self._parse_json(content)
+                if data is not None:
+                    return {"success": True, "data": data, "raw": content, "usage": total_usage, "error": None}
+
+                if attempt < max_retries:
+                    conv.append({"role": "assistant", "content": content})
+                    conv.append({"role": "user", "content": "你的输出不是合法的 JSON，请重新输出，只返回纯 JSON，不要有任何 markdown 标记或额外文字。"})
+                    logger.warning(f"[Kimi] run_validated 第 {attempt+1} 次 JSON 解析失败，重试中...")
+
+            except Exception as e:
+                logger.error(f"[Kimi] run_validated API 调用失败 (attempt {attempt+1}): {e}")
+                return {"success": False, "data": None, "raw": last_raw, "usage": total_usage, "error": str(e)}
+
+        return {"success": False, "data": None, "raw": last_raw, "usage": total_usage, "error": "多次重试后仍无法解析为合法 JSON"}
 
     @staticmethod
     def _parse_json(content: str) -> dict | None:
