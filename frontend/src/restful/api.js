@@ -275,6 +275,13 @@ export const getFunctionalRequirementTagOptions = () => {
     return axios.get("/api/ui_test/functional-requirements/tag-options/").then(res => res.data);
 };
 
+export const exportFunctionalRequirements = params => {
+    return axios.get("/api/ui_test/functional-requirements/export/", {
+        params,
+        responseType: 'blob'
+    });
+};
+
 export const createFunctionalRequirement = params => {
     return axios.post("/api/ui_test/functional-requirements/", params).then(res => res.data);
 };

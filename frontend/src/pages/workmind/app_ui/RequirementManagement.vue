@@ -11,6 +11,14 @@
                     新建需求
                 </el-button>
                 <el-button
+                    type="success"
+                    :icon="Download"
+                    :loading="exporting"
+                    @click="handleExport"
+                >
+                    导出
+                </el-button>
+                <el-button
                     type="info"
                     :icon="Refresh"
                     :loading="loading"
@@ -393,12 +401,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Plus, Refresh, Search, Download } from '@element-plus/icons-vue'
 import {
     getFunctionalRequirements,
     createFunctionalRequirement,
     updateFunctionalRequirement,
     deleteFunctionalRequirement,
+    exportFunctionalRequirements,
     getUserList
 } from '@/restful/api'
 
@@ -409,6 +418,7 @@ const requirementForm = ref(null)
 // 响应式数据
 const loading = ref(false)
 const saving = ref(false)
+const exporting = ref(false)
 const requirementList = ref([])
 const requirementOptions = ref([])
 const total = ref(0)
@@ -555,6 +565,53 @@ const resetSearch = () => {
     searchForm.value.tags = ''
     searchForm.value.created_at = null
     loadRequirements()
+}
+
+const handleExport = () => {
+    exporting.value = true
+    const params = {}
+    if (searchForm.value.name) params.name = searchForm.value.name
+    if (searchForm.value.test_team) params.test_team = searchForm.value.test_team
+    if (searchForm.value.testers) params.testers = searchForm.value.testers
+    if (searchForm.value.status) params.status = searchForm.value.status
+    if (searchForm.value.tags) params.tags = searchForm.value.tags
+    if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
+        params.created_at_after = searchForm.value.created_at[0]
+        params.created_at_before = searchForm.value.created_at[1]
+    }
+    exportFunctionalRequirements(params).then(res => {
+        const disposition = res.headers['content-disposition'] || ''
+        let filename = '需求列表.xlsx'
+        const match = disposition.match(/filename\*=UTF-8''(.+)/)
+        if (match) filename = decodeURIComponent(match[1])
+        const blob = new Blob([res.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        window.URL.revokeObjectURL(url)
+        ElMessage.success('导出成功')
+    }).catch(err => {
+        if (err.response && err.response.data instanceof Blob) {
+            const reader = new FileReader()
+            reader.onload = () => {
+                try {
+                    const json = JSON.parse(reader.result)
+                    ElMessage.error(json.msg || '导出失败')
+                } catch {
+                    ElMessage.error('导出失败')
+                }
+            }
+            reader.readAsText(err.response.data)
+        } else {
+            ElMessage.error('导出失败')
+        }
+    }).finally(() => {
+        exporting.value = false
+    })
 }
 
 const handleSizeChange = (size) => {
