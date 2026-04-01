@@ -37,6 +37,7 @@ class TestcaseAgentState(TypedDict, total=False):
     # 生成中间态
     modules_generated: list
     current_module_index: int
+    module_total: int  # 需求分析中的模块总数，供 SSE 展示进度（节点增量里无 requirement_analysis 时必需）
     generation_errors: list
 
     # 评审循环
@@ -179,6 +180,7 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
         errors.append({'module': module_name, 'error': '生成超时'})
         return {
             'current_module_index': idx + 1,
+            'module_total': len(modules),
             'generation_errors': errors,
             'node_trace': (state.get('node_trace') or []) + [{'node': f'generate_module:{module_name}', 'elapsed_ms': elapsed, 'status': 'timeout'}],
             'total_usage': state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
@@ -200,6 +202,7 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
     return {
         'modules_generated': generated,
         'current_module_index': idx + 1,
+        'module_total': len(modules),
         'generation_errors': errors,
         'node_trace': (state.get('node_trace') or []) + [{'node': f'generate_module:{module_name}', 'elapsed_ms': elapsed, 'status': 'ok' if result['success'] else 'error'}],
         'total_usage': _accumulate_usage(state, result['usage']),

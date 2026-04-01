@@ -218,22 +218,26 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
     elif node_name == 'generate_by_module':
         generated = node_output.get('modules_generated', [])
         errors = node_output.get('generation_errors', [])
-        total_modules = 0
-        analysis = node_output.get('requirement_analysis')
-        if analysis:
-            total_modules = len(analysis.get('modules', []))
+        # 节点增量输出里通常不含 requirement_analysis，需用节点显式携带的 module_total
+        total_modules = int(node_output.get('module_total') or 0)
+        if not total_modules:
+            analysis = node_output.get('requirement_analysis')
+            if analysis:
+                total_modules = len(analysis.get('modules', []))
         if generated:
             latest = generated[-1]
             case_count = sum(
                 len(f.get('cases', []))
                 for f in latest.get('functions', [])
             )
+            completed = len(generated)
+            total = total_modules or completed
             return {
                 'module_name': latest.get('name', ''),
                 'function_count': len(latest.get('functions', [])),
                 'case_count': case_count,
-                'completed': len(generated),
-                'total': total_modules or len(generated),
+                'completed': completed,
+                'total': total,
                 'errors': errors,
             }
 

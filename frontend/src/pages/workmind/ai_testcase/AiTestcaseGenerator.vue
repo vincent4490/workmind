@@ -1526,7 +1526,10 @@ async function handleAgentGenerate(formData) {
                     })
                     appendAgentLog('✅', `模块「${event.data.module_name}」完成 — ${event.data.function_count || 0} 个功能点, ${event.data.case_count || 0} 条用例`, 'success', durationStr)
                     const completed = event.data.completed || agentProgress.value.moduleProgress.length
-                    const total = event.data.total || completed
+                    const total =
+                        (event.data.total && event.data.total > 0
+                            ? event.data.total
+                            : agentProgress.value.analysisData?.modules?.length) || completed
                     if (completed < total) {
                         appendAgentLog('🔨', `继续生成下一个模块 (${completed}/${total})...`, 'running')
                     } else {
