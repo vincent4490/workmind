@@ -80,21 +80,28 @@ def index_task(task_id: int) -> int:
         return 0
 
     chunks_to_save = []
-    # 1) 全文：result_md 或 result_json.markdown_full
+    # 1) 全文：result_md 或 result_json 中的 Markdown（含 prd_refine 的 updated_prd.markdown_full）
     content_text = None
     content_type = "other"
     if task.task_type == "prd_draft":
         content_type = "prd_full"
+    if task.task_type == "prd_refine":
+        content_type = "prd_full"
     if task.result_md and task.result_md.strip():
         content_text = task.result_md.strip()
     elif task.result_json and isinstance(task.result_json, dict):
-        content_text = (task.result_json.get("markdown_full") or "").strip()
+        from apps.ai_requirement.services.schemas import extract_prd_markdown_from_result_json
+
+        content_text = extract_prd_markdown_from_result_json(task.result_json)
     if content_text:
         chunks_to_save.append((content_type, content_text))
 
-    # 2) 术语表：result_json.glossary
+    # 2) 术语表：根级 glossary 或需求完善 updated_prd.glossary
     if task.result_json and isinstance(task.result_json, dict):
-        glossary = task.result_json.get("glossary")
+        rj = task.result_json
+        glossary = rj.get("glossary")
+        if not glossary and isinstance(rj.get("updated_prd"), dict):
+            glossary = rj["updated_prd"].get("glossary")
         if isinstance(glossary, dict) and glossary:
             lines = [f"{k}: {v}" for k, v in glossary.items()]
             if lines:

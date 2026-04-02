@@ -77,7 +77,7 @@ def write_prd_to_confluence(
     title: str | None = None,
 ) -> dict:
     """
-    将任务的 PRD 内容（result_md 或 result_json.markdown_full）写入 Confluence 页面。
+    将任务的 PRD 内容（result_md 或 result_json 中的 Markdown，含需求完善的 updated_prd.markdown_full）写入 Confluence 页面。
     返回 {"success": bool, "page_id": str?, "url": str?, "error": str?}
     """
     from apps.ai_requirement.models import AiRequirementTask
@@ -114,8 +114,12 @@ def write_prd_to_confluence(
                 out.append("<p></p>")
         body_html = "".join(out)
     elif task.result_json and isinstance(task.result_json, dict):
-        page_title = title or (task.result_json.get("prd_meta", {}) or {}).get("version") or page_title
-        raw_md = (task.result_json.get("markdown_full") or "").strip()
+        from apps.ai_requirement.services.schemas import extract_prd_markdown_from_result_json
+
+        rj = task.result_json
+        meta = (rj.get("prd_meta") or {}) or (rj.get("updated_prd") or {}).get("prd_meta") or {}
+        page_title = title or (meta.get("version") if isinstance(meta, dict) else None) or page_title
+        raw_md = extract_prd_markdown_from_result_json(rj)
         if raw_md:
             import re
             md = re.sub(r"<", "&lt;", raw_md)
@@ -136,7 +140,7 @@ def write_prd_to_confluence(
             body_html = "".join(out)
 
     if not body_html:
-        return {"success": False, "page_id": None, "url": None, "error": "该任务无 PRD 正文（result_md / result_json.markdown_full）"}
+        return {"success": False, "page_id": None, "url": None, "error": "该任务无 PRD 正文（result_md / markdown_full）"}
 
     space = (space_key or getattr(settings, "CONFLUENCE_SPACE_KEY", "") or "").strip()
     if not space:

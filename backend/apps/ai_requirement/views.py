@@ -38,6 +38,7 @@ from .serializers import (
     WorkflowApproveSerializer,
 )
 from .services.agent_router import RequirementAgentRouter
+from .services.schemas import extract_prd_markdown_from_result_json
 from .services.security import SecurityError
 
 logger = logging.getLogger(__name__)
@@ -46,17 +47,16 @@ def _extract_result_md(output_format: str, result_json, raw_content: str) -> str
     """
     根据 output_format 生成/提取人类可读 Markdown。
 
-    当前策略（Phase 1）：
-    - 若解析到了 JSON，优先取 JSON 内的 markdown_full（如 prd_draft）
-    - 若没有 JSON，则 raw_content 视为 Markdown 文本
+    - JSON 任务：extract_prd_markdown_from_result_json（根级 markdown_full 或需求完善的 updated_prd.markdown_full）
+    - 无 JSON 时：raw_content 视为 Markdown 文本
     """
     if output_format == 'json':
         return None
 
     if isinstance(result_json, dict):
-        md = result_json.get('markdown_full')
-        if isinstance(md, str) and md.strip():
-            return md.strip()
+        md = extract_prd_markdown_from_result_json(result_json)
+        if md:
+            return md
         return None
 
     if isinstance(raw_content, str) and raw_content.strip():

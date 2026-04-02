@@ -125,6 +125,11 @@ class CompetitiveAnalysisSchema(BaseModel):
     comparison_matrix: list[dict] = Field(min_length=1)
     swot: Optional[dict] = None
     ui_analysis: Optional[str] = None
+    markdown_full: str = Field(
+        min_length=100,
+        description="完整竞品分析 Markdown 正文",
+    )
+    recommendations: Optional[list[str]] = Field(default=None)
     confidence_score: float = Field(ge=0, le=1)
 
 
@@ -133,6 +138,10 @@ class RequirementAnalysisSchema(BaseModel):
     functional_decomposition: list[dict] = Field(min_length=1)
     technical_impact: Optional[list[dict]] = None
     risks: Optional[list[dict]] = None
+    markdown_full: str = Field(
+        min_length=200,
+        description="完整需求分析 Markdown 正文（开发交付物口吻）",
+    )
     confidence_score: float = Field(ge=0, le=1)
 
 
@@ -142,23 +151,55 @@ class TechDesignSchema(BaseModel):
     api_contracts: Optional[list[dict]] = None
     mermaid_diagram: Optional[str] = None
     risks: Optional[list[dict]] = None
+    markdown_full: str = Field(
+        min_length=200,
+        description="完整技术方案 Markdown 正文（开发交付物口吻）",
+    )
     confidence_score: float = Field(ge=0, le=1)
 
 
 class TestReqAnalysisSchema(BaseModel):
-    """测试需求分析输出 Schema"""
+    """测试需求分析输出 Schema（与 prompts/test_requirement_analysis 一致）"""
+
     testability_assessment: list[dict] = Field(min_length=1)
     untestable_items: Optional[list[dict]] = None
+    test_strategy: Optional[dict] = None
     risk_areas: Optional[list[dict]] = None
+    missing_requirements: Optional[list[str]] = None
     confidence_score: float = Field(ge=0, le=1)
 
 
 class PRDRefineSchema(BaseModel):
-    """PRD 修订输出 Schema"""
+    """
+    PRD 修订 / 需求完善输出 Schema。
+
+    updated_prd 与 prd_draft 共用 AgenticPRDSchema，强制包含 markdown_full 等完整 PRD 结构，
+    保证与「PRD 撰写」同一套正文质量与校验力度。
+    """
+
     changes: list[dict] = Field(min_length=1)
-    updated_prd: dict
+    updated_prd: AgenticPRDSchema
     change_summary: str
     confidence_score: float = Field(ge=0, le=1)
+
+
+def extract_prd_markdown_from_result_json(result_json: dict | None) -> str:
+    """
+    从任务 result_json 提取可阅读的 PRD Markdown 正文。
+
+    顺序：updated_prd.markdown_full（需求完善）→ 根级 markdown_full（PRD 撰写等）。
+    """
+    if not result_json or not isinstance(result_json, dict):
+        return ""
+    up = result_json.get("updated_prd")
+    if isinstance(up, dict):
+        md = up.get("markdown_full")
+        if isinstance(md, str) and md.strip():
+            return md.strip()
+    md = result_json.get("markdown_full")
+    if isinstance(md, str) and md.strip():
+        return md.strip()
+    return ""
 
 
 SCHEMA_REGISTRY: dict[str, type[BaseModel]] = {

@@ -110,6 +110,17 @@
                             <el-icon v-if="!generating && !workflowRunning && !maRunning"><MagicStick /></el-icon>
                             {{ (generating || workflowRunning || maRunning) ? '正在生成中...' : (multiAgentMode ? '多智能体协作' : (deepMode ? '深度撰写' : '开始生成')) }}
                         </el-button>
+                        <el-button
+                            v-if="form.role === 'dev' && form.taskType === 'tech_design'"
+                            size="large"
+                            type="primary"
+                            :loading="generating || workflowRunning || maRunning"
+                            :disabled="!canSubmit || multiAgentMode || deepMode"
+                            @click="handleDevDeepTechDesign()"
+                        >
+                            <el-icon><SetUp /></el-icon>
+                            开发深度模式（串联）
+                        </el-button>
                         <el-button size="large" @click="handleClear" :disabled="generating || workflowRunning">
                             清空
                         </el-button>
@@ -334,7 +345,7 @@
                         <div class="card-header">
                             <span class="card-title">
                                 <el-icon><Document /></el-icon>
-                                {{ generating ? 'AI 正在生成...' : '生成结果' }}
+                                {{ generating ? (devDeepPhaseTitle || 'AI 正在生成...') : '生成结果' }}
                             </span>
                             <span v-if="generating" class="stream-indicator">
                                 <span class="typing-dot"></span>
@@ -354,9 +365,38 @@
                         </div>
                     </template>
 
-                    <!-- 流式文本输出：生成中且尚无内容时显示占位，便于用户看到“在等输出” -->
-                    <div class="stream-output" ref="streamOutputRef">
-                        <pre class="stream-text">{{ streamContent || (generating ? '等待输出…' : '') }}</pre>
+                    <!-- 流式文本：生成中始终显示；完成后若有结构化结果则主区展示结构化视图，原文默认折叠 -->
+                    <div v-if="generating" class="stream-output" ref="streamOutputRef">
+                        <pre class="stream-text">{{ streamContent || '等待输出…' }}</pre>
+                    </div>
+                    <template v-else-if="doneResult && showStructuredResultPanel && parsedResultJson">
+                        <RequirementStructuredResult
+                            v-if="devDeepRequirementResult && doneResult.task_type === 'tech_design'"
+                            task-type="requirement_analysis"
+                            :data="devDeepRequirementResult.result_json"
+                            :confidence-score="devDeepRequirementResult.confidence_score"
+                            :total-tokens="devDeepRequirementResult.usage?.total_tokens ?? 0"
+                        />
+                        <RequirementStructuredResult
+                            :task-type="doneResult.task_type"
+                            :data="parsedResultJson"
+                            :confidence-score="doneResult.confidence_score"
+                            :total-tokens="doneResult.usage?.total_tokens ?? 0"
+                        />
+                        <el-collapse
+                            v-if="streamContent && streamContent.trim()"
+                            v-model="rawStreamCollapse"
+                            class="req-raw-stream-collapse"
+                        >
+                            <el-collapse-item title="原始流式文本" name="raw">
+                                <div class="stream-output stream-output--raw">
+                                    <pre class="stream-text">{{ streamContent }}</pre>
+                                </div>
+                            </el-collapse-item>
+                        </el-collapse>
+                    </template>
+                    <div v-else class="stream-output" ref="streamOutputRef">
+                        <pre class="stream-text">{{ streamContent || '' }}</pre>
                     </div>
 
                     <!-- P1-1：需澄清时展示澄清表单，提交后流式重新生成 -->
@@ -391,10 +431,6 @@
                             <el-icon><View /></el-icon>
                             查看结构化 JSON
                         </el-button>
-                        <el-button @click="handleCopyMarkdown">
-                            <el-icon><CopyDocument /></el-icon>
-                            复制 Markdown
-                        </el-button>
                         <el-button
                             v-if="isProductOrDevRole(doneResult)"
                             @click="handleDownloadWord"
@@ -410,25 +446,6 @@
                         >
                             <el-icon><Download /></el-icon>
                             下载 XMind
-                        </el-button>
-                        <!-- 需求 → 用例页桥接：任意任务可带需求文本跳转用例页 -->
-                        <el-button
-                            v-if="doneResult?.record_id"
-                            type="success"
-                            @click="handleBridgeToTestcase"
-                            :loading="bridging"
-                        >
-                            <el-icon><Right /></el-icon>
-                            生成测试用例
-                        </el-button>
-                        <!-- P2-3：同步到 Jira / 写入 Confluence（Jira 当前不支持） -->
-                        <el-button
-                            v-if="doneResult?.record_id"
-                            @click="handleSyncToJira"
-                            :loading="syncingJira"
-                        >
-                            <el-icon><Share /></el-icon>
-                            同步到 Jira
                         </el-button>
                         <el-button
                             v-if="hasPrdContent(doneResult)"
@@ -681,20 +698,18 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
 import {
     Edit, MagicStick, Document, View, Clock, Refresh,
     UploadFilled, Paperclip, User, Monitor, Checked,
-    CopyDocument, Right, ChatDotRound, SetUp, Share, Download
+    ChatDotRound, SetUp, Download
 } from '@element-plus/icons-vue'
+import RequirementStructuredResult from './RequirementStructuredResult.vue'
 import {
     aiRequirementStream,
     aiRequirementClarifyAndContinue,
     aiRequirementChatStream,
     getAiRequirementTasks,
     submitAiRequirementFeedback,
-    bridgeToTestcase,
-    aiRequirementSyncToJira,
     aiRequirementSyncToConfluence,
     downloadAiRequirementTaskExport,
     startWorkflowStream,
@@ -702,8 +717,6 @@ import {
     startMultiAgentStream,
     approveMultiAgentStream,
 } from '@/restful/api'
-
-const vueRouter = useRouter()
 
 const TASK_MAP = {
     product: [
@@ -747,7 +760,11 @@ const canSubmit = computed(() => {
         && !generating.value
 })
 
+/** 从历史记录回填表单时跳过「换角色默认选第一项任务」逻辑 */
+const syncingHistoryForm = ref(false)
+
 function onRoleChange() {
+    if (syncingHistoryForm.value) return
     const opts = TASK_MAP[form.value.role]
     const firstEnabled = opts.find(o => !o.disabled)
     form.value.taskType = firstEnabled ? firstEnabled.value : ''
@@ -758,6 +775,8 @@ function handleClear() {
     fileList.value = []
     streamContent.value = ''
     doneResult.value = null
+    devDeepRequirementResult.value = null
+    devDeepPhase.value = ''
     feedbackGiven.value = ''
 }
 
@@ -766,7 +785,51 @@ const generating = ref(false)
 const streamContent = ref('')
 const streamOutputRef = ref(null)
 const doneResult = ref(null)
+/** 结构化结果展示时，「原始流式文本」折叠面板（默认收起，避免与结构化区重复堆叠） */
+const rawStreamCollapse = ref([])
 const elapsedTime = ref(0)
+
+// 开发深度模式（需求分析 -> 技术方案）
+const devDeepRequirementResult = ref(null)
+const devDeepPhase = ref('')
+const devDeepPhaseTitle = computed(() => {
+    if (!devDeepPhase.value) return ''
+    if (devDeepPhase.value === 'requirement_analysis') return '正在生成需求分析...'
+    if (devDeepPhase.value === 'tech_design') return '正在生成技术方案...'
+    return ''
+})
+
+/** 与后端 SCHEMA_REGISTRY 对齐，这些任务有结构化 JSON，优先用专用视图而非整段 pre */
+const STRUCTURED_TASK_TYPES = [
+    'test_requirement_analysis',
+    'competitive_analysis',
+    'requirement_analysis',
+    'tech_design',
+    'prd_draft',
+    'prd_refine',
+]
+
+const parsedResultJson = computed(() => {
+    const r = doneResult.value?.result_json
+    if (r == null) return null
+    if (typeof r === 'string') {
+        try {
+            return JSON.parse(r)
+        } catch {
+            return null
+        }
+    }
+    if (typeof r === 'object') return r
+    return null
+})
+
+const showStructuredResultPanel = computed(() => {
+    if (generating.value) return false
+    if (!doneResult.value?.result_json) return false
+    const t = doneResult.value.task_type
+    if (!STRUCTURED_TASK_TYPES.includes(t)) return false
+    return parsedResultJson.value != null
+})
 let timerInterval = null
 
 // P1-1：澄清并继续
@@ -904,11 +967,117 @@ async function handleGenerate() {
     generating.value = true
     streamContent.value = ''
     doneResult.value = null
+    devDeepRequirementResult.value = null
+    devDeepPhase.value = ''
     feedbackGiven.value = ''
     elapsedTime.value = 0
 
     timerInterval = setInterval(() => { elapsedTime.value++ }, 1000)
     await doSubmit(false)
+}
+
+async function handleDevDeepTechDesign() {
+    if (generating.value || workflowRunning.value || maRunning.value) return
+    generating.value = true
+    devDeepRequirementResult.value = null
+    devDeepPhase.value = 'requirement_analysis'
+    doneResult.value = null
+    streamContent.value = ''
+    feedbackGiven.value = ''
+    elapsedTime.value = 0
+
+    timerInterval = setInterval(() => { elapsedTime.value++ }, 1000)
+
+    const buildPhaseData = (role, taskType, requirementInput, costConfirmed = false) => {
+        const hasFiles = fileList.value.length > 0
+        if (hasFiles) {
+            const data = new FormData()
+            data.append('role', role)
+            data.append('task_type', taskType)
+            data.append('requirement_input', requirementInput)
+            data.append('use_thinking', form.value.useThinking)
+            if (costConfirmed) data.append('cost_confirmed', 'true')
+            for (const f of fileList.value) data.append('files', f.raw)
+            return data
+        }
+        return {
+            role,
+            task_type: taskType,
+            requirement_input: requirementInput,
+            use_thinking: form.value.useThinking,
+            ...(costConfirmed ? { cost_confirmed: true } : {}),
+        }
+    }
+
+    const runPhase = async (role, taskType, requirementInput) => {
+        const runOnce = async (costConfirmed) => {
+            return await new Promise((resolve, reject) => {
+                aiRequirementStream(
+                    buildPhaseData(role, taskType, requirementInput, costConfirmed),
+                    (content) => { streamContent.value += content },
+                    (event) => resolve(event),
+                    (error) => reject(error),
+                    undefined,
+                    async (ev) => {
+                        try {
+                            await ElMessageBox.confirm(
+                                ev.message || '预估成本超过阈值，是否继续？',
+                                '成本确认',
+                                { type: 'warning' }
+                            )
+                            const r = await runOnce(true)
+                            resolve(r)
+                        } catch {
+                            reject(ev.error || '用户取消')
+                        }
+                    }
+                )
+            })
+        }
+        return await runOnce(false)
+    }
+
+    const originalReq = (form.value.requirement || '').trim()
+    if (!originalReq) {
+        generating.value = false
+        stopTimer()
+        ElMessage.warning('请先填写需求内容')
+        return
+    }
+
+    try {
+        // 1) 需求分析
+        const reqEvent = await runPhase('dev', 'requirement_analysis', originalReq)
+        devDeepRequirementResult.value = {
+            ...reqEvent,
+            role: 'dev',
+            task_type: 'requirement_analysis',
+        }
+
+        // 2) 技术方案：用需求分析结果做上下文
+        devDeepPhase.value = 'tech_design'
+        streamContent.value = ''
+
+        const reqDoc = reqEvent.result_md || (reqEvent.result_json ? JSON.stringify(reqEvent.result_json, null, 2) : originalReq)
+        const techInput = `【原始需求】\n${originalReq}\n\n【需求分析（用于生成技术方案）】\n${reqDoc}`
+
+        const techEvent = await runPhase('dev', 'tech_design', techInput)
+        doneResult.value = {
+            ...techEvent,
+            role: 'dev',
+            task_type: 'tech_design',
+        }
+        streamContent.value = techEvent.result_md || techEvent.raw_content || ''
+        ElMessage.success('开发深度模式完成')
+        await loadHistory()
+    } catch (err) {
+        ElMessage.error(`开发深度模式失败：${typeof err === 'string' ? err : (err?.message || '未知错误')}`)
+        await loadHistory()
+    } finally {
+        stopTimer()
+        generating.value = false
+        devDeepPhase.value = ''
+    }
 }
 
 function stopTimer() {
@@ -939,6 +1108,16 @@ async function loadHistory() {
 
 function handlePreviewHistory(item) {
     if (item.status !== 'success') return
+    // 与历史记录一致：同步左侧角色、任务（避免仍显示默认「产品 + PRD 撰写」）
+    syncingHistoryForm.value = true
+    form.value.role = item.role || 'product'
+    form.value.taskType = item.task_type || ''
+    if (item.requirement_input != null) {
+        form.value.requirement = item.requirement_input
+    }
+    nextTick(() => {
+        syncingHistoryForm.value = false
+    })
     // 优先展示 Markdown（如 prd_draft 的 markdown_full），其次展示原始输出，再退化到结构化 JSON
     streamContent.value = item.result_md || item.raw_content || JSON.stringify(item.result_json, null, 2)
     doneResult.value = {
@@ -960,16 +1139,6 @@ const jsonPreview = computed(() => {
     if (!doneResult.value?.result_json) return ''
     return JSON.stringify(doneResult.value.result_json, null, 2)
 })
-
-// ---- 复制 Markdown ----
-function handleCopyMarkdown() {
-    if (!streamContent.value) return
-    navigator.clipboard.writeText(streamContent.value).then(() => {
-        ElMessage.success('已复制到剪贴板')
-    }).catch(() => {
-        ElMessage.error('复制失败，请手动选择文本复制')
-    })
-}
 
 function isProductOrDevRole(result) {
     if (!result?.record_id) return false
@@ -1497,11 +1666,7 @@ async function handleMultiAgentApproval(approved) {
     maApprovalSubmitting.value = false
 }
 
-// ---- 功能点 → 用例智能体跳转 ----
-const bridging = ref(false)
-
-// ---- P2-3：Jira / Confluence 同步 ----
-const syncingJira = ref(false)
+// ---- Confluence 同步 ----
 const syncingConfluence = ref(false)
 const downloadWordLoading = ref(false)
 const downloadXmindLoading = ref(false)
@@ -1509,26 +1674,13 @@ const downloadXmindLoading = ref(false)
 function hasPrdContent(r) {
     if (!r) return false
     if (r.result_md && r.result_md.trim()) return true
-    if (r.result_json && r.result_json.markdown_full && r.result_json.markdown_full.trim()) return true
-    return false
-}
-
-async function handleSyncToJira() {
-    if (!doneResult.value?.record_id) return
-    syncingJira.value = true
-    try {
-        const res = await aiRequirementSyncToJira({ task_id: doneResult.value.record_id })
-        if (res.success) {
-            const n = (res.created || []).length
-            ElMessage.success(n ? `已创建 ${n} 个 Jira 工单` : '同步完成')
-        } else {
-            ElMessage.error(res.error || '同步到 Jira 失败')
-        }
-    } catch (err) {
-        ElMessage.error('同步失败：' + (err.response?.data?.error || err.message || '未知错误'))
-    } finally {
-        syncingJira.value = false
+    const j = r.result_json
+    if (j && typeof j === 'object') {
+        if (j.markdown_full && String(j.markdown_full).trim()) return true
+        const up = j.updated_prd
+        if (up && typeof up === 'object' && up.markdown_full && String(up.markdown_full).trim()) return true
     }
+    return false
 }
 
 async function handleSyncToConfluence() {
@@ -1546,23 +1698,6 @@ async function handleSyncToConfluence() {
         ElMessage.error('写入失败：' + (err.response?.data?.error || err.message || '未知错误'))
     } finally {
         syncingConfluence.value = false
-    }
-}
-
-async function handleBridgeToTestcase() {
-    if (!doneResult.value?.record_id) return
-    bridging.value = true
-    try {
-        const res = await bridgeToTestcase({ task_id: doneResult.value.record_id })
-        if (res.status !== 'ok') return
-        sessionStorage.setItem('ai_req_bridge_text', res.requirement_text || '')
-        sessionStorage.setItem('ai_req_bridge_source', String(res.source_task_id || ''))
-        ElMessage.success('已提取需求文本，正在跳转用例页…')
-        vueRouter.push({ name: 'AiTestcaseGenerator' })
-    } catch (err) {
-        ElMessage.error('桥接失败：' + (err.message || '未知错误'))
-    } finally {
-        bridging.value = false
     }
 }
 
@@ -1803,6 +1938,17 @@ onUnmounted(() => { stopTimer() })
 
 .stream-output::-webkit-scrollbar { width: 4px; }
 .stream-output::-webkit-scrollbar-thumb { background: #dcdfe6; border-radius: 2px; }
+
+.req-raw-stream-collapse {
+    margin-top: 8px;
+}
+.req-raw-stream-collapse :deep(.el-collapse-item__header) {
+    font-size: 13px;
+    color: #606266;
+}
+.stream-output--raw {
+    max-height: 320px;
+}
 
 /* 结果操作 */
 .result-stats {

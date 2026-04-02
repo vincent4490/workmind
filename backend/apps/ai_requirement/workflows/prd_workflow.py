@@ -154,6 +154,8 @@ async def review_agent_node(state: PRDWorkflowState) -> dict:
     review_input = (
         f'请评审以下 PRD，给出评审意见和分数（0-1）。'
         f'如果分数 >= 0.8 则认为通过，否则给出具体修改建议。\n\n'
+        f'输出时必须遵守「需求完善」完整 JSON 规范：updated_prd 为完整 Agentic PRD（含 prd_meta、intent、user_stories、markdown_full 等），'
+        f'请以上方 PRD 为基准做修订或原样拷贝后再改，不得省略 markdown_full 或 user_stories。\n\n'
         f'--- PRD 内容 ---\n{prd_text}'
     )
 
