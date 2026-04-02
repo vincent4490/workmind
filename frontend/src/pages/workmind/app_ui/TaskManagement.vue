@@ -35,6 +35,26 @@
                     />
                 </el-select>
             </el-form-item>
+            <el-form-item label="任务负责人">
+                <el-select
+                    v-model="searchForm.owner"
+                    placeholder="请选择负责人"
+                    filterable
+                    multiple
+                    collapse-tags
+                    clearable
+                    style="width: 180px;"
+                    :loading="userListLoading"
+                    @change="loadTasks"
+                >
+                    <el-option
+                        v-for="u in userList"
+                        :key="u.id"
+                        :label="u.name || u.username"
+                        :value="u.username"
+                    />
+                </el-select>
+            </el-form-item>
             <el-form-item label="任务状态">
                 <el-select
                     v-model="searchForm.status"
@@ -246,6 +266,7 @@ const taskRules = {
 const searchForm = ref({
     name: '',
     requirement_name: '',
+    owner: [],
     status: '',
     created_at: null
 })
@@ -289,6 +310,7 @@ const loadTasks = () => {
     const params = { page: currentPage.value, page_size: pageSize.value }
     if (searchForm.value.name) params.name = searchForm.value.name
     if (searchForm.value.requirement_name) params.requirement_name = searchForm.value.requirement_name
+    if (searchForm.value.owner && searchForm.value.owner.length) params.owner = formatPersonField(searchForm.value.owner)
     if (searchForm.value.status) params.status = searchForm.value.status
     if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
         params.created_at_after = searchForm.value.created_at[0]
@@ -318,6 +340,7 @@ const loadTasks = () => {
 const resetSearch = () => {
     searchForm.value.name = ''
     searchForm.value.requirement_name = ''
+    searchForm.value.owner = []
     searchForm.value.status = ''
     searchForm.value.created_at = null
     loadTasks()
