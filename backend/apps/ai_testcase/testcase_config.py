@@ -53,28 +53,24 @@ class CoverageDimensionConfig:
 
 # ============ 用例质量配置 ============
 class TestcaseQualityConfig:
-    """用例质量配置"""
-    
-    # 用例生成模式
-    MODE_BALANCED = "balanced"      # 平衡模式：质量和数量兼顾（默认）
-    MODE_QUALITY = "quality"        # 质量优先：精简但深度覆盖
-    MODE_COVERAGE = "coverage"      # 覆盖优先：追求全面覆盖
-    
+    """用例质量配置（与 API mode：comprehensive / focused 对齐）"""
+
+    MODE_COMPREHENSIVE = "comprehensive"  # 全覆盖：追求广度与方法学覆盖
+    MODE_FOCUSED = "focused"              # 聚焦：功能与业务优先，控制条数
+
     # 当前模式（可在运行时修改）
-    CURRENT_MODE = MODE_COVERAGE
-    
+    CURRENT_MODE = MODE_COMPREHENSIVE
+
     # 等价类处理策略
     EQUIVALENCE_CLASS_STRATEGY = {
-        MODE_QUALITY: "代表值",      # 每个等价类只取 1 个代表值
-        MODE_BALANCED: "关键值",     # 每个等价类取 1-2 个关键值
-        MODE_COVERAGE: "多样值",     # 每个等价类取 2-3 个典型值
+        MODE_FOCUSED: "关键值",          # 每个等价类取 1-2 个关键值
+        MODE_COMPREHENSIVE: "多样值",   # 每个等价类取 2-3 个典型值
     }
-    
+
     # 边界值测试策略
     BOUNDARY_VALUE_STRATEGY = {
-        MODE_QUALITY: "核心边界",    # 只测最关键的边界点
-        MODE_BALANCED: "标准边界",   # 测试上下边界及 ±1
-        MODE_COVERAGE: "扩展边界",   # 测试所有边界点及特殊值
+        MODE_FOCUSED: "标准边界",        # 测试上下边界及关键 ±1
+        MODE_COMPREHENSIVE: "扩展边界",  # 测试所有边界点及特殊值
     }
 
 
@@ -140,7 +136,7 @@ def get_coverage_dimensions(mode: str = None) -> list:
     根据模式获取应覆盖的维度
     
     Args:
-        mode: 生成模式 (quality/balanced/coverage)
+        mode: 生成模式 (comprehensive/focused)，默认 CURRENT_MODE
     
     Returns:
         维度列表
@@ -150,14 +146,14 @@ def get_coverage_dimensions(mode: str = None) -> list:
     
     config = CoverageDimensionConfig
     
-    if mode == TestcaseQualityConfig.MODE_QUALITY:
-        return config.MANDATORY_DIMENSIONS
-    elif mode == TestcaseQualityConfig.MODE_BALANCED:
+    if mode == TestcaseQualityConfig.MODE_FOCUSED:
         return config.MANDATORY_DIMENSIONS + config.RECOMMENDED_DIMENSIONS
-    else:  # coverage
-        return (config.MANDATORY_DIMENSIONS + 
-                config.RECOMMENDED_DIMENSIONS + 
-                config.OPTIONAL_DIMENSIONS)
+    # comprehensive
+    return (
+        config.MANDATORY_DIMENSIONS
+        + config.RECOMMENDED_DIMENSIONS
+        + config.OPTIONAL_DIMENSIONS
+    )
 
 
 def build_quantity_instruction(complexity: str = "medium") -> str:
@@ -173,12 +169,11 @@ def build_quantity_instruction(complexity: str = "medium") -> str:
     min_count, max_count = get_quantity_range(complexity)
     mode = TestcaseQualityConfig.CURRENT_MODE
     
-    if mode == TestcaseQualityConfig.MODE_QUALITY:
-        return f"每个功能点生成 {min_count}-{min_count+2} 个高质量用例，注重深度而非数量"
-    elif mode == TestcaseQualityConfig.MODE_BALANCED:
-        return f"每个功能点生成 {min_count}-{max_count} 个用例，平衡质量和覆盖度"
-    else:  # coverage
-        return f"每个功能点生成 {min_count}-{max_count} 个用例，追求全面覆盖，复杂功能可超过 {max_count} 条"
+    if mode == TestcaseQualityConfig.MODE_FOCUSED:
+        return f"每个功能点生成 {min_count}-{max_count} 个用例，聚焦核心功能与业务规则，控制总量"
+    return (
+        f"每个功能点生成 {min_count}-{max_count} 个用例，追求全面覆盖，复杂功能可超过 {max_count} 条"
+    )
 
 
 def build_coverage_instruction(mode: str = None) -> str:

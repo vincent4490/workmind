@@ -33,8 +33,7 @@ class GenerateRequestSerializer(serializers.Serializer):
     mode = serializers.ChoiceField(
         choices=[
             ('comprehensive', '全覆盖模式'),
-            ('balanced', '平衡模式'),
-            ('quality', '质量模式'),
+            ('focused', '聚焦模式（功能与业务）'),
         ],
         required=False,
         default='comprehensive',

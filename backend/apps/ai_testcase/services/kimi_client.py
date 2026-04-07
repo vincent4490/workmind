@@ -11,7 +11,6 @@ from json_repair import repair_json
 from .prompts import (
     get_testcase_prompt,
     get_testcase_prompt_multimodal,
-    get_testcase_from_structure_prompt,
     get_module_regenerate_prompt,
     get_module_regenerate_prompt_multimodal,
     get_function_regenerate_prompt,
@@ -52,7 +51,7 @@ class KimiClient:
         Args:
             requirement: 功能需求描述
             use_thinking: 是否启用思考模式
-            mode: 生成模式 ('comprehensive', 'balanced', 'quality')
+            mode: 生成模式 ('comprehensive', 'focused')
 
         Returns:
             dict: {
@@ -124,7 +123,7 @@ class KimiClient:
         Args:
             requirement: 功能需求描述
             use_thinking: 是否启用思考模式
-            mode: 生成模式 ('comprehensive', 'balanced', 'quality')
+            mode: 生成模式 ('comprehensive', 'focused')
 
         Yields:
             dict: {"type": "chunk", "content": "..."} 或
@@ -189,7 +188,7 @@ class KimiClient:
             extracted_texts: [{"source": "文件名", "content": "提取的文字"}]
             images: [{"source": "文件名", "data": "base64", "mime": "image/jpeg"}]
             use_thinking: 是否启用思考模式
-            mode: 生成模式 ('comprehensive', 'balanced', 'quality')
+            mode: 生成模式 ('comprehensive', 'focused')
 
         Yields:
             dict: {"type": "chunk"/"done"/"error", ...}
@@ -238,63 +237,6 @@ class KimiClient:
 
         except Exception as e:
             logger.error(f"[Kimi] 多模态流式 API 调用失败: {e}")
-            yield {"type": "error", "error": str(e)}
-
-    async def generate_testcases_from_structure_stream_async(
-        self,
-        structure: dict,
-        requirement_summary: str = None,
-        use_thinking: bool = False
-    ):
-        """
-        基于功能点结构流式生成测试用例（需求智能体结构直传，仅生成 cases）。
-
-        Args:
-            structure: 与 feature_breakdown 一致的结构（title, modules[].functions[].acceptance_points 等）
-            requirement_summary: 可选需求摘要
-            use_thinking: 是否启用思考模式
-
-        Yields:
-            dict: {"type": "chunk"/"done"/"error", ...}
-        """
-        logger.info("[Kimi] 开始基于功能点结构流式生成用例")
-        messages = get_testcase_from_structure_prompt(structure, requirement_summary)
-
-        if use_thinking:
-            extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
-        else:
-            extra_body = {"thinking": {"type": "disabled"}}
-
-        try:
-            stream = await self.async_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                extra_body=extra_body,
-                stream=True,
-                stream_options={"include_usage": True}
-            )
-
-            full_content = ""
-            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
-            async for chunk in stream:
-                if chunk.usage:
-                    usage = {
-                        "prompt_tokens": chunk.usage.prompt_tokens or 0,
-                        "completion_tokens": chunk.usage.completion_tokens or 0,
-                        "total_tokens": chunk.usage.total_tokens or 0,
-                    }
-
-                if chunk.choices and len(chunk.choices) > 0:
-                    delta = chunk.choices[0].delta
-                    if delta and delta.content:
-                        full_content += delta.content
-                        yield {"type": "chunk", "content": delta.content}
-
-            yield {"type": "done", "content": full_content, "usage": usage}
-
-        except Exception as e:
-            logger.error(f"[Kimi] 基于结构流式生成失败: {e}")
             yield {"type": "error", "error": str(e)}
 
     async def regenerate_module_stream_async(

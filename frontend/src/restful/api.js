@@ -1205,64 +1205,6 @@ export const approveMultiAgentStream = async (workflowId, data, onEvent, onError
     }
 };
 
-// 基于功能点结构流式生成测试用例（需求智能体结构直传，方案 A）
-// 与 aiGenerateTestcaseStream 事件格式一致：onStart/onChunk/onDone/onError
-export const aiGenerateTestcaseFromStructureStream = async (data, onChunk, onDone, onError, onStart) => {
-    const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
-
-    try {
-        const response = await fetch(sseBase + '/api/ai_testcase/generate-from-structure/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-            },
-            body: JSON.stringify(data)
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            onError(text || `HTTP ${response.status}`);
-            return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const event = JSON.parse(line.slice(6));
-                        if (event.type === 'start') {
-                            if (onStart) onStart(event);
-                        } else if (event.type === 'chunk') {
-                            onChunk(event.content);
-                        } else if (event.type === 'done') {
-                            onDone(event);
-                        } else if (event.type === 'error') {
-                            onError(event.error);
-                        }
-                    } catch (e) {
-                        // 忽略解析失败的行
-                    }
-                }
-            }
-        }
-    } catch (err) {
-        onError(err.message || '网络连接失败');
-    }
-};
-
 // 流式生成测试用例（SSE）
 // 直连后端 8009 端口，绕过 Vite 代理（代理会缓冲 SSE 流）
 // 支持 FormData（带文件上传）和普通 JSON 两种格式

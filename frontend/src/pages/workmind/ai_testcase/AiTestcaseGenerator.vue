@@ -107,19 +107,13 @@
                             <el-radio value="comprehensive" class="mode-radio">
                                 <div class="mode-content">
                                     <span class="mode-title">全覆盖模式</span>
-                                    <span class="mode-desc">（复杂需求）</span>
+                                    <span class="mode-desc">（高覆盖、方法学与异常场景尽量铺全）</span>
                                 </div>
                             </el-radio>
-                            <el-radio value="balanced" class="mode-radio">
+                            <el-radio value="focused" class="mode-radio">
                                 <div class="mode-content">
-                                    <span class="mode-title">平衡模式</span>
-                                    <span class="mode-desc">（中等需求）</span>
-                                </div>
-                            </el-radio>
-                            <el-radio value="quality" class="mode-radio">
-                                <div class="mode-content">
-                                    <span class="mode-title">质量模式</span>
-                                    <span class="mode-desc">（简单需求）</span>
+                                    <span class="mode-title">聚焦模式</span>
+                                    <span class="mode-desc">（功能与业务优先，条数精简）</span>
                                 </div>
                             </el-radio>
                         </el-radio-group>
