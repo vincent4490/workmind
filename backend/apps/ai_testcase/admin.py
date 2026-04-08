@@ -6,10 +6,11 @@ from .models import AiTestcaseGeneration
 @admin.register(AiTestcaseGeneration)
 class AiTestcaseGenerationAdmin(admin.ModelAdmin):
     list_display = [
-        'id', 'requirement_short', 'status', 'module_count', 'case_count',
+        'id', 'created_by', 'requirement_short', 'status', 'generation_mode', 'case_strategy_mode',
+        'module_count', 'case_count',
         'total_tokens', 'created_at'
     ]
-    list_filter = ['status', 'use_thinking', 'created_at']
+    list_filter = ['status', 'use_thinking', 'generation_mode', 'case_strategy_mode', 'created_at']
     search_fields = ['requirement']
     readonly_fields = ['result_json', 'raw_content', 'created_at', 'updated_at']
     ordering = ['-created_at']

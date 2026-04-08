@@ -7,6 +7,7 @@
 - 同步持久化每个节点的状态到 AiTestcaseGeneration 模型
 - 提供 SSE 事件流用于前端步骤可视化
 """
+import asyncio
 import json
 import logging
 import os
@@ -16,11 +17,20 @@ from django.conf import settings
 
 from apps.ai_testcase.models import AiTestcaseGeneration
 from apps.ai_testcase.services.xmind_builder import XMindBuilder
+from . import agent_events
 from .testcase_agent import get_testcase_agent_workflow, TestcaseAgentState
 
 logger = logging.getLogger(__name__)
 
 XMIND_OUTPUT_DIR = os.path.join(settings.BASE_DIR, 'apps', 'ai_testcase', 'output')
+
+
+def _merge_agent_state(record: AiTestcaseGeneration, patch: dict) -> dict:
+    """合并写入 agent_state，避免 finalize 覆盖丢失 dedupe_report 等字段。"""
+    prev = record.agent_state if isinstance(record.agent_state, dict) else {}
+    out = dict(prev)
+    out.update(patch or {})
+    return out
 
 AGENT_NODES_ORDER = [
     'analyze_requirement',
@@ -30,6 +40,114 @@ AGENT_NODES_ORDER = [
     'refine_cases',
     'finalize',
 ]
+
+
+async def _process_graph_update(
+    record: AiTestcaseGeneration,
+    event: dict,
+    *,
+    node_index: list,
+    seen_nodes: set,
+):
+    """
+    处理 LangGraph 单步 updates 输出，yield 与原先 async for 一致的事件序列。
+    node_index 用单元素列表以便在多次调用间累加。
+    """
+    await sync_to_async(record.refresh_from_db)(fields=['status'])
+    if record.status == 'cancelled':
+        logger.info(f"[ai_testcase] agent.cancelled | record_id={record.id}")
+        yield {'type': 'cancelled', 'record_id': record.id}
+        return
+
+    for node_name, node_output in event.items():
+        if not isinstance(node_output, dict):
+            continue
+
+        display_node = node_name
+        if node_name == 'generate_by_module':
+            trace = node_output.get('node_trace', [])
+            if trace:
+                last = trace[-1]
+                display_node = last.get('node', node_name)
+
+        if node_name not in seen_nodes:
+            seen_nodes.add(node_name)
+            node_index[0] += 1
+
+        node_event = {
+            'type': 'agent_node_done',
+            'node': display_node,
+            'index': node_index[0],
+            'total': len(AGENT_NODES_ORDER),
+            'current_node': node_output.get('current_node', node_name),
+            'iteration_count': node_output.get('iteration_count'),
+            'review_score': node_output.get('review_score'),
+        }
+
+        node_event['data'] = _extract_node_data(node_name, node_output)
+        yield node_event
+
+        if node_output.get('review_score') is not None and node_name == 'merge_and_review':
+            yield {
+                'type': 'agent_review',
+                'score': node_output.get('review_score'),
+                'feedback': node_output.get('review_feedback', ''),
+                'issues': node_output.get('review_issues', []),
+                'issues_count': len(node_output.get('review_issues', [])),
+                'iteration': node_output.get('iteration_count', 0),
+                'model': node_output.get('review_model'),
+                'usage': node_output.get('review_usage', {}),
+                'cost_usd': node_output.get('review_cost_usd'),
+                'max': settings.TESTCASE_AGENT_MAX_REVISIONS if hasattr(settings, 'TESTCASE_AGENT_MAX_REVISIONS') else 3,
+            }
+
+        if node_name == 'refine_cases':
+            trace = node_output.get('node_trace', [])
+            changes_count = 0
+            if trace:
+                last = trace[-1]
+                changes_count = last.get('changes', 0)
+            yield {
+                'type': 'agent_refining',
+                'iteration': node_output.get('iteration_count', 0),
+                'changes_count': changes_count,
+            }
+
+        await _sync_state_to_db(record, node_output)
+
+        if node_output.get('error'):
+            record.status = 'failed'
+            record.error_message = f"agent_error: {node_output['error']}"
+            await sync_to_async(record.save)(update_fields=['status', 'error_message'])
+            logger.info(f"[ai_testcase] agent.error | record_id={record.id} error_type=agent")
+            yield {
+                'type': 'error',
+                'error_type': 'agent',
+                'error': node_output['error'],
+                'record_id': record.id,
+            }
+            return
+
+        if node_output.get('is_complete'):
+            merged = node_output.get('merged_result') or record.result_json
+            if merged is None:
+                merged = getattr(record, '_last_merged', None)
+
+            await _finalize_record(record, merged, node_output)
+            logger.info(f"[ai_testcase] agent.done | record_id={record.id} module_count={record.module_count} case_count={record.case_count}")
+
+            yield {
+                'type': 'agent_done',
+                'record_id': record.id,
+                'data': record.result_json,
+                'review_score': record.review_score,
+                'iterations': record.iteration_count,
+                'module_count': record.module_count,
+                'case_count': record.case_count,
+                'usage': node_output.get('total_usage', {}),
+                'prompt_version': getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1'),
+            }
+            return
 
 
 class TestcaseAgentExecutor:
@@ -70,110 +188,70 @@ class TestcaseAgentExecutor:
             'error': None,
         }
 
+        # 禁止在 async 上下文中访问 record.created_by（会触发同步 ORM 查库）。
+        # created_by_id 为外键列原始值，不访问数据库。
+        logger.info(
+            f"[ai_testcase] agent.start | record_id={record.id} "
+            f"user_id={getattr(record, 'created_by_id', None)} "
+            f"prompt_version={getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1')} "
+            f"case_strategy_mode={getattr(record, 'case_strategy_mode', None) or mode}"
+        )
         yield {
             'type': 'agent_start',
             'record_id': record.id,
             'nodes': AGENT_NODES_ORDER,
+            'prompt_version': getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1'),
         }
 
-        node_index = 0
+        node_index = [0]
         seen_nodes = set()
+        merge_q = asyncio.Queue()
+        agent_events.attach_event_queue(merge_q)
+
+        async def _pump_graph():
+            try:
+                async for event in graph.astream(initial_state, stream_mode='updates'):
+                    await merge_q.put(('graph', event))
+            except Exception as e:
+                await merge_q.put(('graph_exc', e))
+            finally:
+                await merge_q.put(('graph_end', None))
+
+        pump_task = asyncio.create_task(_pump_graph())
 
         try:
-            async for event in graph.astream(initial_state, stream_mode='updates'):
-                for node_name, node_output in event.items():
-                    if not isinstance(node_output, dict):
-                        continue
-
-                    display_node = node_name
-                    if node_name == 'generate_by_module':
-                        trace = node_output.get('node_trace', [])
-                        if trace:
-                            last = trace[-1]
-                            display_node = last.get('node', node_name)
-
-                    if node_name not in seen_nodes:
-                        seen_nodes.add(node_name)
-                        node_index += 1
-
-                    node_event = {
-                        'type': 'agent_node_done',
-                        'node': display_node,
-                        'index': node_index,
-                        'total': len(AGENT_NODES_ORDER),
-                        'current_node': node_output.get('current_node', node_name),
-                        'iteration_count': node_output.get('iteration_count'),
-                        'review_score': node_output.get('review_score'),
-                    }
-
-                    node_event['data'] = _extract_node_data(node_name, node_output)
-                    yield node_event
-
-                    if node_output.get('review_score') is not None and node_name == 'merge_and_review':
-                        yield {
-                            'type': 'agent_review',
-                            'score': node_output.get('review_score'),
-                            'feedback': node_output.get('review_feedback', ''),
-                            'issues': node_output.get('review_issues', []),
-                            'issues_count': len(node_output.get('review_issues', [])),
-                            'iteration': node_output.get('iteration_count', 0),
-                            'max': settings.TESTCASE_AGENT_MAX_REVISIONS if hasattr(settings, 'TESTCASE_AGENT_MAX_REVISIONS') else 3,
-                        }
-
-                    if node_name == 'refine_cases':
-                        trace = node_output.get('node_trace', [])
-                        changes_count = 0
-                        if trace:
-                            last = trace[-1]
-                            changes_count = last.get('changes', 0)
-                        yield {
-                            'type': 'agent_refining',
-                            'iteration': node_output.get('iteration_count', 0),
-                            'changes_count': changes_count,
-                        }
-
-                    await _sync_state_to_db(record, node_output)
-
-                    if node_output.get('error'):
-                        record.status = 'failed'
-                        record.error_message = node_output['error']
-                        await sync_to_async(record.save)(update_fields=['status', 'error_message'])
-                        yield {
-                            'type': 'error',
-                            'error': node_output['error'],
-                            'record_id': record.id,
-                        }
-                        return
-
-                    if node_output.get('is_complete'):
-                        merged = node_output.get('merged_result') or record.result_json
-                        if merged is None:
-                            merged = getattr(record, '_last_merged', None)
-
-                        await _finalize_record(record, merged, node_output)
-
-                        yield {
-                            'type': 'agent_done',
-                            'record_id': record.id,
-                            'data': record.result_json,
-                            'review_score': record.review_score,
-                            'iterations': record.iteration_count,
-                            'module_count': record.module_count,
-                            'case_count': record.case_count,
-                            'usage': node_output.get('total_usage', {}),
-                        }
-                        return
-
+            while True:
+                kind, payload = await merge_q.get()
+                if kind == 'node_start':
+                    yield {'type': 'agent_node_started', 'node': payload}
+                elif kind == 'graph':
+                    async for out in _process_graph_update(record, payload, node_index=node_index, seen_nodes=seen_nodes):
+                        yield out
+                        if out.get('type') in ('cancelled', 'error', 'agent_done'):
+                            return
+                elif kind == 'graph_exc':
+                    raise payload
+                elif kind == 'graph_end':
+                    break
         except Exception as e:
             logger.exception(f"[Agent] 工作流执行异常: {e}")
             record.status = 'failed'
-            record.error_message = str(e)
+            record.error_message = f"agent_server_error: {str(e)}"
             await sync_to_async(record.save)(update_fields=['status', 'error_message'])
             yield {
                 'type': 'error',
+                'error_type': 'server',
                 'error': str(e),
                 'record_id': record.id,
             }
+        finally:
+            agent_events.detach_event_queue()
+            if not pump_task.done():
+                pump_task.cancel()
+                try:
+                    await pump_task
+                except asyncio.CancelledError:
+                    pass
 
 
 def _extract_node_data(node_name: str, node_output: dict) -> dict:
@@ -181,6 +259,28 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
     if node_name == 'analyze_requirement':
         analysis = node_output.get('requirement_analysis')
         if analysis:
+            def _fmt_rules(rules):
+                out = []
+                for r in rules or []:
+                    if isinstance(r, dict):
+                        out.append({'rule_id': r.get('rule_id', ''), 'text': r.get('text', '')})
+                    else:
+                        out.append(str(r))
+                return out
+
+            def _fmt_risks(risks):
+                out = []
+                for r in risks or []:
+                    if isinstance(r, dict):
+                        out.append({
+                            'risk_id': r.get('risk_id', ''),
+                            'text': r.get('text', ''),
+                            'risk': r.get('risk', ''),
+                        })
+                    else:
+                        out.append(str(r))
+                return out
+
             return {
                 'title': analysis.get('title', ''),
                 'modules': [
@@ -188,13 +288,13 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
                         'name': m.get('name', ''),
                         'description': m.get('description', ''),
                         'complexity': m.get('complexity', 'medium'),
-                        'key_rules': m.get('key_rules', []),
-                        'risk_areas': m.get('risk_areas', []),
+                        'key_rules': _fmt_rules(m.get('key_rules', [])),
+                        'risk_areas': _fmt_risks(m.get('risk_areas', [])),
                     }
                     for m in analysis.get('modules', [])
                 ],
-                'global_rules': analysis.get('global_rules', []),
-                'implied_rules': analysis.get('implied_rules', []),
+                'global_rules': _fmt_rules(analysis.get('global_rules', [])),
+                'implied_rules': _fmt_rules(analysis.get('implied_rules', [])),
             }
 
     elif node_name == 'plan_test_strategy':
@@ -205,9 +305,11 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
                     {
                         'module_name': s.get('module_name', ''),
                         'methods': s.get('methods', []),
+                        'case_count_target': s.get('case_count_target'),
                         'case_count_range': s.get('case_count_range', []),
                         'coverage_targets': s.get('coverage_targets', []),
                         'priority_distribution': s.get('priority_distribution', {}),
+                        'dedupe_policy': s.get('dedupe_policy', {}),
                         'special_focus': s.get('special_focus', ''),
                     }
                     for s in strategy.get('strategies', [])
@@ -250,10 +352,13 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
                 for m in modules
                 for f in m.get('functions', [])
             )
-            return {
+            out = {
                 'module_count': len(modules),
                 'case_count': total_cases,
             }
+            if node_output.get('dedupe_report'):
+                out['dedupe_report'] = node_output['dedupe_report']
+            return out
 
     elif node_name == 'refine_cases':
         trace = node_output.get('node_trace', [])
@@ -295,7 +400,18 @@ async def _sync_state_to_db(record: AiTestcaseGeneration, node_output: dict):
         update_fields.extend(['prompt_tokens', 'completion_tokens', 'total_tokens'])
 
     if 'node_trace' in node_output:
-        record.agent_state = {'node_trace': node_output['node_trace']}
+        patch = {
+            'node_trace': node_output['node_trace'],
+            'prompt_version': getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1'),
+            'case_strategy_mode': getattr(record, 'case_strategy_mode', None) or 'comprehensive',
+        }
+        if node_output.get('dedupe_report') is not None:
+            patch['dedupe_report'] = node_output['dedupe_report']
+        if node_output.get('review_rubric') is not None:
+            patch['review_rubric'] = node_output['review_rubric']
+        if node_output.get('review_dimension_scores') is not None:
+            patch['review_dimension_scores'] = node_output['review_dimension_scores']
+        record.agent_state = _merge_agent_state(record, patch)
         update_fields.append('agent_state')
 
     if len(update_fields) > 1:
@@ -305,6 +421,12 @@ async def _sync_state_to_db(record: AiTestcaseGeneration, node_output: dict):
 async def _finalize_record(record: AiTestcaseGeneration, merged_result: dict, node_output: dict):
     """工作流完成后最终化记录"""
     if merged_result:
+        if isinstance(merged_result, dict):
+            meta = merged_result.get('_meta') if isinstance(merged_result.get('_meta'), dict) else {}
+            meta = dict(meta)
+            meta['case_strategy_mode'] = getattr(record, 'case_strategy_mode', None) or 'comprehensive'
+            meta['prompt_version'] = getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1')
+            merged_result['_meta'] = meta
         record.result_json = merged_result
         record.count_stats()
 
@@ -324,7 +446,15 @@ async def _finalize_record(record: AiTestcaseGeneration, merged_result: dict, no
     record.review_score = node_output.get('review_score')
     record.review_feedback = node_output.get('review_feedback')
     record.iteration_count = node_output.get('iteration_count', 0)
-    record.agent_state = {'node_trace': node_output.get('node_trace', []), 'final': True}
+    record.agent_state = _merge_agent_state(record, {
+        'node_trace': node_output.get('node_trace', []),
+        'final': True,
+        'prompt_version': getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1'),
+        'case_strategy_mode': getattr(record, 'case_strategy_mode', None) or 'comprehensive',
+        'dedupe_report': node_output.get('dedupe_report'),
+        'review_rubric': node_output.get('review_rubric'),
+        'review_dimension_scores': node_output.get('review_dimension_scores'),
+    })
     record.status = 'success'
 
     await sync_to_async(record.save)()

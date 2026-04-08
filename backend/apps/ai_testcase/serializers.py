@@ -10,6 +10,10 @@ class AiTestcaseGenerationSerializer(serializers.ModelSerializer):
         model = AiTestcaseGeneration
         fields = '__all__'
         read_only_fields = [
+            'created_by',
+            'idempotency_key',
+            'prompt_version',
+            'cancelled_at',
             'status', 'result_json', 'raw_content', 'error_message',
             'prompt_tokens', 'completion_tokens', 'total_tokens',
             'xmind_file', 'module_count', 'case_count',

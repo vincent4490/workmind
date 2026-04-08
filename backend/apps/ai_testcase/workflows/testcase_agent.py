@@ -14,6 +14,8 @@ from django.conf import settings
 from langgraph.graph import StateGraph, END
 from typing_extensions import TypedDict
 
+from .agent_events import emit_node_start
+
 logger = logging.getLogger(__name__)
 
 MAX_REVISIONS = getattr(settings, 'TESTCASE_AGENT_MAX_REVISIONS', 3)
@@ -29,6 +31,8 @@ class TestcaseAgentState(TypedDict, total=False):
     images: list
     mode: str
     use_thinking: bool
+    quality_tier: str  # cheap/strong
+    force_strong_generate: bool
 
     # 分析结果
     requirement_analysis: dict
@@ -56,6 +60,21 @@ class TestcaseAgentState(TypedDict, total=False):
     is_complete: bool
     error: str
 
+    # 合并评审元数据（写入 DB agent_state）
+    dedupe_report: dict
+    review_rubric: dict
+    review_dimension_scores: dict
+
+
+def _coerce_merged_from_review(review_data: dict, fallback: dict) -> dict:
+    """优先使用评审返回的 merged_result，否则保留分模块合并前的结构。"""
+    mr = review_data.get("merged_result") if isinstance(review_data, dict) else None
+    if isinstance(mr, dict) and isinstance(mr.get("modules"), list):
+        if not mr.get("title"):
+            mr["title"] = (fallback or {}).get("title", "测试用例")
+        return mr
+    return fallback
+
 
 def _accumulate_usage(state: dict, usage: dict) -> dict:
     prev = state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -66,23 +85,124 @@ def _accumulate_usage(state: dict, usage: dict) -> dict:
     }
 
 
+async def _run_validated_with_router(
+    *,
+    stage: str,
+    messages: list,
+    use_thinking: bool,
+    max_retries: int = 2,
+) -> dict:
+    """
+    统一：多模型路由 + 非流式 JSON 解析 + 重试。
+    Returns:
+      {"success": bool, "data": dict|None, "raw": str, "usage": dict, "error": str|None, "model": str, "cost_usd": float}
+    """
+    from pydantic import ValidationError
+    from apps.ai_testcase.services.model_router import TestcaseModelRouter
+
+    router = TestcaseModelRouter()
+    model = router.select_model(stage)
+    client = router.get_client(model, async_=True)
+
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    conv = list(messages)
+    last_raw = ""
+
+    extra_body = (
+        {"thinking": {"type": "enabled", "budget_tokens": 10000}}
+        if use_thinking
+        else {"thinking": {"type": "disabled"}}
+    )
+
+    for attempt in range(1 + max_retries):
+        try:
+            resp = await client.chat.completions.create(
+                model=model,
+                messages=conv,
+                extra_body=extra_body,
+                stream=False,
+            )
+            content = resp.choices[0].message.content or ""
+            last_raw = content
+            if resp.usage:
+                usage = {
+                    "prompt_tokens": resp.usage.prompt_tokens or 0,
+                    "completion_tokens": resp.usage.completion_tokens or 0,
+                    "total_tokens": resp.usage.total_tokens or 0,
+                }
+                total_usage["prompt_tokens"] += usage["prompt_tokens"]
+                total_usage["completion_tokens"] += usage["completion_tokens"]
+                total_usage["total_tokens"] += usage["total_tokens"]
+            else:
+                usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+            parsed = router.parse_json(content)
+            if parsed is not None:
+                return {
+                    "success": True,
+                    "data": parsed,
+                    "raw": content,
+                    "usage": total_usage,
+                    "error": None,
+                    "model": model,
+                    "cost_usd": router.calculate_cost_usd(model, total_usage["prompt_tokens"], total_usage["completion_tokens"]),
+                }
+
+            if attempt < max_retries:
+                conv.append({"role": "assistant", "content": content})
+                conv.append({"role": "user", "content": "你的输出不是合法的 JSON，请重新输出，只返回纯 JSON，不要有任何 markdown 标记或额外文字。"})
+                continue
+
+            return {
+                "success": False,
+                "data": None,
+                "raw": last_raw,
+                "usage": total_usage,
+                "error": "JSON 解析失败",
+                "model": model,
+                "cost_usd": router.calculate_cost_usd(model, total_usage["prompt_tokens"], total_usage["completion_tokens"]),
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "data": None,
+                "raw": last_raw,
+                "usage": total_usage,
+                "error": str(e),
+                "model": model,
+                "cost_usd": router.calculate_cost_usd(model, total_usage["prompt_tokens"], total_usage["completion_tokens"]),
+            }
+
+    return {
+        "success": False,
+        "data": None,
+        "raw": last_raw,
+        "usage": total_usage,
+        "error": "超过最大重试次数",
+        "model": model,
+        "cost_usd": router.calculate_cost_usd(model, total_usage["prompt_tokens"], total_usage["completion_tokens"]),
+    }
+
+
 # ============ 节点 1：需求分析 ============
 
 async def analyze_requirement_node(state: TestcaseAgentState) -> dict:
-    from apps.ai_testcase.services.kimi_client import KimiClient
     from apps.ai_testcase.services.agent_prompts import build_analyze_messages
+    from apps.ai_testcase.services.agent_result_normalize import normalize_requirement_analysis
 
-    client = KimiClient()
+    await emit_node_start('analyze_requirement')
+
     messages = build_analyze_messages(
         state['requirement'],
         state.get('extracted_texts'),
         state.get('images'),
+        mode=state.get('mode') or 'comprehensive',
     )
 
     start = time.time()
     try:
         result = await asyncio.wait_for(
-            client.run_validated_async(messages, use_thinking=state.get('use_thinking', False)),
+            _run_validated_with_router(stage='analyze', messages=messages, use_thinking=state.get('use_thinking', False)),
             timeout=MODULE_TIMEOUT,
         )
     except asyncio.TimeoutError:
@@ -94,10 +214,20 @@ async def analyze_requirement_node(state: TestcaseAgentState) -> dict:
     if not result['success']:
         return {'error': f"需求分析失败: {result['error']}", 'current_node': 'error'}
 
+    analysis = normalize_requirement_analysis(result['data'] or {})
+
     return {
-        'requirement_analysis': result['data'],
+        'requirement_analysis': analysis,
         'current_node': 'plan_test_strategy',
-        'node_trace': (state.get('node_trace') or []) + [{'node': 'analyze_requirement', 'elapsed_ms': elapsed}],
+        'quality_tier': state.get('quality_tier') or 'cheap',
+        'force_strong_generate': bool(state.get('force_strong_generate') or False),
+        'node_trace': (state.get('node_trace') or []) + [{
+            'node': 'analyze_requirement',
+            'elapsed_ms': elapsed,
+            'usage': result.get('usage', {}),
+            'model': result.get('model'),
+            'cost_usd': result.get('cost_usd'),
+        }],
         'total_usage': _accumulate_usage(state, result['usage']),
     }
 
@@ -105,16 +235,19 @@ async def analyze_requirement_node(state: TestcaseAgentState) -> dict:
 # ============ 节点 2：策略规划 ============
 
 async def plan_test_strategy_node(state: TestcaseAgentState) -> dict:
-    from apps.ai_testcase.services.kimi_client import KimiClient
     from apps.ai_testcase.services.agent_prompts import build_plan_strategy_messages
 
-    client = KimiClient()
-    messages = build_plan_strategy_messages(state['requirement_analysis'])
+    await emit_node_start('plan_test_strategy')
+
+    messages = build_plan_strategy_messages(
+        state['requirement_analysis'],
+        mode=state.get('mode') or 'comprehensive',
+    )
 
     start = time.time()
     try:
         result = await asyncio.wait_for(
-            client.run_validated_async(messages, use_thinking=False),
+            _run_validated_with_router(stage='plan', messages=messages, use_thinking=False),
             timeout=MODULE_TIMEOUT,
         )
     except asyncio.TimeoutError:
@@ -132,7 +265,13 @@ async def plan_test_strategy_node(state: TestcaseAgentState) -> dict:
         'current_module_index': 0,
         'modules_generated': [],
         'generation_errors': [],
-        'node_trace': (state.get('node_trace') or []) + [{'node': 'plan_test_strategy', 'elapsed_ms': elapsed}],
+        'node_trace': (state.get('node_trace') or []) + [{
+            'node': 'plan_test_strategy',
+            'elapsed_ms': elapsed,
+            'usage': result.get('usage', {}),
+            'model': result.get('model'),
+            'cost_usd': result.get('cost_usd'),
+        }],
         'total_usage': _accumulate_usage(state, result['usage']),
     }
 
@@ -140,7 +279,6 @@ async def plan_test_strategy_node(state: TestcaseAgentState) -> dict:
 # ============ 节点 3：分模块生成 ============
 
 async def generate_by_module_node(state: TestcaseAgentState) -> dict:
-    from apps.ai_testcase.services.kimi_client import KimiClient
     from apps.ai_testcase.services.agent_prompts import build_generate_module_messages
 
     analysis = state['requirement_analysis']
@@ -154,10 +292,15 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
     module_info = modules[idx]
     module_name = module_info['name']
 
+    await emit_node_start(f'generate_module:{module_name}')
+
     strategy_list = strategy_data.get('strategies', [])
     module_strategy = next((s for s in strategy_list if s.get('module_name') == module_name), {})
 
-    client = KimiClient()
+    use_thinking = bool(state.get('use_thinking', False))
+    # 质量闭环：第二轮仍低分则强制提升生成强度（可配合更强模型/更深思考）
+    if bool(state.get('force_strong_generate') or False):
+        use_thinking = True
     messages = build_generate_module_messages(
         module_info=module_info,
         strategy=module_strategy,
@@ -166,12 +309,13 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
         implied_rules=analysis.get('implied_rules'),
         extracted_texts=state.get('extracted_texts'),
         images=state.get('images'),
+        mode=state.get('mode') or 'comprehensive',
     )
 
     start = time.time()
     try:
         result = await asyncio.wait_for(
-            client.run_validated_async(messages, use_thinking=state.get('use_thinking', False)),
+            _run_validated_with_router(stage='generate', messages=messages, use_thinking=use_thinking),
             timeout=MODULE_TIMEOUT,
         )
     except asyncio.TimeoutError:
@@ -204,7 +348,14 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
         'current_module_index': idx + 1,
         'module_total': len(modules),
         'generation_errors': errors,
-        'node_trace': (state.get('node_trace') or []) + [{'node': f'generate_module:{module_name}', 'elapsed_ms': elapsed, 'status': 'ok' if result['success'] else 'error'}],
+        'node_trace': (state.get('node_trace') or []) + [{
+            'node': f'generate_module:{module_name}',
+            'elapsed_ms': elapsed,
+            'status': 'ok' if result['success'] else 'error',
+            'usage': result.get('usage', {}),
+                'model': result.get('model'),
+                'cost_usd': result.get('cost_usd'),
+        }],
         'total_usage': _accumulate_usage(state, result['usage']),
     }
 
@@ -212,8 +363,9 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
 # ============ 节点 4：合并 + 评审 ============
 
 async def merge_and_review_node(state: TestcaseAgentState) -> dict:
-    from apps.ai_testcase.services.kimi_client import KimiClient
     from apps.ai_testcase.services.agent_prompts import build_review_messages
+
+    await emit_node_start('merge_and_review')
 
     modules = state.get('modules_generated', [])
     title = state.get('requirement_analysis', {}).get('title', '测试用例')
@@ -222,13 +374,12 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
     if merged is None:
         merged = {"title": f"{title}_测试用例", "modules": modules}
 
-    client = KimiClient()
-    messages = build_review_messages(merged, state['requirement'])
+    messages = build_review_messages(merged, state['requirement'], mode=state.get('mode') or 'comprehensive')
 
     start = time.time()
     try:
         result = await asyncio.wait_for(
-            client.run_validated_async(messages, use_thinking=True),
+            _run_validated_with_router(stage='review', messages=messages, use_thinking=True),
             timeout=REVIEW_TIMEOUT,
         )
     except asyncio.TimeoutError:
@@ -237,6 +388,9 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
             'review_score': 0.75,
             'review_feedback': '评审超时，使用当前结果',
             'review_issues': [],
+            'dedupe_report': None,
+            'review_rubric': None,
+            'review_dimension_scores': None,
             'current_node': 'finalize',
             'total_usage': state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
         }
@@ -250,24 +404,45 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
             'review_score': 0.75,
             'review_feedback': f"评审调用失败: {result['error']}",
             'review_issues': [],
+            'dedupe_report': None,
+            'review_rubric': None,
+            'review_dimension_scores': None,
             'current_node': 'finalize',
             'node_trace': (state.get('node_trace') or []) + [{'node': 'merge_and_review', 'elapsed_ms': elapsed, 'status': 'error'}],
             'total_usage': _accumulate_usage(state, result['usage']),
         }
 
-    review_data = result['data']
+    review_data = result['data'] or {}
+    merged_out = _coerce_merged_from_review(review_data, merged)
     score = review_data.get('score', 0.8)
     issues = review_data.get('issues', [])
     summary = review_data.get('summary', '')
+    dedupe_report = review_data.get('dedupe_report')
+    review_rubric = review_data.get('rubric') or review_data.get('dimension_scores')
+    review_dimension_scores = review_data.get('dimension_scores')
     iteration = (state.get('iteration_count') or 0) + 1
 
     return {
-        'merged_result': merged,
+        'merged_result': merged_out,
         'review_score': score,
         'review_feedback': summary,
         'review_issues': issues,
+        'dedupe_report': dedupe_report,
+        'review_rubric': review_rubric,
+        'review_dimension_scores': review_dimension_scores,
         'iteration_count': iteration,
-        'node_trace': (state.get('node_trace') or []) + [{'node': 'merge_and_review', 'elapsed_ms': elapsed, 'score': score, 'iteration': iteration}],
+        'review_model': result.get('model'),
+        'review_usage': result.get('usage', {}),
+        'review_cost_usd': result.get('cost_usd'),
+        'node_trace': (state.get('node_trace') or []) + [{
+            'node': 'merge_and_review',
+            'elapsed_ms': elapsed,
+            'score': score,
+            'iteration': iteration,
+            'usage': result.get('usage', {}),
+            'model': result.get('model'),
+            'cost_usd': result.get('cost_usd'),
+        }],
         'total_usage': _accumulate_usage(state, result['usage']),
     }
 
@@ -275,7 +450,6 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
 # ============ 节点 5：修订 ============
 
 async def refine_cases_node(state: TestcaseAgentState) -> dict:
-    from apps.ai_testcase.services.kimi_client import KimiClient
     from apps.ai_testcase.services.agent_prompts import build_refine_messages
     from apps.ai_testcase.views import _apply_review_changes
 
@@ -285,13 +459,16 @@ async def refine_cases_node(state: TestcaseAgentState) -> dict:
     if not issues:
         return {'current_node': 'finalize'}
 
-    client = KimiClient()
-    messages = build_refine_messages(merged, issues)
+    await emit_node_start('refine_cases')
+
+    messages = build_refine_messages(merged, issues, mode=state.get('mode') or 'comprehensive')
+    # 质量闭环：第一轮低分时升级 refine（更强模型/开启思考）
+    use_thinking = bool(state.get('quality_tier') == 'strong')
 
     start = time.time()
     try:
         result = await asyncio.wait_for(
-            client.run_validated_async(messages, use_thinking=False),
+            _run_validated_with_router(stage='refine', messages=messages, use_thinking=use_thinking),
             timeout=MODULE_TIMEOUT,
         )
     except asyncio.TimeoutError:
@@ -324,7 +501,14 @@ async def refine_cases_node(state: TestcaseAgentState) -> dict:
     return {
         'merged_result': merged,
         'current_node': 'merge_and_review',
-        'node_trace': (state.get('node_trace') or []) + [{'node': 'refine_cases', 'elapsed_ms': elapsed, 'changes': len(changes)}],
+        'node_trace': (state.get('node_trace') or []) + [{
+            'node': 'refine_cases',
+            'elapsed_ms': elapsed,
+            'changes': len(changes),
+            'usage': result.get('usage', {}),
+            'model': result.get('model'),
+            'cost_usd': result.get('cost_usd'),
+        }],
         'total_usage': _accumulate_usage(state, result['usage']),
     }
 
@@ -347,12 +531,26 @@ def route_after_review(state: TestcaseAgentState) -> str:
 
     if score >= REVIEW_THRESHOLD or iteration >= MAX_REVISIONS:
         return 'finalize'
+
+    # 质量闭环策略升级：
+    # - 第 1 轮低分：升级 refine（强模型/思考）
+    # - 第 2 轮仍低：强制重新分模块生成（强模型/思考），再进入评审
+    if iteration == 1:
+        state['quality_tier'] = 'strong'
+        return 'refine_cases'
+    if iteration >= 2:
+        state['force_strong_generate'] = True
+        state['modules_generated'] = []
+        state['generation_errors'] = []
+        state['current_module_index'] = 0
+        return 'generate_by_module'
     return 'refine_cases'
 
 
 # ============ 终态节点 ============
 
 async def finalize_node(state: TestcaseAgentState) -> dict:
+    await emit_node_start('finalize')
     return {
         'is_complete': True,
         'current_node': 'finalize',

@@ -15,7 +15,8 @@ from dotenv import load_dotenv
 # 获取项目根目录（backend 的父目录）
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # 加载项目根目录下的 .env 文件
-load_dotenv(BASE_DIR / ".env")
+# 关键：override=True 确保以 .env 为准（避免系统环境变量残留导致读取到旧值）
+load_dotenv(BASE_DIR / ".env", override=True)
 
 # ================================================= #
 # ************** mysql数据库 配置  ************** #

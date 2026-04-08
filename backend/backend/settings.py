@@ -180,7 +180,32 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",  # 有经过身份认证确定用户身份才能访问
     ),
+    # 限流（仅对设置了 throttle_scope 的接口生效）
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        # AI 用例生成相关高成本接口（可按需调整）
+        "ai_testcase": "50/min",
+    },
 }
+
+# ================================================= #
+# ******************* CORS 白名单 ******************* #
+# ================================================= #
+# ai_testcase SSE 接口需要跨域直连时，建议只放行你们的前端域名（不要用 "*")
+# 例：["http://localhost:3000", "https://workmind.example.com"]
+AI_TESTCASE_CORS_ALLOW_ORIGINS = [
+    # 只允许 Origin（不含路径）
+    "http://172.13.6.230:8080",
+    "http://localhost:8888",
+]
+
+# 用于追踪提示词/生成策略版本（建议发布时递增）
+AI_TESTCASE_PROMPT_VERSION = "v1"
+
+# 幂等复用窗口（秒）：同一用户在该窗口内重复提交相同输入，将直接复用最近一次 success 结果
+AI_TESTCASE_IDEMPOTENCY_REUSE_WINDOW_SECONDS = 60
 
 # ================================================= #
 # ****************** simplejwt配置 ***************** #
@@ -418,7 +443,8 @@ except Exception as e:
 # ==================== Kimi AI 配置 ====================
 # KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-4y1Q6cMuga6L7Gdu3E10xSw8DIoRo42WbQHltL0vcu8oH7eT")
 KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-6i7MZc9qTrnLxLfYTRTEFVisMBAs6qXyTAYgSSWbZWhzRgXP")
-KIMI_BASE_URL = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
+# Moonshot OpenAI-compatible base URL（官方文档为 api.moonshot.ai）
+KIMI_BASE_URL = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.ai/v1")
 KIMI_MODEL = os.environ.get("KIMI_MODEL", "kimi-k2.5")
 
 # ==================== DeepSeek AI 配置（需求智能体备选/增强）====================
@@ -426,6 +452,13 @@ DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 DEEPSEEK_R1_MODEL = os.environ.get("DEEPSEEK_R1_MODEL", "deepseek-reasoner")
+
+# ============ AI 用例智能体（P2 多模型路由） ============
+AI_TESTCASE_MODEL_GENERATE = os.environ.get("AI_TESTCASE_MODEL_GENERATE", "deepseek-chat")
+AI_TESTCASE_MODEL_REVIEW = os.environ.get("AI_TESTCASE_MODEL_REVIEW", "kimi-k2.5")
+AI_TESTCASE_MODEL_REFINE = os.environ.get("AI_TESTCASE_MODEL_REFINE", "kimi-k2.5")
+AI_TESTCASE_COST_CONFIRM_THRESHOLD_USD = float(os.environ.get("AI_TESTCASE_COST_CONFIRM_THRESHOLD_USD", "0") or 0)
+AI_TESTCASE_EVENT_RETENTION_DAYS = int(os.environ.get("AI_TESTCASE_EVENT_RETENTION_DAYS", "7") or 7)
 
 # ==================== 需求智能体 - 视频 ASR（可选）====================
 # 开启后，上传视频时会提取音轨并 POST 到下方 URL 获取转写文本，参与竞品分析等生成

@@ -1,13 +1,22 @@
 import axios from "axios";
-import store from "../store/state";
+import store from "../store";
 import router from "../router";
 import { ElMessage } from "element-plus";
 
 // Vite 环境变量：开发环境使用相对路径（通过 proxy），生产环境使用完整 URL
 export let baseUrl = import.meta.env.VITE_BASE_URL || '';
+// SSE 直连后端地址（可选）：用于绕过代理缓冲；为空则走当前域名（由代理/nginx转发）
+// 例：http://172.13.6.230:8009
+export const sseBaseUrl = import.meta.env.VITE_SSE_BASE_URL || '';
 
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = baseUrl;
+
+function getAuthToken() {
+    // 优先 Vuex store，其次 localStorage（防止 store 尚未初始化导致 token 缺失）
+    const t = (store?.state?.token) || (window.localStorage ? localStorage.getItem('token') : '');
+    return (t && t !== 'null' && t !== 'undefined') ? t : '';
+}
 
 axios.interceptors.request.use(
     function(config) {
@@ -20,9 +29,8 @@ axios.interceptors.request.use(
         if (!noAuthUrls.includes(config.url)) {
             // 在请求拦截中，每次请求，都会加上一个Authorization头
             // JWT token 需要 Bearer 前缀
-            if (store.token) {
-                config.headers.Authorization = "Bearer " + store.token;
-            }
+            const token = getAuthToken();
+            if (token) config.headers.Authorization = "Bearer " + token;
         }
         return config;
     },
@@ -493,6 +501,68 @@ export const aiGenerateTestcase = data => {
     return axios.post('/api/ai_testcase/generations/generate/', data).then(res => res.data);
 };
 
+// P2：启动任务（direct / agent），同步返回 record_id
+export const startAiTestcaseGeneration = (data, { agent = false } = {}) => {
+    const isFormData = data instanceof FormData;
+    const url = agent
+        ? '/api/ai_testcase/generations/agent-start/'
+        : '/api/ai_testcase/generations/start/';
+    return axios
+        .post(url, data, {
+            headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+        })
+        .then(res => res.data);
+};
+
+// P2：事件流 SSE（从事件表推送，支持 after 游标重连）
+export const streamAiTestcaseEvents = async (recordId, { after = 0, onEvent, onError } = {}) => {
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
+    const url = `${sseBase}/api/ai_testcase/generations/${recordId}/events-stream/?after=${after || 0}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            if (onError) onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const raw = line.slice(6);
+                if (!raw) continue;
+                try {
+                    const event = JSON.parse(raw);
+                    if (onEvent) onEvent(event);
+                } catch (_) {
+                    // ignore
+                }
+            }
+        }
+    } catch (err) {
+        if (onError) onError(err.message || '网络连接失败');
+    }
+};
+
 // 获取生成记录列表
 export const getAiTestcaseGenerations = params => {
     return axios.get('/api/ai_testcase/generations/', { params }).then(res => res.data);
@@ -527,8 +597,8 @@ export const getAiTestcaseConfigStatus = () => {
 
 // 模块级重新生成测试用例（SSE 流式）
 export const aiRegenerateModuleStream = async (data, onChunk, onDone, onError, onStart) => {
-    const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/regenerate-module-stream/', {
@@ -586,8 +656,8 @@ export const aiRegenerateModuleStream = async (data, onChunk, onDone, onError, o
 
 /** 流式功能点重新生成（SSE） */
 export const aiRegenerateFunctionStream = async (data, onChunk, onDone, onError, onStart) => {
-    const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/regenerate-function-stream/', {
             method: 'POST',
@@ -635,8 +705,8 @@ export const aiUpdateCase = (data) => {
 
 // 流式用例评审（SSE）
 export const aiReviewTestcaseStream = async (data, onChunk, onDone, onError, onStart) => {
-    const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/review-stream/', {
@@ -692,8 +762,8 @@ export const aiReviewTestcaseStream = async (data, onChunk, onDone, onError, onS
 
 // 流式采纳评审意见（SSE）
 export const aiApplyReviewStream = async (data, onChunk, onDone, onError, onStart) => {
-    const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
 
     try {
         const response = await fetch(sseBase + '/api/ai_testcase/apply-review-stream/', {
@@ -1209,9 +1279,9 @@ export const approveMultiAgentStream = async (workflowId, data, onEvent, onError
 // 直连后端 8009 端口，绕过 Vite 代理（代理会缓冲 SSE 流）
 // 支持 FormData（带文件上传）和普通 JSON 两种格式
 export const aiGenerateTestcaseStream = async (data, onChunk, onDone, onError, onStart) => {
-    const token = (await import('../store/state')).default.token;
-    // 开发环境直连后端，生产环境用相对路径
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const token = getAuthToken();
+    // 优先使用 VITE_SSE_BASE_URL；否则开发环境默认直连 127.0.0.1:8009；生产环境走相对路径（由 nginx 转发）
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
 
     // 判断是 FormData 还是普通对象
     const isFormData = data instanceof FormData;
@@ -1273,8 +1343,8 @@ export const aiGenerateTestcaseStream = async (data, onChunk, onDone, onError, o
 // 后端 /api/ai_testcase/agent-generate-stream/
 // 事件类型：agent_start, agent_node_done, agent_review, agent_refining, agent_done, error, warnings
 export const aiAgentGenerateTestcaseStream = async (data, callbacks) => {
-    const token = (await import('../store/state')).default.token;
-    const sseBase = import.meta.env.DEV ? 'http://127.0.0.1:8009' : '';
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
     const isFormData = data instanceof FormData;
 
     const { onStart, onNodeDone, onReview, onRefining, onDone, onError, onWarnings } = callbacks;

@@ -1097,8 +1097,8 @@ import {
     EditPen, CircleCheck, Search, Select, Warning, Setting
 } from '@element-plus/icons-vue'
 import {
-    aiGenerateTestcaseStream,
-    aiAgentGenerateTestcaseStream,
+    startAiTestcaseGeneration,
+    streamAiTestcaseEvents,
     aiRegenerateModuleStream,
     aiRegenerateFunctionStream,
     aiUpdateCase,
@@ -1424,39 +1424,69 @@ async function handleGenerate() {
 
 // 直接生成（原逻辑）
 async function handleDirectGenerate(formData) {
-    await aiGenerateTestcaseStream(
-        formData,
-        (content) => {
-            streamContent.value += content
-            nextTick(() => {
-                if (streamOutputRef.value) {
-                    streamOutputRef.value.scrollTop = streamOutputRef.value.scrollHeight
-                }
-            })
-        },
-        (result) => {
-            stopTimer()
-            generating.value = false
-            currentResult.value = { ...result, id: result.record_id }
-            ElMessage.success(`生成成功！共 ${result.module_count} 个模块，${result.case_count} 条用例`)
-            loadHistory()
-        },
-        (error) => {
-            stopTimer()
-            generating.value = false
-            ElMessage.error(`生成失败：${error}`)
-            loadHistory()
-        },
-        (startData) => {
-            if (startData.warnings && startData.warnings.length > 0) {
-                fileWarnings.value = startData.warnings
-            }
-            if (startData.attachment_info) {
-                const info = startData.attachment_info
-                ElMessage.info(`已解析附件：${info.text_count} 个文档，${info.image_count} 张图片`)
-            }
+    const startResp = await startAiTestcaseGeneration(formData, { agent: false })
+    const recordId = startResp.record_id
+
+    if (startResp.reused) {
+        stopTimer()
+        generating.value = false
+        const res = await previewAiTestcase(recordId)
+        streamContent.value = ''
+        currentResult.value = {
+            id: recordId,
+            record_id: recordId,
+            title: res.title,
+            module_count: res.module_count,
+            case_count: res.case_count,
+            data: res.data,
         }
-    )
+        ElMessage.success('已复用最近一次生成结果')
+        loadHistory()
+        return
+    }
+
+    streamContent.value = `已启动任务 #${recordId}，等待进度...\n`
+
+    await streamAiTestcaseEvents(recordId, {
+        after: 0,
+        onEvent: (ev) => {
+            if (ev.type === 'chunk') {
+                streamContent.value += ev.content || ''
+                nextTick(() => {
+                    if (streamOutputRef.value) {
+                        streamOutputRef.value.scrollTop = streamOutputRef.value.scrollHeight
+                    }
+                })
+            } else if (ev.type === 'progress') {
+                const p = ev.payload || {}
+                streamContent.value += `[${p.stage || 'progress'}] ${p.percent != null ? (p.percent + '% ') : ''}${p.message || ''}\n`
+            } else if (ev.type === 'done') {
+                stopTimer()
+                generating.value = false
+                const p = ev.payload || {}
+                currentResult.value = { ...p, id: p.record_id }
+                ElMessage.success(`生成成功！共 ${p.module_count} 个模块，${p.case_count} 条用例`)
+                loadHistory()
+            } else if (ev.type === 'error') {
+                stopTimer()
+                generating.value = false
+                const p = ev.payload || {}
+                ElMessage.error(`生成失败：${p.error || '未知错误'}`)
+                loadHistory()
+            } else if (ev.type === 'cancelled') {
+                stopTimer()
+                generating.value = false
+                ElMessage.warning('任务已取消')
+                loadHistory()
+            }
+        },
+        onError: (err) => {
+            stopTimer()
+            generating.value = false
+            ElMessage.error(`事件流失败：${err}`)
+            loadHistory()
+        }
+    })
 }
 
 // Agent 智能体生成
@@ -1482,109 +1512,109 @@ async function handleAgentGenerate(formData) {
         return 0
     }
 
-    let lastNodeTime = Date.now()
+    const startResp = await startAiTestcaseGeneration(formData, { agent: true })
+    const recordId = startResp.record_id
 
-    await aiAgentGenerateTestcaseStream(formData, {
-        onStart: (event) => {
-            agentProgress.value.nodes = event.nodes || []
-            agentProgress.value.totalNodes = event.nodes?.length || 0
-            lastNodeTime = Date.now()
-            appendAgentLog('🚀', 'Agent 工作流已启动', 'info')
-            appendAgentLog('🔍', '开始分析需求...', 'running')
-        },
-        onNodeDone: (event) => {
-            const displayName = nodeNameMap[event.node] || event.node
-            const elapsed = Math.round((Date.now() - lastNodeTime) / 1000)
-            const durationStr = `${elapsed}s`
-            lastNodeTime = Date.now()
+    if (startResp.reused) {
+        stopTimer()
+        generating.value = false
+        const res = await previewAiTestcase(recordId)
+        streamContent.value = ''
+        currentResult.value = {
+            id: recordId,
+            record_id: recordId,
+            title: res.title,
+            module_count: res.module_count,
+            case_count: res.case_count,
+            data: res.data,
+        }
+        ElMessage.success('已复用最近一次生成结果')
+        loadHistory()
+        return
+    }
 
-            agentProgress.value.currentNode = displayName
-            agentProgress.value.currentIndex = getStepIndex(event.node || event.current_node)
-            agentProgress.value.refining = false
+    appendAgentLog('🚀', `任务已启动 #${recordId}`, 'info')
+    appendAgentLog('🔍', '开始执行智能体流程...', 'running')
 
-            if (event.node === 'analyze_requirement' && event.data) {
-                agentProgress.value.analysisData = event.data
-                const modCount = event.data.modules?.length || 0
-                appendAgentLog('✅', `需求分析完成 — 识别到 ${modCount} 个模块`, 'success', durationStr)
-                appendAgentLog('📋', '开始规划测试策略...', 'running')
-            } else if (event.node === 'plan_test_strategy' && event.data) {
-                agentProgress.value.strategyData = event.data
-                appendAgentLog('✅', '策略规划完成', 'success', durationStr)
-                appendAgentLog('🔨', '开始分模块生成用例...', 'running')
-            } else if ((event.node === 'generate_by_module' || event.node?.startsWith('generate_module:')) && event.data) {
-                if (event.data.module_name) {
-                    agentProgress.value.moduleProgress.push({
-                        name: event.data.module_name,
-                        functionCount: event.data.function_count || 0,
-                        caseCount: event.data.case_count || 0,
-                    })
-                    appendAgentLog('✅', `模块「${event.data.module_name}」完成 — ${event.data.function_count || 0} 个功能点, ${event.data.case_count || 0} 条用例`, 'success', durationStr)
-                    const completed = event.data.completed || agentProgress.value.moduleProgress.length
-                    const total =
-                        (event.data.total && event.data.total > 0
-                            ? event.data.total
-                            : agentProgress.value.analysisData?.modules?.length) || completed
-                    if (completed < total) {
-                        appendAgentLog('🔨', `继续生成下一个模块 (${completed}/${total})...`, 'running')
-                    } else {
-                        appendAgentLog('📝', '所有模块生成完毕，开始评审打分...', 'running')
-                    }
+    await streamAiTestcaseEvents(recordId, {
+        after: 0,
+        onEvent: (ev) => {
+            if (ev.type === 'progress') {
+                const p = ev.payload || {}
+                const stage = p.stage || 'agent_step'
+                let displayName = nodeNameMap[stage] || stage
+                if (stage.startsWith('generate_module:')) {
+                    displayName = '分模块生成'
                 }
-            } else if (event.node === 'merge_and_review') {
-                appendAgentLog('📝', '评审分析完成', 'info', durationStr)
-            } else if (event.node === 'refine_cases') {
-                appendAgentLog('🔧', '修订完成，重新评审...', 'info', durationStr)
-            } else if (event.node === 'finalize') {
-                appendAgentLog('✨', '流程已完成', 'success')
+                agentProgress.value.currentNode = displayName
+                agentProgress.value.currentIndex = getStepIndex(stage)
+                agentProgress.value.refining = stage === 'refine_cases'
+
+                if (p.phase === 'running' && p.message) {
+                    appendAgentLog('⏳', p.message, 'running')
+                }
+
+                if (p.data && stage === 'analyze_requirement' && p.phase !== 'running') {
+                    agentProgress.value.analysisData = p.data
+                }
+                if (p.data && stage === 'plan_test_strategy') {
+                    agentProgress.value.strategyData = p.data
+                }
+                if (p.data && p.data.module_name) {
+                    agentProgress.value.moduleProgress.push({
+                        name: p.data.module_name,
+                        functionCount: p.data.function_count || 0,
+                        caseCount: p.data.case_count || 0,
+                    })
+                }
+            } else if (ev.type === 'review') {
+                const p = ev.payload || {}
+                const scorePercent = (((p.score || 0) * 100)).toFixed(0)
+                agentProgress.value.review = {
+                    score: p.score,
+                    feedback: '',
+                    iteration: p.iteration,
+                    max: 3,
+                }
+                if ((p.score || 0) >= 0.8) {
+                    appendAgentLog('🎉', `评审通过！分数: ${scorePercent}分`, 'success')
+                } else {
+                    appendAgentLog('⚠️', `评审分数: ${scorePercent}分，未达标，将自动修订/升级策略`, 'warn')
+                }
+            } else if (ev.type === 'done') {
+                stopTimer()
+                generating.value = false
+                agentProgress.value.currentIndex = 5
+                agentProgress.value.refining = false
+                const p = ev.payload || {}
+                currentResult.value = { ...p, id: p.record_id }
+                appendAgentLog('🏁', `Agent 生成完成！${p.module_count} 个模块, ${p.case_count} 条用例`, 'done')
+                ElMessage.success(`Agent 生成成功！共 ${p.module_count} 个模块，${p.case_count} 条用例`)
+                loadHistory()
+            } else if (ev.type === 'error') {
+                stopTimer()
+                generating.value = false
+                agentProgress.value.active = false
+                const p = ev.payload || {}
+                appendAgentLog('❌', `失败：${p.error || '未知错误'}`, 'error')
+                ElMessage.error(`Agent 生成失败：${p.error || '未知错误'}`)
+                loadHistory()
+            } else if (ev.type === 'cancelled') {
+                stopTimer()
+                generating.value = false
+                agentProgress.value.active = false
+                appendAgentLog('🛑', '任务已取消', 'warn')
+                ElMessage.warning('任务已取消')
+                loadHistory()
             }
-        },
-        onReview: (event) => {
-            agentProgress.value.review = {
-                score: event.score,
-                feedback: event.feedback,
-                iteration: event.iteration,
-                max: event.max,
-            }
-            agentProgress.value.reviewIssues = event.issues || []
-            const scorePercent = (event.score * 100).toFixed(0)
-            if (event.score >= 0.8) {
-                appendAgentLog('🎉', `评审通过！分数: ${scorePercent}分`, 'success')
-                ElMessage.success(`评审通过！分数: ${scorePercent}分`)
-            } else {
-                appendAgentLog('⚠️', `评审分数: ${scorePercent}分，未达标，将自动修订（第 ${event.iteration}/${event.max} 轮）`, 'warn')
-                ElMessage.warning(`评审分数: ${scorePercent}分，将自动修订（第 ${event.iteration}/${event.max} 轮）`)
-            }
-        },
-        onRefining: (event) => {
-            agentProgress.value.refining = true
-            lastNodeTime = Date.now()
-            appendAgentLog('🔧', `根据评审意见修订用例（第 ${event.iteration || '?'} 轮）...`, 'running')
-        },
-        onDone: (event) => {
-            stopTimer()
-            generating.value = false
-            agentProgress.value.currentIndex = 5
-            agentProgress.value.refining = false
-            currentResult.value = { ...event, id: event.record_id }
-            const scoreText = event.review_score ? ` · 评审 ${(event.review_score * 100).toFixed(0)}分` : ''
-            const iterText = event.iterations > 0 ? ` · 经过 ${event.iterations} 轮修订` : ''
-            appendAgentLog('🏁', `Agent 生成完成！${event.module_count} 个模块, ${event.case_count} 条用例${scoreText}${iterText}`, 'done')
-            ElMessage.success(`Agent 生成成功！共 ${event.module_count} 个模块，${event.case_count} 条用例`)
-            loadHistory()
         },
         onError: (error) => {
             stopTimer()
             generating.value = false
             agentProgress.value.active = false
-            appendAgentLog('❌', `失败：${error}`, 'error')
+            appendAgentLog('❌', `事件流失败：${error}`, 'error')
             ElMessage.error(`Agent 生成失败：${error}`)
             loadHistory()
-        },
-        onWarnings: (warnings) => {
-            if (warnings && warnings.length > 0) {
-                fileWarnings.value = warnings
-                appendAgentLog('⚠️', `文件处理警告: ${warnings.join('; ')}`, 'warn')
-            }
         },
     })
 }

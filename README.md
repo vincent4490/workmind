@@ -166,7 +166,7 @@ npm run dev
 
 ```bash
 cd backend
-celery -A backend worker -l info
+celery -A backend worker -l info -Q beat_tasks,work_queue
 ```
 
 #### 启动 Celery Beat (可选)
@@ -176,6 +176,17 @@ celery -A backend worker -l info
 ```bash
 cd backend
 celery -A backend beat -l info
+```
+
+#### AI 用例智能体（P2 队列化 + 事件 SSE）说明
+
+- **两段式调用**：前端点击生成后会先调用 `POST /api/ai_testcase/generations/start/` 或 `POST /api/ai_testcase/generations/agent-start/` 获取 `record_id`，再订阅 `GET /api/ai_testcase/generations/{id}/events-stream/?after=<event_id>`。
+- **事件清理（Beat）**：已提供定时清理任务 `apps.ai_testcase.tasks.cleanup_ai_testcase_events`，默认保留 `AI_TESTCASE_EVENT_RETENTION_DAYS=7` 天（仅清理终态任务的历史事件）。
+- **初始化 Beat 周期任务**（仅需运行一次）：
+
+```bash
+cd backend
+python manage.py setup_ai_testcase_event_cleanup_beat
 ```
 
 ### 8. 访问应用
