@@ -1464,7 +1464,11 @@ async function handleDirectGenerate(formData) {
                 stopTimer()
                 generating.value = false
                 const p = ev.payload || {}
-                currentResult.value = { ...p, id: p.record_id }
+                currentResult.value = {
+                    ...p,
+                    id: p.record_id,
+                    title: p.title || p.data?.title,
+                }
                 ElMessage.success(`生成成功！共 ${p.module_count} 个模块，${p.case_count} 条用例`)
                 loadHistory()
             } else if (ev.type === 'error') {
@@ -1587,7 +1591,11 @@ async function handleAgentGenerate(formData) {
                 agentProgress.value.currentIndex = 5
                 agentProgress.value.refining = false
                 const p = ev.payload || {}
-                currentResult.value = { ...p, id: p.record_id }
+                currentResult.value = {
+                    ...p,
+                    id: p.record_id,
+                    title: p.title || p.data?.title,
+                }
                 appendAgentLog('🏁', `Agent 生成完成！${p.module_count} 个模块, ${p.case_count} 条用例`, 'done')
                 ElMessage.success(`Agent 生成成功！共 ${p.module_count} 个模块，${p.case_count} 条用例`)
                 loadHistory()
@@ -1629,7 +1637,12 @@ function stopTimer() {
 // 下载 XMind
 async function handleDownload() {
     if (!currentResult.value?.id) return
-    await doDownload(currentResult.value.id, currentResult.value.title)
+    const id = currentResult.value.id
+    const title =
+        currentResult.value?.data?.title ||
+        currentResult.value?.title ||
+        `testcase_${id}`
+    await doDownload(id, title)
 }
 
 async function handleHistoryDownload(item) {
@@ -1644,7 +1657,8 @@ async function doDownload(id, title) {
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
-        link.download = `${title}.xmind`
+        const safeTitle = (title || `testcase_${id}`).trim() || `testcase_${id}`
+        link.download = `${safeTitle}.xmind`
         link.click()
         window.URL.revokeObjectURL(url)
         ElMessage.success('下载成功')

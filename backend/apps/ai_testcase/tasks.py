@@ -274,6 +274,7 @@ def run_ai_testcase_direct(record_id: int):
 
         _write_event(record, 'done', {
             'record_id': record.id,
+            'title': title,
             'data': record.result_json,
             'module_count': record.module_count,
             'case_count': record.case_count,
@@ -401,8 +402,15 @@ def run_ai_testcase_agent(record_id: int):
                     })
                 elif ev_type in ('agent_done',):
                     await _set_progress_async(record, 'done', 100)
+                    data = payload.get('data') or {}
+                    title = ''
+                    if isinstance(data, dict):
+                        title = (data.get('title') or '').strip()
+                    if not title:
+                        title = f'testcase_{record.id}'
                     await _write_event_async(record, 'done', {
                         'record_id': record.id,
+                        'title': title,
                         'data': payload.get('data'),
                         'module_count': payload.get('module_count'),
                         'case_count': payload.get('case_count'),
