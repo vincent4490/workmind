@@ -9,38 +9,4 @@ class Migration(migrations.Migration):
         ('ai_requirement', '0008_merge_20260314'),
     ]
 
-    operations = [
-        migrations.RemoveIndex(
-            model_name='llmcalllog',
-            name='ai_req_llmcall_task_created_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='llmcalllog',
-            new_name='ai_requirem_span_ty_278f54_idx',
-            old_name='ai_req_llmcall_span_created_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='llmcalllog',
-            new_name='ai_requirem_error_t_6196b4_idx',
-            old_name='ai_req_llmcall_error_created_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='requirementchunk',
-            new_name='ai_requirem_content_231a27_idx',
-            old_name='ai_req_chunk_content_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='requirementchunk',
-            new_name='ai_requirem_task_id_d86b29_idx',
-            old_name='ai_req_chunk_task_id_idx',
-        ),
-        migrations.AlterField(
-            model_name='workflowrun',
-            name='workflow_type',
-            field=models.CharField(choices=[('prd_deep', 'PRD深度撰写'), ('multi_agent', '多智能体协作')], default='prd_deep', max_length=30, verbose_name='工作流类型'),
-        ),
-        migrations.AddIndex(
-            model_name='llmcalllog',
-            index=models.Index(fields=['task_id', 'created_at'], name='ai_requirem_task_id_637c12_idx'),
-        ),
-    ]
+    operations = []

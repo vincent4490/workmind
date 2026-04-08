@@ -21,8 +21,8 @@ class Command(BaseCommand):
 
         # 10:40 = minute=40, hour=10（改时间后重跑本命令会更新同一条任务）
         crontab, _ = CrontabSchedule.objects.get_or_create(
-            minute="40",
-            hour="10",
+            minute="10",
+            hour="00",
             day_of_week="*",
             day_of_month="*",
             month_of_year="*",
