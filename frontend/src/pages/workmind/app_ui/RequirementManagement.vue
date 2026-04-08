@@ -11,6 +11,14 @@
                     新建需求
                 </el-button>
                 <el-button
+                    type="success"
+                    :icon="Download"
+                    :loading="exporting"
+                    @click="handleExport"
+                >
+                    导出
+                </el-button>
+                <el-button
                     type="info"
                     :icon="Refresh"
                     :loading="loading"
@@ -272,7 +280,9 @@
                         <el-option label="开发中" value="开发中" />
                         <el-option label="已暂停" value="已暂停" />
                         <el-option label="测试中" value="测试中" />
+                        <el-option label="已测试" value="已测试" />
                         <el-option label="验收中" value="验收中" />
+                        <el-option label="已验收" value="已验收" />
                         <el-option label="已上线" value="已上线" />
                     </el-select>
                 </el-form-item>
@@ -393,12 +403,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Plus, Refresh, Search, Download } from '@element-plus/icons-vue'
 import {
     getFunctionalRequirements,
     createFunctionalRequirement,
     updateFunctionalRequirement,
     deleteFunctionalRequirement,
+    exportFunctionalRequirements,
     getUserList
 } from '@/restful/api'
 
@@ -409,6 +420,7 @@ const requirementForm = ref(null)
 // 响应式数据
 const loading = ref(false)
 const saving = ref(false)
+const exporting = ref(false)
 const requirementList = ref([])
 const requirementOptions = ref([])
 const total = ref(0)
@@ -459,7 +471,7 @@ const searchForm = ref({
 })
 
 // 状态、标签、测试团队与「新增需求」表单一致，固定枚举（不随数据计划）
-const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '已暂停', '测试中', '验收中', '已上线']
+const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '已暂停', '测试中', '已测试', '验收中', '已验收', '已上线']
 const TAG_OPTIONS = ['正常', '提测延期', '测试延期']
 const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌']
 
@@ -555,6 +567,53 @@ const resetSearch = () => {
     searchForm.value.tags = ''
     searchForm.value.created_at = null
     loadRequirements()
+}
+
+const handleExport = () => {
+    exporting.value = true
+    const params = {}
+    if (searchForm.value.name) params.name = searchForm.value.name
+    if (searchForm.value.test_team) params.test_team = searchForm.value.test_team
+    if (searchForm.value.testers) params.testers = searchForm.value.testers
+    if (searchForm.value.status) params.status = searchForm.value.status
+    if (searchForm.value.tags) params.tags = searchForm.value.tags
+    if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
+        params.created_at_after = searchForm.value.created_at[0]
+        params.created_at_before = searchForm.value.created_at[1]
+    }
+    exportFunctionalRequirements(params).then(res => {
+        const disposition = res.headers['content-disposition'] || ''
+        let filename = '需求列表.xlsx'
+        const match = disposition.match(/filename\*=UTF-8''(.+)/)
+        if (match) filename = decodeURIComponent(match[1])
+        const blob = new Blob([res.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        window.URL.revokeObjectURL(url)
+        ElMessage.success('导出成功')
+    }).catch(err => {
+        if (err.response && err.response.data instanceof Blob) {
+            const reader = new FileReader()
+            reader.onload = () => {
+                try {
+                    const json = JSON.parse(reader.result)
+                    ElMessage.error(json.msg || '导出失败')
+                } catch {
+                    ElMessage.error('导出失败')
+                }
+            }
+            reader.readAsText(err.response.data)
+        } else {
+            ElMessage.error('导出失败')
+        }
+    }).finally(() => {
+        exporting.value = false
+    })
 }
 
 const handleSizeChange = (size) => {
@@ -836,7 +895,9 @@ const getStatusType = (status) => {
         '开发中': 'primary',
         '已暂停': 'info',
         '测试中': 'success',
+        '已测试': 'success',
         '验收中': 'warning',
+        '已验收': 'warning',
         '已上线': 'danger'
     }
     return typeMap[status] || 'info'

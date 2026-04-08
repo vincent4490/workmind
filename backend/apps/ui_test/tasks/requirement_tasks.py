@@ -12,9 +12,9 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 # 提测延期：已提测或已结束则不算（已暂停视为有意停顿，不自动打提测延期）
-STATUS_NOT_SUBMIT_DELAYED = ('测试中', '已上线', '验收中', '已暂停')
+STATUS_NOT_SUBMIT_DELAYED = ('测试中', '已测试', '验收中', '已验收', '已上线', '已暂停')
 # 测试延期：已上线或验收中则不算（已暂停同理）
-STATUS_NOT_TEST_DELAYED = ('已上线', '验收中', '已暂停')
+STATUS_NOT_TEST_DELAYED = ('已测试', '验收中', '已验收', '已上线', '已暂停')
 
 TAG_SUBMIT_DELAYED = '提测延期'
 TAG_TEST_DELAYED = '测试延期'

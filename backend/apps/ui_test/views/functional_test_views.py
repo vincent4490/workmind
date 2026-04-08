@@ -142,6 +142,77 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
             'data': options
         })
     
+    @action(detail=False, methods=['get'], url_path='export')
+    def export(self, request):
+        """导出需求列表为 Excel（复用 get_queryset 筛选逻辑）"""
+        try:
+            import pandas as pd
+        except ImportError:
+            return Response({'code': 1, 'msg': '导出需要安装 pandas 和 openpyxl'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        queryset = self.get_queryset()
+        requirements = list(queryset)
+        if not requirements:
+            return Response({'code': 1, 'msg': '当前筛选条件下没有数据可导出'})
+
+        export_data = []
+        for r in requirements:
+            created_by_name = ''
+            if r.created_by:
+                created_by_name = getattr(r.created_by, 'name', None) or r.created_by.username
+            export_data.append({
+                '需求名称': r.name or '',
+                '需求链接': r.link or '',
+                '产品负责人': r.product_owner or '',
+                '状态': r.status or '',
+                '标签': r.tags or '',
+                '备注': r.remark or '',
+                '开发人员': r.developers or '',
+                '开发人日': r.dev_man_days or '',
+                '开发时间': r.dev_time or '',
+                '测试人员': r.testers or '',
+                '测试团队': r.test_team or '',
+                '测试人日': r.test_man_days or '',
+                '提测时间': r.submit_test_time or '',
+                '测试时间': r.test_time or '',
+                '创建人': created_by_name,
+                '创建时间': r.created_at.strftime('%Y-%m-%d %H:%M:%S') if r.created_at else '',
+            })
+
+        df = pd.DataFrame(export_data)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='需求列表')
+            worksheet = writer.sheets['需求列表']
+            col_widths = {
+                'A': 30, 'B': 40, 'C': 12, 'D': 10, 'E': 12, 'F': 30,
+                'G': 15, 'H': 10, 'I': 20, 'J': 15, 'K': 12, 'L': 10,
+                'M': 15, 'N': 20, 'O': 12, 'P': 20,
+            }
+            for col, width in col_widths.items():
+                worksheet.column_dimensions[col].width = width
+            from openpyxl.styles import Alignment
+            wrap = Alignment(wrap_text=True, vertical='top')
+            for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
+                for cell in row:
+                    cell.alignment = wrap
+
+        output.seek(0)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'需求列表_{timestamp}.xlsx'
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        from urllib.parse import quote
+        safe_name = filename.encode('ascii', 'ignore').decode('ascii') or 'export.xlsx'
+        response['Content-Disposition'] = (
+            f'attachment; filename="{safe_name}"; filename*=UTF-8\'\'{quote(filename)}'
+        )
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        return response
+
     def list(self, request, *args, **kwargs):
         """获取需求列表"""
         queryset = self.filter_queryset(self.get_queryset())
