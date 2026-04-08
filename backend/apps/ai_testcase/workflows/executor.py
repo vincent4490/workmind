@@ -17,6 +17,7 @@ from django.conf import settings
 
 from apps.ai_testcase.models import AiTestcaseGeneration
 from apps.ai_testcase.services.xmind_builder import XMindBuilder
+from apps.ai_testcase.services.dedupe import dedupe_result_json
 from . import agent_events
 from .testcase_agent import get_testcase_agent_workflow, TestcaseAgentState
 
@@ -421,6 +422,20 @@ async def _sync_state_to_db(record: AiTestcaseGeneration, node_output: dict):
 async def _finalize_record(record: AiTestcaseGeneration, merged_result: dict, node_output: dict):
     """工作流完成后最终化记录"""
     if merged_result:
+        # Phase 1：确定性去重兜底（即便 LLM 合并评审没做干净，仍保证不冗余爆炸）
+        try:
+            merged_result, dedupe_report = dedupe_result_json(
+                merged_result,
+                mode=getattr(record, 'case_strategy_mode', None) or 'comprehensive',
+            )
+            node_output = dict(node_output or {})
+            # 仅在未提供 dedupe_report 时补齐，避免覆盖 LLM 评审的报告
+            if node_output.get('dedupe_report') is None:
+                node_output['dedupe_report'] = dedupe_report
+        except Exception:
+            # 去重失败不应阻塞最终产物
+            dedupe_report = None
+
         if isinstance(merged_result, dict):
             meta = merged_result.get('_meta') if isinstance(merged_result.get('_meta'), dict) else {}
             meta = dict(meta)

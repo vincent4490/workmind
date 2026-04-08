@@ -16,6 +16,7 @@ from apps.ai_testcase.services.prompts import get_testcase_prompt, get_testcase_
 from apps.ai_testcase.services.model_router import TestcaseModelRouter
 from apps.ai_testcase.services.schemas import validate_testcase_result
 from apps.ai_testcase.services.xmind_builder import XMindBuilder
+from apps.ai_testcase.services.dedupe import dedupe_result_json
 from apps.ai_testcase.workflows.executor import TestcaseAgentExecutor
 from apps.ai_testcase.utils import normalize_case_strategy_mode
 
@@ -247,6 +248,11 @@ def run_ai_testcase_direct(record_id: int):
         if data is None:
             raise ValueError('parse_error: AI 返回无法解析为 JSON')
         validate_testcase_result(data)
+        # Phase 1：确定性去重（不破坏 XMind 核心字段）
+        data, dedupe_report = dedupe_result_json(
+            data,
+            mode=normalize_case_strategy_mode(getattr(record, 'case_strategy_mode', None)),
+        )
 
         _set_progress(record, 'save_result', 85)
         _write_event(record, 'progress', {'stage': 'save_result', 'percent': 85, 'message': '写入结果与生成 XMind'})
@@ -279,6 +285,7 @@ def run_ai_testcase_direct(record_id: int):
             'module_count': record.module_count,
             'case_count': record.case_count,
             'usage': usage,
+            'dedupe_report': dedupe_report,
             'prompt_version': getattr(settings, 'AI_TESTCASE_PROMPT_VERSION', 'v1'),
         })
 

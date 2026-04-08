@@ -14,8 +14,6 @@ from .prompts import (
     get_module_regenerate_prompt,
     get_module_regenerate_prompt_multimodal,
     get_function_regenerate_prompt,
-    get_review_prompt,
-    get_review_prompt_multimodal,
     get_apply_review_prompt,
     get_dimension_review_prompt,
     get_dimension_review_prompt_multimodal,
@@ -387,7 +385,7 @@ class KimiClient:
         use_thinking: bool = False
     ):
         """
-        用例评审 — 异步流式
+        用例评审 — 异步流式（方案 A：用分维度评审替代旧的全局评审）
 
         Args:
             result_json: 完整的用例 JSON（所有模块）
@@ -400,51 +398,60 @@ class KimiClient:
         images = images or []
 
         has_attachments = bool(extracted_texts or images)
+        dimensions = ["missing", "duplicate", "redundant", "structure"]
 
-        if has_attachments:
-            messages = get_review_prompt_multimodal(
-                result_json, extracted_texts, images, requirement
-            )
-            logger.info(f"[Kimi] 开始多模态用例评审, 文本数={len(extracted_texts)}, 图片数={len(images)}")
-        else:
-            messages = get_review_prompt(result_json, requirement)
-            logger.info("[Kimi] 开始纯文本用例评审")
+        logger.info(
+            f"[Kimi] 开始用例评审（维度合并）dimensions={dimensions}, 多模态={has_attachments}, thinking={use_thinking}"
+        )
 
-        if use_thinking:
-            extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
-        else:
-            extra_body = {"thinking": {"type": "disabled"}}
+        merged_items: list[dict] = []
+        merged_summary_parts: list[str] = []
+        total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
         try:
-            stream = await self.async_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                extra_body=extra_body,
-                stream=True,
-                stream_options={"include_usage": True}
-            )
+            for dim in dimensions:
+                if has_attachments:
+                    messages = get_dimension_review_prompt_multimodal(
+                        dim, result_json, extracted_texts, images, requirement
+                    )
+                else:
+                    messages = get_dimension_review_prompt(dim, result_json, requirement)
 
-            full_content = ""
-            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+                # 维度评审比旧全局评审更“聚焦”，但仍可能需要思考以提升质量
+                ret = await self.run_validated_async(messages, use_thinking=use_thinking)
+                total_usage["prompt_tokens"] += (ret.get("usage") or {}).get("prompt_tokens", 0)
+                total_usage["completion_tokens"] += (ret.get("usage") or {}).get("completion_tokens", 0)
+                total_usage["total_tokens"] += (ret.get("usage") or {}).get("total_tokens", 0)
 
-            async for chunk in stream:
-                if chunk.usage:
-                    usage = {
-                        "prompt_tokens": chunk.usage.prompt_tokens or 0,
-                        "completion_tokens": chunk.usage.completion_tokens or 0,
-                        "total_tokens": chunk.usage.total_tokens or 0,
-                    }
+                if not ret.get("success"):
+                    merged_summary_parts.append(f"{dim}: 评审失败({ret.get('error')})")
+                    continue
 
-                if chunk.choices and len(chunk.choices) > 0:
-                    delta = chunk.choices[0].delta
-                    if delta and delta.content:
-                        full_content += delta.content
-                        yield {"type": "chunk", "content": delta.content}
+                data = ret.get("data") or {}
+                items = data.get("items") if isinstance(data, dict) else None
+                if isinstance(items, list):
+                    merged_items.extend(items)
+                    merged_summary_parts.append(f"{dim}: {len(items)}项")
+                else:
+                    merged_summary_parts.append(f"{dim}: 输出格式异常")
 
-            yield {"type": "done", "content": full_content, "usage": usage}
+            # 合并为一个兼容的“全局评审”输出（供前端/调用方展示）
+            merged_out = {
+                "summary": "；".join(merged_summary_parts) if merged_summary_parts else "维度评审完成",
+                "total_issues": len(merged_items),
+                "items": merged_items,
+            }
+
+            out_text = json.dumps(merged_out, ensure_ascii=False, indent=2)
+
+            # 保持流式语义：把最终 JSON 分片 yield 出去
+            chunk_size = 800
+            for i in range(0, len(out_text), chunk_size):
+                yield {"type": "chunk", "content": out_text[i : i + chunk_size]}
+            yield {"type": "done", "content": out_text, "usage": total_usage}
 
         except Exception as e:
-            logger.error(f"[Kimi] 用例评审流式 API 调用失败: {e}")
+            logger.error(f"[Kimi] 用例评审（维度合并）失败: {e}")
             yield {"type": "error", "error": str(e)}
 
     async def review_dimension_stream_async(

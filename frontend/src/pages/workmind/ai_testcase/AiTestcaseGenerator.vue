@@ -107,13 +107,13 @@
                             <el-radio value="comprehensive" class="mode-radio">
                                 <div class="mode-content">
                                     <span class="mode-title">全覆盖模式</span>
-                                    <span class="mode-desc">（高覆盖、方法学与异常场景尽量铺全）</span>
+                                    <span class="mode-desc">（覆盖更全，条数更多；适合新功能验收/高复杂需求）</span>
                                 </div>
                             </el-radio>
                             <el-radio value="focused" class="mode-radio">
                                 <div class="mode-content">
                                     <span class="mode-title">聚焦模式</span>
-                                    <span class="mode-desc">（功能与业务优先，条数精简）</span>
+                                    <span class="mode-desc">（聚焦业务和功能；适合日常迭代）</span>
                                 </div>
                             </el-radio>
                         </el-radio-group>
@@ -906,7 +906,7 @@
                         :closable="false"
                     >
                         <template #title>
-                            AI 将分 6 个维度逐一深入扫描所有用例：重复、冗余、归属、优先级、缺失场景、命名覆盖，确保不遗漏问题。
+                            AI 将分 4 个维度逐一深入扫描所有用例：重复、冗余、归属、缺失场景。
                         </template>
                     </el-alert>
                 </div>
@@ -920,7 +920,7 @@
                             <span class="typing-dot"></span>
                             <span style="margin-left: 8px;">
                                 正在扫描：{{ reviewCurrentDim?.dimension_label || '准备中' }}
-                                （{{ reviewCurrentDim?.index || 0 }}/{{ reviewCurrentDim?.total || 6 }}）
+                                （{{ reviewCurrentDim?.index || 0 }}/{{ reviewCurrentDim?.total || reviewDimensions.length || 4 }}）
                             </span>
                             <span class="generating-timer">{{ reviewElapsedTime }}s</span>
                         </span>

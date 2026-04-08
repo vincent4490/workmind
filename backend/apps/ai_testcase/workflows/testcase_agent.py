@@ -30,6 +30,8 @@ class TestcaseAgentState(TypedDict, total=False):
     extracted_texts: list
     images: list
     mode: str
+    effective_mode: str  # 自适应后实际用于后续节点的模式（focused/comprehensive）
+    mode_switch_reason: str
     use_thinking: bool
     quality_tier: str  # cheap/strong
     force_strong_generate: bool
@@ -422,6 +424,27 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
     review_dimension_scores = review_data.get('dimension_scores')
     iteration = (state.get('iteration_count') or 0) + 1
 
+    # ============ Phase 4：轻量自适应模式 ============
+    # 目标：当用户选择 focused，但评审显示明显不达标/重复严重时，
+    # 将后续 refine 的“有效模式”升级为 comprehensive，以便补漏与去重更彻底。
+    requested_mode = (state.get('mode') or 'comprehensive').strip().lower()
+    effective_mode = (state.get('effective_mode') or requested_mode).strip().lower()
+    switch_reason = state.get('mode_switch_reason')
+
+    if requested_mode == 'focused' and effective_mode == 'focused':
+        dedupe_removed = 0
+        dup_ratio = 0.0
+        if isinstance(dedupe_report, dict):
+            # 兼容不同字段命名
+            dedupe_removed = int(dedupe_report.get('removed', 0) or dedupe_report.get('duplicates_removed', 0) or 0)
+            dup_ratio = float(dedupe_report.get('dup_ratio', 0.0) or dedupe_report.get('duplicate_ratio', 0.0) or 0.0)
+
+        # 触发条件（可随业务再调）：低分 或 去重后仍显著重复
+        should_upgrade = (score < 0.75) or (dup_ratio >= 0.2) or (dedupe_removed >= 10)
+        if should_upgrade:
+            effective_mode = 'comprehensive'
+            switch_reason = f"auto_upgrade: requested=focused score={score:.2f} dup_ratio={dup_ratio:.2f} removed={dedupe_removed}"
+
     return {
         'merged_result': merged_out,
         'review_score': score,
@@ -431,6 +454,8 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
         'review_rubric': review_rubric,
         'review_dimension_scores': review_dimension_scores,
         'iteration_count': iteration,
+        'effective_mode': effective_mode,
+        'mode_switch_reason': switch_reason,
         'review_model': result.get('model'),
         'review_usage': result.get('usage', {}),
         'review_cost_usd': result.get('cost_usd'),
@@ -461,7 +486,8 @@ async def refine_cases_node(state: TestcaseAgentState) -> dict:
 
     await emit_node_start('refine_cases')
 
-    messages = build_refine_messages(merged, issues, mode=state.get('mode') or 'comprehensive')
+    mode_for_refine = state.get('effective_mode') or state.get('mode') or 'comprehensive'
+    messages = build_refine_messages(merged, issues, mode=mode_for_refine)
     # 质量闭环：第一轮低分时升级 refine（更强模型/开启思考）
     use_thinking = bool(state.get('quality_tier') == 'strong')
 

@@ -6,30 +6,11 @@ Agent 智能体各节点专用 Prompt
     → merge_and_review → refine_cases
 """
 
-# ============ 模式片段（注入各节点 system） ============
-
-MODE_GUIDE_FOCUSED = """
-【用例策略：FOCUSED（聚焦）】
-- 目标：高信噪比、可执行；禁止换汤不换药的重复用例。
-- 条数：每模块优先控制在策略给出的 case_count_range 内；critical 模块可略上浮。
-- 覆盖：主流程 + 关键业务规则 + 关键边界/异常；不做穷举矩阵。
-- 去重：同一覆盖点（rule_id + scenario_type + 预期类别）只保留 1 条代表；仅数据差异请用参数化或合并描述。
-"""
-
-MODE_GUIDE_COMPREHENSIVE = """
-【用例策略：COMPREHENSIVE（全覆盖）】
-- 目标：尽量覆盖需求中的规则与风险；仍须控制冗余。
-- 条数：按策略 case_count_range；高风险模块可更细。
-- 覆盖：主流程 + 异常/边界 + 状态/权限/一致性（按模块适用）。
-- 去重：允许同 rule_id 多条，但必须 scenario_type 或预期类别不同；否则合并或参数化。
-"""
+from apps.ai_testcase.services.mode_policy import render_mode_guide_for_agent
 
 
 def get_mode_guide(mode: str) -> str:
-    m = (mode or "comprehensive").strip().lower()
-    if m == "focused":
-        return MODE_GUIDE_FOCUSED
-    return MODE_GUIDE_COMPREHENSIVE
+    return render_mode_guide_for_agent(mode)
 
 
 # ============ 节点 1：需求分析 ============
@@ -467,15 +448,18 @@ def build_generate_module_messages(
 def build_review_messages(result_json: dict, requirement: str, mode: str = "comprehensive") -> list:
     """构建评审节点的消息列表"""
     import json
+    from apps.ai_testcase.services.review_compact import compact_result_json
 
     mode_guide = get_mode_guide(mode)
     system = MERGE_AND_REVIEW_SYSTEM.format(mode_guide=mode_guide)
+    compact = compact_result_json(result_json).to_dict()
     return [
         {"role": "system", "content": system},
         {"role": "user", "content": (
             f"请对以下测试用例进行全局合并、去重并评审。\n\n"
             f"【需求描述】\n{requirement}\n\n"
-            f"【当前各模块测试用例（待合并）】\n{json.dumps(result_json, ensure_ascii=False, indent=2)}"
+            f"【用例摘要（用于快速评审）】\n{json.dumps(compact.get('summary', {}), ensure_ascii=False, indent=2)}\n\n"
+            f"【用例样例（每功能点最多 {3} 条）】\n{json.dumps(compact.get('sample', {}), ensure_ascii=False, indent=2)}"
         )},
     ]
 
