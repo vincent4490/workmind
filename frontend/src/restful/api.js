@@ -898,6 +898,11 @@ export const getAiRequirementTasks = params => {
     return axios.get('/api/ai_requirement/tasks/', { params }).then(res => res.data);
 };
 
+/** 需求智能体：是否展示按创建人筛选等（与后端权限一致） */
+export const getAiRequirementConfigStatus = () => {
+    return axios.get('/api/ai_requirement/tasks/config-status/').then(res => res.data);
+};
+
 // 获取需求智能体任务详情
 export const getAiRequirementTask = id => {
     return axios.get(`/api/ai_requirement/tasks/${id}/`).then(res => res.data);

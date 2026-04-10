@@ -6,11 +6,14 @@ from .models import AiTestcaseGeneration
 class AiTestcaseGenerationSerializer(serializers.ModelSerializer):
     """用例生成记录序列化器"""
 
+    created_by_username = serializers.SerializerMethodField()
+
     class Meta:
         model = AiTestcaseGeneration
-        fields = '__all__'
+        fields = [f.name for f in AiTestcaseGeneration._meta.concrete_fields] + ['created_by_username']
         read_only_fields = [
             'created_by',
+            'created_by_username',
             'idempotency_key',
             'prompt_version',
             'cancelled_at',
@@ -19,6 +22,16 @@ class AiTestcaseGenerationSerializer(serializers.ModelSerializer):
             'xmind_file', 'module_count', 'case_count',
             'created_at', 'updated_at',
         ]
+
+    def get_created_by_username(self, obj):
+        u = getattr(obj, 'created_by', None)
+        if not u:
+            return None
+        name = (getattr(u, 'name', None) or '').strip()
+        un = (getattr(u, 'username', None) or '').strip()
+        if name and un and name != un:
+            return f'{name}（{un}）'
+        return name or un or None
 
 
 class GenerateRequestSerializer(serializers.Serializer):

@@ -85,6 +85,7 @@ const handleLogOut = async () => {
         store.commit('setName', '')
         store.commit('setId', '')
         store.commit('setIsSuperuser', false)
+        store.commit('setIsStaff', false)
         store.commit('setRouterName', '')
         
         // 清除localStorage
@@ -93,6 +94,7 @@ const handleLogOut = async () => {
         setLocalValue('name', '')
         setLocalValue('id', '')
         setLocalValue('is_superuser', false)
+        setLocalValue('is_staff', '0')
         setLocalValue('routerName', '')
         
         // 直接使用window.location跳转，确保完全刷新页面

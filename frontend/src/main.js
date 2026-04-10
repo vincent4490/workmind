@@ -88,7 +88,8 @@ const initLocalStorage = () => {
         name: '',
         id: '',
         routerName: 'DeviceManagement',
-        is_superuser: false
+        is_superuser: false,
+        is_staff: '0'
     }
     
     for (const [key, defaultValue] of Object.entries(defaults)) {
@@ -104,6 +105,7 @@ const initLocalStorage = () => {
     store.commit('setId', parseInt(localStorage.getItem('id'), 10))
     store.commit('setRouterName', localStorage.getItem('routerName'))
     store.commit('setIsSuperuser', localStorage.getItem('is_superuser'))
+    store.commit('setIsStaff', localStorage.getItem('is_staff') === '1')
     store.dispatch('initStore')
 }
 

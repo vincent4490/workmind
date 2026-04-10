@@ -38,7 +38,7 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
     pagination_class = pagination.MyPageNumberPagination
     
     def get_queryset(self):
-        """根据需求名称、测试团队、测试人员、状态、标签、创建时间过滤"""
+        """根据需求名称、测试团队、测试人员、状态、标签、创建时间、测试时间过滤"""
         name = self.request.query_params.get('name', '').strip()
         requirement_name = self.request.query_params.get('requirement_name', '').strip()
         keyword = name or requirement_name
@@ -48,6 +48,8 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
         tags_val = self.request.query_params.get('tags', '').strip()
         created_at_after = self.request.query_params.get('created_at_after', '').strip()
         created_at_before = self.request.query_params.get('created_at_before', '').strip()
+        test_time_after = self.request.query_params.get('test_time_after', '').strip()
+        test_time_before = self.request.query_params.get('test_time_before', '').strip()
 
         queryset = FunctionalRequirement.objects.all().select_related('created_by')  # type: ignore[attr-defined]
         if keyword:
@@ -64,6 +66,12 @@ class FunctionalRequirementViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(created_at__date__gte=created_at_after)
         if created_at_before:
             queryset = queryset.filter(created_at__date__lte=created_at_before)
+        if test_time_after or test_time_before:
+            from ..tasks.requirement_tasks import filter_functional_requirements_by_test_time
+
+            queryset = filter_functional_requirements_by_test_time(
+                queryset, test_time_after or None, test_time_before or None
+            )
         return queryset.order_by('-updated_at')
 
     @action(detail=False, methods=['get'], url_path='test-team-options')

@@ -4,6 +4,7 @@ export default {
     token: null,
     user: null,
     is_superuser: false,
+    is_staff: false,
     duration: 2000,
     WorkMind: import.meta.env.VITE_WORKMIND_LINK || "WorkMind",
     docsURL: import.meta.env.VITE_DOCS_URL || "https://workmind-docs.fun/docs/guide/introduce.html",

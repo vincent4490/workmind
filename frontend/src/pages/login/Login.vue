@@ -151,6 +151,7 @@ const handleLoginSuccess = (resp) => {
         store.commit('setName', resp.name)
         store.commit('setId', resp.id)
         store.commit('setIsSuperuser', resp.is_superuser)
+        store.commit('setIsStaff', !!resp.is_staff)
         store.commit('setRouterName', 'DeviceManagement')
 
         // 更新 localStorage
@@ -159,6 +160,7 @@ const handleLoginSuccess = (resp) => {
         setLocalValue('name', resp.name)
         setLocalValue('id', resp.id)
         setLocalValue('is_superuser', resp.is_superuser)
+        setLocalValue('is_staff', resp.is_staff ? '1' : '0')
         setLocalValue('routerName', 'DeviceManagement')
     } else {
         ElMessage.error({

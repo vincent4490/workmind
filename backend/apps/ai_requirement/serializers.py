@@ -7,9 +7,11 @@ from .models import (
 
 
 class AiRequirementTaskSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.SerializerMethodField()
+
     class Meta:
         model = AiRequirementTask
-        fields = '__all__'
+        fields = [f.name for f in AiRequirementTask._meta.concrete_fields] + ['created_by_username']
         read_only_fields = [
             'status', 'result_json', 'result_md', 'raw_content',
             'error_message', 'confidence_score',
@@ -17,8 +19,19 @@ class AiRequirementTaskSerializer(serializers.ModelSerializer):
             'model_used', 'prompt_version',
             'prompt_tokens', 'completion_tokens', 'total_tokens', 'cost_usd',
             'pii_detected', 'downstream_testcases',
+            'created_by', 'created_by_username',
             'created_at', 'updated_at',
         ]
+
+    def get_created_by_username(self, obj):
+        u = getattr(obj, 'created_by', None)
+        if not u:
+            return None
+        name = (getattr(u, 'name', None) or '').strip()
+        un = (getattr(u, 'username', None) or '').strip()
+        if name and un and name != un:
+            return f'{name}（{un}）'
+        return name or un or None
 
 
 class RunStreamRequestSerializer(serializers.Serializer):

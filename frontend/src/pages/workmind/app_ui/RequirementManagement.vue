@@ -126,6 +126,18 @@
                     @change="loadRequirements"
                 />
             </el-form-item>
+            <el-form-item label="测试时间">
+                <el-date-picker
+                    v-model="searchForm.test_time"
+                    type="daterange"
+                    range-separator="-"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="YYYY-MM-DD"
+                    style="width: 240px;"
+                    @change="loadRequirements"
+                />
+            </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" @click="loadRequirements">搜索</el-button>
                 <el-button :icon="Refresh" @click="resetSearch">重置</el-button>
@@ -467,7 +479,8 @@ const searchForm = ref({
     testers: '',
     status: '',
     tags: '',
-    created_at: null
+    created_at: null,
+    test_time: null
 })
 
 // 状态、标签、测试团队与「新增需求」表单一致，固定枚举（不随数据计划）
@@ -536,6 +549,10 @@ const loadRequirements = () => {
         params.created_at_after = searchForm.value.created_at[0]
         params.created_at_before = searchForm.value.created_at[1]
     }
+    if (searchForm.value.test_time && searchForm.value.test_time.length === 2) {
+        params.test_time_after = searchForm.value.test_time[0]
+        params.test_time_before = searchForm.value.test_time[1]
+    }
     getFunctionalRequirements(params).then(res => {
         if (res.code === 0) {
             if (res.data.results) {
@@ -566,6 +583,7 @@ const resetSearch = () => {
     searchForm.value.status = ''
     searchForm.value.tags = ''
     searchForm.value.created_at = null
+    searchForm.value.test_time = null
     loadRequirements()
 }
 
@@ -580,6 +598,10 @@ const handleExport = () => {
     if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
         params.created_at_after = searchForm.value.created_at[0]
         params.created_at_before = searchForm.value.created_at[1]
+    }
+    if (searchForm.value.test_time && searchForm.value.test_time.length === 2) {
+        params.test_time_after = searchForm.value.test_time[0]
+        params.test_time_before = searchForm.value.test_time[1]
     }
     exportFunctionalRequirements(params).then(res => {
         const disposition = res.headers['content-disposition'] || ''

@@ -17,7 +17,7 @@ from django.conf import settings
 from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 
 from .models import (
@@ -42,6 +42,21 @@ from .services.schemas import extract_prd_markdown_from_result_json
 from .services.security import SecurityError
 
 logger = logging.getLogger(__name__)
+
+
+async def _require_jwt_user(request):
+    """
+    纯 Django 异步视图（SSE）不会走 DRF，须显式解析 JWT，否则 request.user 一直为匿名，
+    导致 AiRequirementTask.created_by 无法写入、按创建人筛选永远对不上。
+    复用用例模块已与 simplejwt 对齐的实现。
+    """
+    from apps.ai_testcase.views import _authenticate_or_401
+
+    user, auth_resp = await _authenticate_or_401(request)
+    if auth_resp is not None:
+        return None, auth_resp
+    return user, None
+
 
 def _extract_result_md(output_format: str, result_json, raw_content: str) -> str | None:
     """
@@ -138,6 +153,10 @@ async def run_stream_view(request):
 
     if request.method != 'POST':
         return _add_cors_headers(HttpResponse('Method not allowed', status=405))
+
+    user, err = await _require_jwt_user(request)
+    if err is not None:
+        return _add_cors_headers(err)
 
     # ---------- 解析请求 ----------
     extracted_texts = []
@@ -482,6 +501,9 @@ async def clarify_and_continue_view(request):
         return _add_cors_headers(HttpResponse(status=200))
     if request.method != 'POST':
         return _add_cors_headers(HttpResponse('Method not allowed', status=405))
+    user, err = await _require_jwt_user(request)
+    if err is not None:
+        return _add_cors_headers(err)
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -521,6 +543,9 @@ async def clarify_and_continue_view(request):
 
     async def event_stream():
         from asgiref.sync import sync_to_async
+        uid = request.user.id if getattr(request.user, 'is_authenticated', False) else None
+        if uid is None and task.created_by_id:
+            uid = task.created_by_id
         record = await sync_to_async(AiRequirementTask.objects.create)(
             role=task.role,
             task_type=task.task_type,
@@ -531,6 +556,7 @@ async def clarify_and_continue_view(request):
             security_level=task.security_level or 'internal',
             session_id=task.session_id,
             parent_task_id=task_id,
+            created_by_id=uid,
         )
         yield f"data: {json.dumps({'type': 'start', 'record_id': record.id}, ensure_ascii=False)}\n\n"
         start_time = time.perf_counter()
@@ -852,6 +878,10 @@ async def chat_stream_view(request):
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return _add_cors_headers(HttpResponse('Invalid JSON', status=400))
+
+    user, err = await _require_jwt_user(request)
+    if err is not None:
+        return _add_cors_headers(err)
 
     role = body.get('role', '').strip()
     task_type = body.get('task_type', '').strip()
@@ -1187,10 +1217,24 @@ def task_export_view(request, pk):
 class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
     """任务记录查询 ViewSet（只读）"""
     serializer_class = AiRequirementTaskSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = AiRequirementTask.objects.all()
+        qs = AiRequirementTask.objects.all().select_related('created_by')
+        user = getattr(self.request, 'user', None)
+        if user and getattr(user, 'is_authenticated', False):
+            if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+                cid = self.request.query_params.get('created_by')
+                if cid not in (None, ''):
+                    try:
+                        qs = qs.filter(created_by_id=int(cid))
+                    except (ValueError, TypeError):
+                        pass
+            else:
+                qs = qs.filter(created_by=user)
+        else:
+            qs = qs.none()
+
         role = self.request.query_params.get('role')
         task_type = self.request.query_params.get('task_type')
         status_filter = self.request.query_params.get('status')
@@ -1201,6 +1245,20 @@ class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
         if status_filter:
             qs = qs.filter(status=status_filter)
         return qs
+
+    @action(detail=False, methods=['get'], url_path='config-status')
+    def config_status(self, request):
+        """
+        GET /api/ai_requirement/tasks/config-status/
+        是否展示「按创建人筛选」（与列表权限一致，由服务端判定）。
+        """
+        user = getattr(request, 'user', None)
+        can_filter = False
+        if user and getattr(user, 'is_authenticated', False):
+            can_filter = bool(
+                getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)
+            )
+        return Response({'can_filter_by_creator': can_filter})
 
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):

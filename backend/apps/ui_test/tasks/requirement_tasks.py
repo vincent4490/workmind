@@ -82,6 +82,89 @@ def _parse_test_time_end(value):
     return None
 
 
+def parse_test_time_range(value):
+    """
+    解析 test_time 存储字符串（与前端 formatTimeRange 一致），返回 (start_date, end_date) 或 None。
+    支持区间 start-end；单日。
+    """
+    if not value or not str(value).strip():
+        return None
+    s = str(value).strip()
+
+    def parse_one(part):
+        part = part.strip()
+        if '/' in part:
+            parts = part.split('/')
+            if len(parts) == 3:
+                try:
+                    y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+                    return date(y, m, d)
+                except (ValueError, TypeError):
+                    pass
+        if re.match(r'^\d{4}-\d{1,2}-\d{1,2}$', part):
+            parts = part.split('-')
+            if len(parts) == 3:
+                try:
+                    y, m, d = int(parts[0]), int(parts[1]), int(parts[2])
+                    return date(y, m, d)
+                except (ValueError, TypeError):
+                    pass
+        return None
+
+    range_match = re.match(r'^(.+?)[\s]*-[\s]*(.+)$', s)
+    if range_match:
+        a, b = range_match.groups()
+        d1, d2 = parse_one(a), parse_one(b)
+        if d1 and d2:
+            return (min(d1, d2), max(d1, d2))
+        return None
+    d = parse_one(s)
+    if d:
+        return (d, d)
+    return None
+
+
+def filter_functional_requirements_by_test_time(queryset, after_str, before_str):
+    """
+    按所选日期区间筛选：保留「测试时间」区间与 [after_str, before_str] 有交集的记录。
+    test_time 为 CharField 区间字符串，after_str/before_str 为 YYYY-MM-DD，可单独或同时传入。
+    """
+    from datetime import datetime
+
+    f_start = None
+    f_end = None
+    if after_str:
+        try:
+            f_start = datetime.strptime(after_str[:10], '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    if before_str:
+        try:
+            f_end = datetime.strptime(before_str[:10], '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    if f_start is None and f_end is None:
+        return queryset
+
+    matching_ids = []
+    # 使用 values_list，避免与外层 select_related('created_by') + only() 组合触发 FieldError
+    for row_id, test_time_val in queryset.values_list('id', 'test_time').iterator(
+        chunk_size=500
+    ):
+        tr = parse_test_time_range(test_time_val)
+        if not tr:
+            continue
+        t_start, t_end = tr
+        if f_start is not None and t_end < f_start:
+            continue
+        if f_end is not None and t_start > f_end:
+            continue
+        matching_ids.append(row_id)
+    if not matching_ids:
+        return queryset.none()
+    return queryset.filter(id__in=matching_ids)
+
+
 def _build_delayed_tags(req, today):
     """
     根据提测/测试是否延期，返回应设置的标签（仅延期标签，替换不追加）。

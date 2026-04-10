@@ -59,6 +59,7 @@ class LoginView(APIView):
                 "user": user.username,
                 "name": user.name,
                 "is_superuser": user.is_superuser,
+                "is_staff": user.is_staff,
                 "token": token,
             }
         )

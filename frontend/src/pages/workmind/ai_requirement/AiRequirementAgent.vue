@@ -537,15 +537,34 @@
             <el-col :span="10">
                 <el-card class="history-card" shadow="hover">
                     <template #header>
-                        <div class="card-header">
+                        <div class="card-header history-card-header">
                             <span class="card-title">
                                 <el-icon><Clock /></el-icon>
                                 生成历史
                             </span>
-                            <el-button text type="primary" @click="loadHistory">
-                                <el-icon><Refresh /></el-icon>
-                                刷新
-                            </el-button>
+                            <div class="history-card-header-right">
+                                <el-select
+                                    v-if="configStatus.can_filter_by_creator"
+                                    v-model="historyCreatorFilter"
+                                    clearable
+                                    filterable
+                                    placeholder="按创建人筛选"
+                                    class="history-creator-filter"
+                                    size="small"
+                                    @change="onHistoryCreatorFilterChange"
+                                >
+                                    <el-option
+                                        v-for="u in creatorUserList"
+                                        :key="u.id"
+                                        :label="formatCreatorOptionLabel(u)"
+                                        :value="u.id"
+                                    />
+                                </el-select>
+                                <el-button text type="primary" @click="loadHistory">
+                                    <el-icon><Refresh /></el-icon>
+                                    刷新
+                                </el-button>
+                            </div>
                         </div>
                     </template>
 
@@ -572,6 +591,13 @@
                                 <span class="history-time">{{ formatTime(item.created_at) }}</span>
                             </div>
                             <div class="history-requirement">{{ item.requirement_input }}</div>
+                            <div
+                                v-if="item.created_by_username"
+                                class="history-creator"
+                            >
+                                <el-icon><User /></el-icon>
+                                {{ item.created_by_username }}
+                            </div>
                             <div class="history-meta">
                                 <span v-if="item.model_used">
                                     <el-icon><Cpu /></el-icon>
@@ -709,6 +735,8 @@ import {
     aiRequirementClarifyAndContinue,
     aiRequirementChatStream,
     getAiRequirementTasks,
+    getAiRequirementConfigStatus,
+    getUserList,
     submitAiRequirementFeedback,
     aiRequirementSyncToConfluence,
     downloadAiRequirementTaskExport,
@@ -717,6 +745,7 @@ import {
     startMultiAgentStream,
     approveMultiAgentStream,
 } from '@/restful/api'
+import { formatCreatorOptionLabel } from '@/utils/creatorLabel.js'
 
 const TASK_MAP = {
     product: [
@@ -1091,14 +1120,55 @@ function stopTimer() {
 const historyList = ref([])
 const historyPage = ref(1)
 const historyTotal = ref(0)
+const historyCreatorFilter = ref(null)
+const creatorUserList = ref([])
+const configStatus = ref({
+    can_filter_by_creator: false
+})
+
+async function loadConfigStatus() {
+    try {
+        const data = await getAiRequirementConfigStatus()
+        configStatus.value = {
+            ...configStatus.value,
+            ...data,
+            can_filter_by_creator: !!data?.can_filter_by_creator
+        }
+    } catch (err) {
+        console.error('加载需求智能体配置失败:', err)
+    }
+}
+
+async function loadCreatorOptions() {
+    if (!configStatus.value.can_filter_by_creator) return
+    try {
+        const list = await getUserList()
+        creatorUserList.value = Array.isArray(list) ? list.filter(u => u && u.id) : []
+    } catch (err) {
+        console.error('加载用户列表失败:', err)
+    }
+}
+
+function onHistoryCreatorFilterChange() {
+    historyPage.value = 1
+    loadHistory()
+}
 
 async function loadHistory() {
     try {
-        const res = await getAiRequirementTasks({
+        const params = {
             page: historyPage.value,
             page_size: 10,
             ordering: '-created_at',
-        })
+        }
+        if (
+            configStatus.value.can_filter_by_creator &&
+            historyCreatorFilter.value != null &&
+            historyCreatorFilter.value !== ''
+        ) {
+            params.created_by = historyCreatorFilter.value
+        }
+        const res = await getAiRequirementTasks(params)
         historyList.value = res.results || res
         historyTotal.value = res.count || historyList.value.length
     } catch (err) {
@@ -1702,7 +1772,11 @@ async function handleSyncToConfluence() {
 }
 
 // ---- 生命周期 ----
-onMounted(() => { loadHistory() })
+onMounted(async () => {
+    await loadConfigStatus()
+    await loadCreatorOptions()
+    await loadHistory()
+})
 onUnmounted(() => { stopTimer() })
 </script>
 
@@ -1772,6 +1846,33 @@ onUnmounted(() => { stopTimer() })
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.history-card-header {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 8px;
+    width: 100%;
+}
+
+.history-card-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.history-creator-filter {
+    width: 160px;
+}
+
+.history-creator {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .card-title {

@@ -24,6 +24,10 @@ export default {
         state.is_superuser = value;
     },
 
+    setIsStaff(state, value) {
+        state.is_staff = value;
+    },
+
     // 多标签页管理
     ADD_VISITED_VIEW(state, view) {
         // 如果标签已存在，不重复添加

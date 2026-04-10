@@ -1732,11 +1732,17 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
     throttle_scope = 'ai_testcase'
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related('created_by')
         user = getattr(self.request, 'user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return qs.none()
         if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+            cid = self.request.query_params.get('created_by')
+            if cid not in (None, ''):
+                try:
+                    qs = qs.filter(created_by_id=int(cid))
+                except (ValueError, TypeError):
+                    pass
             return qs
         return qs.filter(created_by=user)
 
@@ -2141,11 +2147,18 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         GET /api/ai_testcase/generations/config-status/
         """
         api_key = getattr(settings, 'KIMI_API_KEY', '')
+        user = getattr(request, 'user', None)
+        can_filter = False
+        if user and getattr(user, 'is_authenticated', False):
+            can_filter = bool(
+                getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)
+            )
         return Response({
             'configured': bool(api_key),
             'model': getattr(settings, 'KIMI_MODEL', 'kimi-k2.5'),
             'base_url': getattr(settings, 'KIMI_BASE_URL', 'https://api.moonshot.cn/v1'),
             'api_key_prefix': api_key[:8] + '...' if api_key else '',
+            'can_filter_by_creator': can_filter,
         })
 
 
