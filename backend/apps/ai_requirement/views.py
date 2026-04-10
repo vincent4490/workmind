@@ -1222,18 +1222,15 @@ class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = AiRequirementTask.objects.all().select_related('created_by')
         user = getattr(self.request, 'user', None)
-        if user and getattr(user, 'is_authenticated', False):
-            if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
-                cid = self.request.query_params.get('created_by')
-                if cid not in (None, ''):
-                    try:
-                        qs = qs.filter(created_by_id=int(cid))
-                    except (ValueError, TypeError):
-                        pass
-            else:
-                qs = qs.filter(created_by=user)
-        else:
+        if not user or not getattr(user, 'is_authenticated', False):
             qs = qs.none()
+        else:
+            cid = self.request.query_params.get('created_by')
+            if cid not in (None, ''):
+                try:
+                    qs = qs.filter(created_by_id=int(cid))
+                except (ValueError, TypeError):
+                    pass
 
         role = self.request.query_params.get('role')
         task_type = self.request.query_params.get('task_type')
@@ -1253,11 +1250,7 @@ class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
         是否展示「按创建人筛选」（与列表权限一致，由服务端判定）。
         """
         user = getattr(request, 'user', None)
-        can_filter = False
-        if user and getattr(user, 'is_authenticated', False):
-            can_filter = bool(
-                getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)
-            )
+        can_filter = bool(user and getattr(user, 'is_authenticated', False))
         return Response({'can_filter_by_creator': can_filter})
 
     @action(detail=True, methods=['get'], url_path='export')

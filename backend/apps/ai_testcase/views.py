@@ -17,7 +17,7 @@ from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 from rest_framework_simplejwt.exceptions import InvalidToken
 
 from .models import AiTestcaseEvent, AiTestcaseGeneration
@@ -1736,15 +1736,21 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         user = getattr(self.request, 'user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return qs.none()
-        if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
-            cid = self.request.query_params.get('created_by')
-            if cid not in (None, ''):
-                try:
-                    qs = qs.filter(created_by_id=int(cid))
-                except (ValueError, TypeError):
-                    pass
-            return qs
-        return qs.filter(created_by=user)
+        cid = self.request.query_params.get('created_by')
+        if cid not in (None, ''):
+            try:
+                qs = qs.filter(created_by_id=int(cid))
+            except (ValueError, TypeError):
+                pass
+        return qs
+
+    def perform_destroy(self, instance):
+        """历史列表对全员可见，删除仍仅限本人或管理员。"""
+        user = self.request.user
+        if not (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
+            if instance.created_by_id != getattr(user, 'id', None):
+                raise PermissionDenied('只能删除自己的生成记录')
+        super().perform_destroy(instance)
 
     @action(detail=True, methods=['post'], url_path='cancel')
     def cancel(self, request, pk=None):
@@ -1754,6 +1760,10 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         POST /api/ai_testcase/generations/{id}/cancel/
         """
         record = self.get_object()
+        user = request.user
+        if not (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
+            if record.created_by_id != getattr(user, 'id', None):
+                return Response({'error': '无权取消他人的任务'}, status=status.HTTP_403_FORBIDDEN)
         if record.status != 'generating':
             return Response({'error': f'当前状态为 {record.status}，无法取消'}, status=status.HTTP_400_BAD_REQUEST)
         record.mark_cancelled()
@@ -2148,11 +2158,7 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         """
         api_key = getattr(settings, 'KIMI_API_KEY', '')
         user = getattr(request, 'user', None)
-        can_filter = False
-        if user and getattr(user, 'is_authenticated', False):
-            can_filter = bool(
-                getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)
-            )
+        can_filter = bool(user and getattr(user, 'is_authenticated', False))
         return Response({
             'configured': bool(api_key),
             'model': getattr(settings, 'KIMI_MODEL', 'kimi-k2.5'),
