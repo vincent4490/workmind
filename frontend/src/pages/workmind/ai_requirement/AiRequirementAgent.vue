@@ -617,6 +617,15 @@
                                 <el-button type="primary" link size="small" @click.stop="handlePreviewHistory(item)">
                                     查看
                                 </el-button>
+                                <el-button
+                                    type="danger"
+                                    link
+                                    size="small"
+                                    :loading="deletingTaskId === item.id"
+                                    @click.stop="handleDeleteHistory(item)"
+                                >
+                                    删除
+                                </el-button>
                             </div>
                         </div>
                     </div>
@@ -735,6 +744,7 @@ import {
     aiRequirementClarifyAndContinue,
     aiRequirementChatStream,
     getAiRequirementTasks,
+    deleteAiRequirementTask,
     getAiRequirementConfigStatus,
     getUserList,
     submitAiRequirementFeedback,
@@ -1122,6 +1132,7 @@ const historyPage = ref(1)
 const historyTotal = ref(0)
 const historyCreatorFilter = ref(null)
 const creatorUserList = ref([])
+const deletingTaskId = ref(null)
 const configStatus = ref({
     can_filter_by_creator: false
 })
@@ -1173,6 +1184,41 @@ async function loadHistory() {
         historyTotal.value = res.count || historyList.value.length
     } catch (err) {
         console.error('加载历史失败:', err)
+    }
+}
+
+async function handleDeleteHistory(item) {
+    try {
+        await ElMessageBox.confirm(
+            '确定删除这条生成记录？删除后无法恢复。',
+            '删除确认',
+            { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+        )
+    } catch {
+        return
+    }
+    deletingTaskId.value = item.id
+    try {
+        await deleteAiRequirementTask(item.id)
+        ElMessage.success('已删除')
+        if (doneResult.value?.record_id === item.id) {
+            doneResult.value = null
+            streamContent.value = ''
+            feedbackGiven.value = ''
+        }
+        if (historyList.value.length <= 1 && historyPage.value > 1) {
+            historyPage.value -= 1
+        }
+        await loadHistory()
+    } catch (err) {
+        const msg =
+            err?.response?.data?.detail ||
+            err?.response?.data?.message ||
+            (typeof err === 'string' ? err : err?.message) ||
+            '删除失败'
+        ElMessage.error(msg)
+    } finally {
+        deletingTaskId.value = null
     }
 }
 

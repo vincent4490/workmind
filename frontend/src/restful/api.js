@@ -908,6 +908,11 @@ export const getAiRequirementTask = id => {
     return axios.get(`/api/ai_requirement/tasks/${id}/`).then(res => res.data);
 };
 
+/** 删除需求智能体任务记录（本人或管理员） */
+export const deleteAiRequirementTask = id => {
+    return axios.delete(`/api/ai_requirement/tasks/${id}/`).then(res => res.data);
+};
+
 /** 下载任务导出文件（Word / XMind）。format: 'word' -> docx, 'xmind' -> xmind。返回 { data: Blob, filename: string } */
 export const downloadAiRequirementTaskExport = (taskId, format) => {
     const f = (format || '').toLowerCase()

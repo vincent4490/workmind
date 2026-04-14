@@ -35,6 +35,7 @@ loguru==0.7.3
 
 # 数据库
 PyMySQL==1.1.2
+mysqlclient>=2.2.1
 
 # 环境变量加载依赖
 python-dotenv==1.2.1

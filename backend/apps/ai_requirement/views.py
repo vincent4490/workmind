@@ -6,7 +6,7 @@ AI 需求智能体 API 视图
 - run-stream: SSE 流式生成（异步）
 - run:        非流式同步调用
 - feedback:   用户反馈
-- tasks:      CRUD ViewSet
+- tasks:      任务列表/详情/删除
 """
 import asyncio
 import json
@@ -15,10 +15,11 @@ import time
 
 from django.conf import settings
 from django.http import HttpResponse, StreamingHttpResponse
-from rest_framework import viewsets, status
+from rest_framework import mixins, viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 
 from .models import (
     AiRequirementTask, AiRequirementFeedback,
@@ -1214,8 +1215,8 @@ def task_export_view(request, pk):
     return _task_export_response(request, task, fmt)
 
 
-class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
-    """任务记录查询 ViewSet（只读）"""
+class AiRequirementTaskViewSet(mixins.DestroyModelMixin, viewsets.ReadOnlyModelViewSet):
+    """任务记录：列表/详情查询 + 删除（删除权限与列表可见范围一致：本人或管理员）"""
     serializer_class = AiRequirementTaskSerializer
     permission_classes = [IsAuthenticated]
 
@@ -1242,6 +1243,14 @@ class AiRequirementTaskViewSet(viewsets.ReadOnlyModelViewSet):
         if status_filter:
             qs = qs.filter(status=status_filter)
         return qs
+
+    def perform_destroy(self, instance):
+        """历史列表对全员可见，删除仍仅限本人或管理员。"""
+        user = self.request.user
+        if not (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
+            if instance.created_by_id != getattr(user, 'id', None):
+                raise PermissionDenied('只能删除自己的生成记录')
+        super().perform_destroy(instance)
 
     @action(detail=False, methods=['get'], url_path='config-status')
     def config_status(self, request):
