@@ -799,11 +799,12 @@ async def generate_stream_view(request):
                     yield f"data: {json.dumps({'type': 'error', 'error_type': 'llm', 'error': event['error'], 'record_id': record.id}, ensure_ascii=False)}\n\n"
 
         except Exception as e:
-            logger.exception(f"[AI用例] 流式生成异常: {e}")
+            # 服务端异常兜底：记录异常类型 + repr，避免出现 (0, '') 这类低信息错误
+            logger.exception("[AI用例] 流式生成异常: %r", e)
             record.status = 'failed'
-            record.error_message = f"server_error: {str(e)}"
+            record.error_message = f"server_error[{type(e).__name__}]: {e!r}"
             await sync_to_async(record.save)()
-            yield f"data: {json.dumps({'type': 'error', 'error_type': 'server', 'error': str(e), 'record_id': record.id}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'error_type': 'server', 'error': f'{type(e).__name__}: {e!r}', 'record_id': record.id}, ensure_ascii=False)}\n\n"
 
     response = StreamingHttpResponse(
         event_stream(),

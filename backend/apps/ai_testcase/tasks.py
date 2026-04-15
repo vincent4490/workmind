@@ -295,10 +295,10 @@ def run_ai_testcase_direct(record_id: int):
             _write_event(record, 'cancelled', {'record_id': record.id})
             return
         record.status = 'failed'
-        record.error_message = f"server_error: {str(e)}"
+        record.error_message = f"server_error[{type(e).__name__}]: {e!r}"
         record.current_stage = 'error'
         record.save(update_fields=['status', 'error_message', 'current_stage'])
-        _write_event(record, 'error', {'error_type': 'server', 'error': str(e), 'record_id': record.id})
+        _write_event(record, 'error', {'error_type': 'server', 'error': f'{type(e).__name__}: {e!r}', 'record_id': record.id})
 
 
 @shared_task(queue='work_queue')
@@ -453,10 +453,10 @@ def run_ai_testcase_agent(record_id: int):
             _write_event(record, 'cancelled', {'record_id': record.id})
             return
         record.status = 'failed'
-        record.error_message = f"agent_server_error: {str(e)}"
+        record.error_message = f"agent_server_error[{type(e).__name__}]: {e!r}"
         record.current_stage = 'error'
         record.save(update_fields=['status', 'error_message', 'current_stage'])
-        _write_event(record, 'error', {'error_type': 'server', 'error': str(e), 'record_id': record.id})
+        _write_event(record, 'error', {'error_type': 'server', 'error': f'{type(e).__name__}: {e!r}', 'record_id': record.id})
 
 
 @shared_task(queue='beat_tasks')
