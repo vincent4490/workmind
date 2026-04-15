@@ -468,8 +468,38 @@ const requirementRules = {
     name: [
         { required: true, message: '请输入需求名称', trigger: 'blur' }
     ],
+    testers: [
+        {
+            validator: (_rule, value, callback) => {
+                if (Array.isArray(value) && value.length > 0) {
+                    callback()
+                    return
+                }
+                callback(new Error('请选择测试人员'))
+            },
+            trigger: 'change'
+        }
+    ],
     test_team: [
         { required: true, message: '请选择测试团队', trigger: 'change' }
+    ],
+    test_man_days: [
+        { required: true, message: '请输入测试人日', trigger: 'blur' }
+    ],
+    submit_test_time: [
+        { required: true, message: '请选择提测时间', trigger: 'change' }
+    ],
+    test_time: [
+        {
+            validator: (_rule, value, callback) => {
+                if (Array.isArray(value) && value.length === 2 && value[0] && value[1]) {
+                    callback()
+                    return
+                }
+                callback(new Error('请选择测试时间'))
+            },
+            trigger: 'change'
+        }
     ]
 }
 

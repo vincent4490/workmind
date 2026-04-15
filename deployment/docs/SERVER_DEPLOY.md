@@ -3,6 +3,7 @@
 适用于已将代码克隆到服务器 `/data/workmind` 的裸机部署（非 Docker）。
 
 **CentOS 7 用户请直接看：[CENTOS7_DEPLOY.md](./CENTOS7_DEPLOY.md)**（含 Python 3.9、Node 18、MariaDB、nginx 用户等说明）。
+**Ubuntu 用户请直接看：[UBUNTU_DEPLOY.md](./UBUNTU_DEPLOY.md)**（含 apt 安装、MySQL/Redis/RabbitMQ、Nginx+HTTPS、systemd 常驻等完整流程）。
 
 ## 一、环境要求
 
