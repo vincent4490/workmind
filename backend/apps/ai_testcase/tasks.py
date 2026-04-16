@@ -6,7 +6,8 @@ import os
 from celery import shared_task
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, close_old_connections
+from django.db.utils import InterfaceError, OperationalError
 from django.utils import timezone
 from datetime import timedelta
 
@@ -23,6 +24,28 @@ from apps.ai_testcase.utils import normalize_case_strategy_mode
 logger = logging.getLogger(__name__)
 
 XMIND_OUTPUT_DIR = os.path.join(settings.BASE_DIR, 'apps', 'ai_testcase', 'output')
+
+def _db_retry(op, *, retries: int = 1, op_name: str = "db_op"):
+    """
+    Celery 长任务中，数据库连接可能在等待 LLM 期间被服务端断开，导致 InterfaceError(0,'')。
+    这里做一次轻量重试：先 close_old_connections() 再重试一次。
+    """
+    last_err: Exception | None = None
+    for i in range(retries + 1):
+        try:
+            close_old_connections()
+            return op()
+        except (InterfaceError, OperationalError) as e:
+            last_err = e
+            logger.warning(f"[ai_testcase] {op_name}.retry | i={i} err={e!r}")
+            try:
+                close_old_connections()
+            except Exception:
+                pass
+            continue
+    if last_err:
+        raise last_err
+    return op()
 
 def _publish_live_chunk(record_id: int, content: str):
     """
@@ -45,11 +68,13 @@ def _publish_live_chunk(record_id: int, content: str):
 
 
 def _write_event(generation: AiTestcaseGeneration, event_type: str, payload: dict):
-    AiTestcaseEvent.objects.create(
-        generation=generation,
-        event_type=event_type,
-        payload=payload or {},
-    )
+    def _op():
+        return AiTestcaseEvent.objects.create(
+            generation=generation,
+            event_type=event_type,
+            payload=payload or {},
+        )
+    _db_retry(_op, op_name="write_event")
 
 
 def _set_progress(generation: AiTestcaseGeneration, stage: str | None, progress: int | None):
@@ -61,14 +86,16 @@ def _set_progress(generation: AiTestcaseGeneration, stage: str | None, progress:
         generation.progress = int(progress)
         update_fields.append('progress')
     if update_fields:
-        generation.save(update_fields=update_fields)
+        _db_retry(lambda: generation.save(update_fields=update_fields), op_name="set_progress.save")
 
 async def _write_event_async(generation: AiTestcaseGeneration, event_type: str, payload: dict):
-    await sync_to_async(AiTestcaseEvent.objects.create)(
-        generation=generation,
-        event_type=event_type,
-        payload=payload or {},
-    )
+    def _op():
+        return AiTestcaseEvent.objects.create(
+            generation=generation,
+            event_type=event_type,
+            payload=payload or {},
+        )
+    await sync_to_async(_db_retry)(_op, op_name="write_event_async")
 
 
 async def _set_progress_async(generation: AiTestcaseGeneration, stage: str | None, progress: int | None):
@@ -80,7 +107,7 @@ async def _set_progress_async(generation: AiTestcaseGeneration, stage: str | Non
         generation.progress = int(progress)
         update_fields.append('progress')
     if update_fields:
-        await sync_to_async(generation.save)(update_fields=update_fields)
+        await sync_to_async(_db_retry)(lambda: generation.save(update_fields=update_fields), op_name="set_progress_async.save")
 
 
 def _ensure_output_dir():
@@ -92,7 +119,7 @@ def run_ai_testcase_direct(record_id: int):
     """
     P2：direct 生成改为 Celery 执行 + 事件持久化。
     """
-    record = AiTestcaseGeneration.objects.get(id=record_id)
+    record = _db_retry(lambda: AiTestcaseGeneration.objects.get(id=record_id), op_name="direct.get_record")
     if record.status == 'cancelled':
         _write_event(record, 'cancelled', {'record_id': record.id})
         return
@@ -100,11 +127,13 @@ def run_ai_testcase_direct(record_id: int):
     _ensure_output_dir()
 
     try:
-        with transaction.atomic():
-            record.status = 'generating'
-            record.generation_mode = 'direct'
-            record.error_message = None
-            record.save(update_fields=['status', 'generation_mode', 'error_message'])
+        def _mark_generating():
+            with transaction.atomic():
+                record.status = 'generating'
+                record.generation_mode = 'direct'
+                record.error_message = None
+                record.save(update_fields=['status', 'generation_mode', 'error_message'])
+        _db_retry(_mark_generating, op_name="direct.mark_generating")
 
         _set_progress(record, 'start', 1)
         _write_event(record, 'start', {
@@ -166,7 +195,7 @@ def run_ai_testcase_direct(record_id: int):
                 async for chunk in stream:
                     # 取消检查（降低 DB 压力：每次循环只读内存状态，周期性刷新 DB）
                     if full and (len(full) % 2048 == 0):
-                        await sync_to_async(record.refresh_from_db)(fields=['status'])
+                        await sync_to_async(_db_retry)(lambda: record.refresh_from_db(fields=['status']), op_name="direct.refresh_status")
                         if record.status == 'cancelled':
                             return {"cancelled": True}
                     if chunk.usage:
@@ -212,7 +241,7 @@ def run_ai_testcase_direct(record_id: int):
                 )
                 async for chunk in stream:
                     if full and (len(full) % 2048 == 0):
-                        await sync_to_async(record.refresh_from_db)(fields=['status'])
+                        await sync_to_async(_db_retry)(lambda: record.refresh_from_db(fields=['status']), op_name="direct.refresh_status")
                         if record.status == 'cancelled':
                             return {"cancelled": True}
                     if chunk.usage:
@@ -236,7 +265,7 @@ def run_ai_testcase_direct(record_id: int):
             raw_content = out.get('content', '') or ''
             usage = out.get('usage', usage) or usage
 
-        record.refresh_from_db(fields=['status'])
+        _db_retry(lambda: record.refresh_from_db(fields=['status']), op_name="direct.refresh_status.final")
         if record.status == 'cancelled':
             _write_event(record, 'cancelled', {'record_id': record.id})
             return
@@ -276,7 +305,7 @@ def run_ai_testcase_direct(record_id: int):
         record.status = 'success'
         record.current_stage = 'done'
         record.progress = 100
-        record.save()
+        _db_retry(lambda: record.save(), op_name="direct.save.success")
 
         _write_event(record, 'done', {
             'record_id': record.id,
@@ -290,14 +319,14 @@ def run_ai_testcase_direct(record_id: int):
         })
 
     except Exception as e:
-        record.refresh_from_db()
+        _db_retry(lambda: record.refresh_from_db(), op_name="direct.refresh_on_error")
         if record.status == 'cancelled':
             _write_event(record, 'cancelled', {'record_id': record.id})
             return
         record.status = 'failed'
         record.error_message = f"server_error[{type(e).__name__}]: {e!r}"
         record.current_stage = 'error'
-        record.save(update_fields=['status', 'error_message', 'current_stage'])
+        _db_retry(lambda: record.save(update_fields=['status', 'error_message', 'current_stage']), op_name="direct.save.failed")
         _write_event(record, 'error', {'error_type': 'server', 'error': f'{type(e).__name__}: {e!r}', 'record_id': record.id})
 
 
@@ -306,7 +335,7 @@ def run_ai_testcase_agent(record_id: int):
     """
     P2：agent 生成改为 Celery 执行 + 事件持久化。
     """
-    record = AiTestcaseGeneration.objects.get(id=record_id)
+    record = _db_retry(lambda: AiTestcaseGeneration.objects.get(id=record_id), op_name="agent.get_record")
     if record.status == 'cancelled':
         _write_event(record, 'cancelled', {'record_id': record.id})
         return
@@ -314,11 +343,13 @@ def run_ai_testcase_agent(record_id: int):
     _ensure_output_dir()
 
     try:
-        with transaction.atomic():
-            record.status = 'generating'
-            record.generation_mode = 'agent'
-            record.error_message = None
-            record.save(update_fields=['status', 'generation_mode', 'error_message'])
+        def _mark_generating():
+            with transaction.atomic():
+                record.status = 'generating'
+                record.generation_mode = 'agent'
+                record.error_message = None
+                record.save(update_fields=['status', 'generation_mode', 'error_message'])
+        _db_retry(_mark_generating, op_name="agent.mark_generating")
 
         extracted_texts = []
         images = []
@@ -350,7 +381,7 @@ def run_ai_testcase_agent(record_id: int):
                 use_thinking=bool(record.use_thinking),
                 mode=normalize_case_strategy_mode(getattr(record, 'case_strategy_mode', None)),
             ):
-                await sync_to_async(record.refresh_from_db)(fields=['status'])
+                await sync_to_async(_db_retry)(lambda: record.refresh_from_db(fields=['status']), op_name="agent.refresh_status")
                 if record.status == 'cancelled':
                     await _write_event_async(record, 'cancelled', {'record_id': record.id})
                     return
@@ -448,14 +479,14 @@ def run_ai_testcase_agent(record_id: int):
         asyncio.run(_run_and_persist())
 
     except Exception as e:
-        record.refresh_from_db()
+        _db_retry(lambda: record.refresh_from_db(), op_name="agent.refresh_on_error")
         if record.status == 'cancelled':
             _write_event(record, 'cancelled', {'record_id': record.id})
             return
         record.status = 'failed'
         record.error_message = f"agent_server_error[{type(e).__name__}]: {e!r}"
         record.current_stage = 'error'
-        record.save(update_fields=['status', 'error_message', 'current_stage'])
+        _db_retry(lambda: record.save(update_fields=['status', 'error_message', 'current_stage']), op_name="agent.save.failed")
         _write_event(record, 'error', {'error_type': 'server', 'error': f'{type(e).__name__}: {e!r}', 'record_id': record.id})
 
 
