@@ -120,37 +120,10 @@ def functional_task_stats(request):
     """
     功能测试：需求管理 + 任务管理统计聚合（一期）。
 
-    GET /api/ui_test/dashboard/functional-task-stats/?range_days=30&test_team=&tester=&owner=&requirement_status=&task_status=&requirement_keyword=&task_keyword=
+    GET /api/ui_test/dashboard/functional-task-stats/?test_team=&tester=&owner=&requirement_status=&task_status=&requirement_keyword=&task_keyword=
     """
     try:
-        now = timezone.now()
-
-        def _get_int(name: str, default: int) -> int:
-            raw = (request.query_params.get(name) or "").strip()
-            if not raw:
-                return default
-            try:
-                return int(raw)
-            except Exception:
-                return default
-
-        test_time_after = (request.query_params.get("test_time_after") or "").strip()
-        test_time_before = (request.query_params.get("test_time_before") or "").strip()
-        task_time_after = (request.query_params.get("task_time_after") or "").strip()
-        task_time_before = (request.query_params.get("task_time_before") or "").strip()
-
-        range_days = _get_int("range_days", 30)
-        range_days = max(1, min(range_days, 365))
-        start_dt = (now - timedelta(days=range_days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        if test_time_after:
-            try:
-                from datetime import datetime
-
-                start_dt = datetime.fromisoformat(test_time_after[:10]).replace(
-                    hour=0, minute=0, second=0, microsecond=0, tzinfo=now.tzinfo
-                )
-            except Exception:
-                pass
+        # 该接口已不返回任何“区间/趋势”字段，仅返回总量与分布。
 
         test_team = (request.query_params.get("test_team") or "").strip()
         tester = (request.query_params.get("tester") or "").strip()
@@ -170,12 +143,6 @@ def functional_task_stats(request):
             req_qs = req_qs.filter(testers__icontains=tester)
         if requirement_status:
             req_qs = req_qs.filter(status=requirement_status)
-        if test_time_after or test_time_before:
-            from ..tasks.requirement_tasks import filter_functional_requirements_by_test_time
-
-            req_qs = filter_functional_requirements_by_test_time(
-                req_qs, test_time_after or None, test_time_before or None
-            )
 
         # ---- Tasks queryset (filter aligned with TaskViewSet) ----
         task_qs = Task.objects.all()
@@ -188,31 +155,10 @@ def functional_task_stats(request):
         # 任务与需求用字符串关联：用 requirement_keyword/test_team/tester 只做“弱筛选”
         if requirement_keyword:
             task_qs = task_qs.filter(requirement_name__icontains=requirement_keyword)
-        if task_time_after or task_time_before:
-            from ..tasks.requirement_tasks import filter_tasks_by_task_time
-
-            task_qs = filter_tasks_by_task_time(
-                task_qs, task_time_after or None, task_time_before or None
-            )
 
         # ---- KPIs ----
         req_total = req_qs.count()
         task_total = task_qs.count()
-
-        # “区间”口径：如果传了日期区间，前端会展示区间统计；这里保持字段名不变，含义为「所选时间范围内」。
-        if test_time_after or test_time_before:
-            req_created_recent = req_total
-            req_updated_recent = req_total
-        else:
-            req_created_recent = req_qs.filter(created_at__gte=start_dt).count()
-            req_updated_recent = req_qs.filter(updated_at__gte=start_dt).count()
-
-        if task_time_after or task_time_before:
-            task_created_recent = task_total
-            task_updated_recent = task_total
-        else:
-            task_created_recent = task_qs.filter(created_at__gte=start_dt).count()
-            task_updated_recent = task_qs.filter(updated_at__gte=start_dt).count()
 
         # ---- Distributions ----
         req_by_status = list(
@@ -226,52 +172,13 @@ def functional_task_stats(request):
             .order_by("-count")
         )
 
-        # ---- Trend (created) ----
-        req_trend_raw = (
-            req_qs.filter(created_at__gte=start_dt)
-            .annotate(d=TruncDate("created_at"))
-            .values("d")
-            .annotate(count=Count("id"))
-            .order_by("d")
-        )
-        task_trend_raw = (
-            task_qs.filter(created_at__gte=start_dt)
-            .annotate(d=TruncDate("created_at"))
-            .values("d")
-            .annotate(count=Count("id"))
-            .order_by("d")
-        )
-
-        req_by_day = {str(r["d"]): int(r["count"]) for r in req_trend_raw}
-        task_by_day = {str(r["d"]): int(r["count"]) for r in task_trend_raw}
-
-        trend = []
-        for i in range(range_days):
-            day = (start_dt + timedelta(days=i)).date()
-            key = str(day)
-            trend.append({
-                "date": key,
-                "requirements_created": req_by_day.get(key, 0),
-                "tasks_created": task_by_day.get(key, 0),
-            })
-
         data = {
-            "range_days": range_days,
-            "test_time_after": test_time_after,
-            "test_time_before": test_time_before,
-            "task_time_after": task_time_after,
-            "task_time_before": task_time_before,
             "kpis": {
                 "requirements_total": req_total,
                 "tasks_total": task_total,
-                "requirements_created_recent": req_created_recent,
-                "requirements_updated_recent": req_updated_recent,
-                "tasks_created_recent": task_created_recent,
-                "tasks_updated_recent": task_updated_recent,
             },
             "requirements_by_status": req_by_status,
             "tasks_by_status": task_by_status,
-            "trend_created": trend,
         }
 
         return Response({"code": 0, "msg": "success", "data": data})

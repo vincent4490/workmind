@@ -66,14 +66,6 @@
                 <div class="kpi-title">任务总数</div>
                 <div class="kpi-value">{{ stats?.kpis?.tasks_total ?? '-' }}</div>
             </el-card>
-            <el-card class="kpi-card" shadow="never">
-                <div class="kpi-title">区间需求数</div>
-                <div class="kpi-value">{{ stats?.kpis?.requirements_created_recent ?? '-' }}</div>
-            </el-card>
-            <el-card class="kpi-card" shadow="never">
-                <div class="kpi-title">区间任务数</div>
-                <div class="kpi-value">{{ stats?.kpis?.tasks_created_recent ?? '-' }}</div>
-            </el-card>
         </div>
 
         <el-card shadow="never" style="margin-top: 16px;">
@@ -488,7 +480,7 @@ onMounted(async () => {
 .kpi-grid {
     margin-top: 12px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
 }
 
