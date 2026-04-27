@@ -123,7 +123,12 @@ def functional_task_stats(request):
     GET /api/ui_test/dashboard/functional-task-stats/?test_team=&tester=&owner=&requirement_status=&task_status=&requirement_keyword=&task_keyword=
     """
     try:
-        # 该接口已不返回任何“区间/趋势”字段，仅返回总量与分布。
+        # 该接口不返回任何“区间/趋势”字段，但允许传日期区间用于筛选统计口径。
+
+        test_time_after = (request.query_params.get("test_time_after") or "").strip()
+        test_time_before = (request.query_params.get("test_time_before") or "").strip()
+        task_time_after = (request.query_params.get("task_time_after") or "").strip()
+        task_time_before = (request.query_params.get("task_time_before") or "").strip()
 
         test_team = (request.query_params.get("test_team") or "").strip()
         tester = (request.query_params.get("tester") or "").strip()
@@ -143,6 +148,12 @@ def functional_task_stats(request):
             req_qs = req_qs.filter(testers__icontains=tester)
         if requirement_status:
             req_qs = req_qs.filter(status=requirement_status)
+        if test_time_after or test_time_before:
+            from ..tasks.requirement_tasks import filter_functional_requirements_by_test_time
+
+            req_qs = filter_functional_requirements_by_test_time(
+                req_qs, test_time_after or None, test_time_before or None
+            )
 
         # ---- Tasks queryset (filter aligned with TaskViewSet) ----
         task_qs = Task.objects.all()
@@ -155,6 +166,12 @@ def functional_task_stats(request):
         # 任务与需求用字符串关联：用 requirement_keyword/test_team/tester 只做“弱筛选”
         if requirement_keyword:
             task_qs = task_qs.filter(requirement_name__icontains=requirement_keyword)
+        if task_time_after or task_time_before:
+            from ..tasks.requirement_tasks import filter_tasks_by_task_time
+
+            task_qs = filter_tasks_by_task_time(
+                task_qs, task_time_after or None, task_time_before or None
+            )
 
         # ---- KPIs ----
         req_total = req_qs.count()
