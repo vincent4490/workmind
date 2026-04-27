@@ -290,6 +290,8 @@ class TaskViewSet(viewsets.ModelViewSet):
         status_val = self.request.query_params.get('status', '').strip()
         created_at_after = self.request.query_params.get('created_at_after', '').strip()
         created_at_before = self.request.query_params.get('created_at_before', '').strip()
+        task_time_after = self.request.query_params.get('task_time_after', '').strip()
+        task_time_before = self.request.query_params.get('task_time_before', '').strip()
 
         queryset = Task.objects.all().select_related('created_by')  # type: ignore[attr-defined]
         if name:
@@ -304,6 +306,12 @@ class TaskViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(created_at__date__gte=created_at_after)
         if created_at_before:
             queryset = queryset.filter(created_at__date__lte=created_at_before)
+        if task_time_after or task_time_before:
+            from ..tasks.requirement_tasks import filter_tasks_by_task_time
+
+            queryset = filter_tasks_by_task_time(
+                queryset, task_time_after or None, task_time_before or None
+            )
         return queryset.order_by('-updated_at')
 
     def list(self, request, *args, **kwargs):

@@ -413,7 +413,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, Download } from '@element-plus/icons-vue'
 import {
@@ -424,6 +425,8 @@ import {
     exportFunctionalRequirements,
     getUserList
 } from '@/restful/api'
+
+const route = useRoute()
 
 
 // refs
@@ -512,6 +515,30 @@ const searchForm = ref({
     created_at: null,
     test_time: null
 })
+
+const applyRouteQueryToSearchForm = () => {
+    const q = route.query || {}
+    if (q.name != null && String(q.name).trim() !== '') {
+        searchForm.value.name = String(q.name)
+    }
+    if (q.test_team != null && String(q.test_team).trim() !== '') {
+        searchForm.value.test_team = String(q.test_team)
+    }
+    if (q.testers != null && String(q.testers).trim() !== '') {
+        searchForm.value.testers = String(q.testers)
+    }
+    if (q.status != null && String(q.status).trim() !== '') {
+        searchForm.value.status = String(q.status)
+    }
+    const after = q.test_time_after != null ? String(q.test_time_after).trim() : ''
+    const before = q.test_time_before != null ? String(q.test_time_before).trim() : ''
+    if (after || before) {
+        searchForm.value.test_time = [after || '', before || ''].filter(Boolean)
+        if (searchForm.value.test_time.length !== 2) {
+            searchForm.value.test_time = null
+        }
+    }
+}
 
 // 状态、标签、测试团队与「新增需求」表单一致，固定枚举（不随数据计划）
 const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '已暂停', '测试中', '已测试', '验收中', '已验收', '已上线']
@@ -1046,8 +1073,17 @@ const loadUserList = () => {
 onMounted(() => {
     loadUserList()
     loadRequirementOptions()
+    applyRouteQueryToSearchForm()
     loadRequirements()
 })
+
+watch(
+    () => route.query,
+    () => {
+        applyRouteQueryToSearchForm()
+        loadRequirements()
+    }
+)
 </script>
 
 <style scoped>

@@ -9,6 +9,7 @@ import UiTestSceneBuilder from "@/pages/workmind/app_ui/UiTestSceneBuilder";
 import UiFlowCaseList from "@/pages/workmind/app_ui/UiFlowCaseList";
 import RequirementManagement from "@/pages/workmind/app_ui/RequirementManagement";
 import TaskManagement from "@/pages/workmind/app_ui/TaskManagement";
+import FunctionalTaskStats from "@/pages/workmind/app_ui/FunctionalTaskStats";
 import FunctionalTestCaseManagement from "@/pages/workmind/app_ui/FunctionalTestCaseManagement";
 import TestPlanManagement from "@/pages/workmind/app_ui/TestPlanManagement";
 import TestPlanExecute from "@/pages/workmind/app_ui/TestPlanExecute";
@@ -121,6 +122,15 @@ const router = createRouter({
                     component: TaskManagement,
                     meta: {
                         title: "任务管理",
+                        requireAuth: true
+                    }
+                },
+                {
+                    name: "FunctionalTaskStats",
+                    path: "functional_task_stats",
+                    component: FunctionalTaskStats,
+                    meta: {
+                        title: "任务统计",
                         requireAuth: true
                     }
                 },

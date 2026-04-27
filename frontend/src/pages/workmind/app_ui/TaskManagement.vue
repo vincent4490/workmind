@@ -80,6 +80,18 @@
                     @change="loadTasks"
                 />
             </el-form-item>
+            <el-form-item label="任务时间">
+                <el-date-picker
+                    v-model="searchForm.task_time"
+                    type="daterange"
+                    range-separator="-"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="YYYY-MM-DD"
+                    style="width: 240px;"
+                    @change="loadTasks"
+                />
+            </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" @click="loadTasks">查询</el-button>
                 <el-button :icon="Refresh" @click="resetSearch">重置</el-button>
@@ -220,7 +232,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
@@ -231,6 +244,8 @@ import {
     getFunctionalRequirements,
     getUserList
 } from '@/restful/api'
+
+const route = useRoute()
 
 const taskForm = ref(null)
 const loading = ref(false)
@@ -268,8 +283,34 @@ const searchForm = ref({
     requirement_name: '',
     owner: [],
     status: '',
-    created_at: null
+    created_at: null,
+    task_time: null,
 })
+
+const applyRouteQueryToSearchForm = () => {
+    const q = route.query || {}
+    if (q.name != null && String(q.name).trim() !== '') {
+        searchForm.value.name = String(q.name)
+    }
+    if (q.requirement_name != null && String(q.requirement_name).trim() !== '') {
+        searchForm.value.requirement_name = String(q.requirement_name)
+    }
+    if (q.owner != null && String(q.owner).trim() !== '') {
+        // 任务管理 owner 是多选，这里按单值回填
+        searchForm.value.owner = [String(q.owner)]
+    }
+    if (q.status != null && String(q.status).trim() !== '') {
+        searchForm.value.status = String(q.status)
+    }
+    const after = q.task_time_after != null ? String(q.task_time_after).trim() : ''
+    const before = q.task_time_before != null ? String(q.task_time_before).trim() : ''
+    if (after || before) {
+        searchForm.value.task_time = [after || '', before || ''].filter(Boolean)
+        if (searchForm.value.task_time.length !== 2) {
+            searchForm.value.task_time = null
+        }
+    }
+}
 
 const getDefaultForm = () => ({
     id: null,
@@ -316,6 +357,10 @@ const loadTasks = () => {
         params.created_at_after = searchForm.value.created_at[0]
         params.created_at_before = searchForm.value.created_at[1]
     }
+    if (searchForm.value.task_time && searchForm.value.task_time.length === 2) {
+        params.task_time_after = searchForm.value.task_time[0]
+        params.task_time_before = searchForm.value.task_time[1]
+    }
     getTasks(params).then(res => {
         if (res.code === 0) {
             if (res.data.results) {
@@ -343,6 +388,7 @@ const resetSearch = () => {
     searchForm.value.owner = []
     searchForm.value.status = ''
     searchForm.value.created_at = null
+    searchForm.value.task_time = null
     loadTasks()
 }
 
@@ -618,8 +664,17 @@ const formatDisplayDate = (dateStr) => {
 onMounted(() => {
     loadUserList()
     loadRequirementOptions()
+    applyRouteQueryToSearchForm()
     loadTasks()
 })
+
+watch(
+    () => route.query,
+    () => {
+        applyRouteQueryToSearchForm()
+        loadTasks()
+    }
+)
 </script>
 
 <style scoped>

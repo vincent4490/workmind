@@ -21,7 +21,7 @@ from .execution_views import UiTestExecutionViewSet
 from .app_package_views import AppPackageViewSet
 from .element_views import UiElementViewSet  # 新增：元素管理
 from .report_views import serve_report_file
-from .dashboard_views import dashboard_stats
+from .dashboard_views import dashboard_stats, functional_task_stats
 
 __all__ = [
     'DeviceViewSet',
@@ -40,5 +40,6 @@ __all__ = [
     'UiElementViewSet',  # 新增：元素管理
     'serve_report_file',
     'dashboard_stats',
+    'functional_task_stats',
 ]
 

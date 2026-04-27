@@ -446,6 +446,11 @@ export const getDashboardStats = () => {
     return axios.get('/api/ui_test/dashboard/stats/').then(res => res.data);
 };
 
+// ============ 功能测试：任务统计（需求+任务聚合） ============
+export const getFunctionalTaskStats = (params) => {
+    return axios.get('/api/ui_test/dashboard/functional-task-stats/', { params }).then(res => res.data);
+};
+
 // ============ UI元素管理 ============
 // 获取元素列表
 export const getUiElements = params => {

@@ -12,7 +12,8 @@ from .views import (
     AppPackageViewSet,
     UiElementViewSet,  # 元素管理
     serve_report_file,  # 报告视图
-    dashboard_stats  # Dashboard 统计
+    dashboard_stats,  # Dashboard 统计
+    functional_task_stats,  # 功能测试统计
 )
 
 router = DefaultRouter()
@@ -46,6 +47,7 @@ urlpatterns = [
     
     # Dashboard 统计路由
     path('dashboard/stats/', dashboard_stats, name='dashboard-stats'),
+    path('dashboard/functional-task-stats/', functional_task_stats, name='functional-task-stats'),
 
     path('functional-cases/export/', functional_case_export, name='functional-test-case-export'),
 

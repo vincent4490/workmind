@@ -72,6 +72,7 @@ const side_menu = ref([
         children: [
             { name: "需求管理", url: "RequirementManagement" },
             { name: "任务管理", url: "TaskManagement" },
+            { name: "任务统计", url: "FunctionalTaskStats" },
             { name: "用例管理", url: "FunctionalTestCaseManagement" },
             { name: "测试计划", url: "TestPlanManagement" }
         ]
