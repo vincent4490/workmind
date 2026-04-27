@@ -286,6 +286,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         """按任务名称、所属需求、任务负责人、状态、创建时间过滤"""
         name = self.request.query_params.get('name', '').strip()
         requirement_name = self.request.query_params.get('requirement_name', '').strip()
+        test_team = self.request.query_params.get('test_team', '').strip()
         owner = self.request.query_params.get('owner', '').strip()
         status_val = self.request.query_params.get('status', '').strip()
         created_at_after = self.request.query_params.get('created_at_after', '').strip()
@@ -298,6 +299,8 @@ class TaskViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(name__icontains=name)
         if requirement_name:
             queryset = queryset.filter(requirement_name__icontains=requirement_name)
+        if test_team:
+            queryset = queryset.filter(test_team=test_team)
         if owner:
             queryset = queryset.filter(owner__icontains=owner)
         if status_val:

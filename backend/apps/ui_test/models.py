@@ -199,6 +199,7 @@ class Task(models.Model):
     """功能测试任务管理"""
     name = models.CharField(max_length=200, verbose_name='任务名称')
     requirement_name = models.CharField(max_length=200, blank=True, default='', verbose_name='所属需求')
+    test_team = models.CharField(max_length=200, blank=True, default='', verbose_name='测试团队')
     owner = models.CharField(max_length=200, blank=True, default='', verbose_name='任务负责人')
     status = models.CharField(max_length=20, blank=True, default='未开始', verbose_name='任务状态')
     remark = models.TextField(blank=True, default='', verbose_name='备注')

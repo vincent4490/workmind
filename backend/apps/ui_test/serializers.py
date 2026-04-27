@@ -136,6 +136,44 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at', 'created_by']
 
+    def validate(self, attrs):
+        """
+        任务字段必填校验（与前端一致）。
+        注意：Task 模型字段允许 blank=True，但业务上要求必填。
+        """
+        attrs = super().validate(attrs)
+
+        instance = getattr(self, 'instance', None)
+
+        def current_value(key: str):
+            if key in attrs:
+                return attrs.get(key)
+            if instance is not None:
+                return getattr(instance, key, None)
+            return None
+
+        required_fields = {
+            'test_team': '测试团队不能为空',
+        }
+
+        errors = {}
+        for key, msg in required_fields.items():
+            val = current_value(key)
+            if val is None:
+                errors[key] = msg
+                continue
+            if isinstance(val, str):
+                if not val.strip():
+                    errors[key] = msg
+                continue
+            if not val:
+                errors[key] = msg
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
 
 class FunctionalTestCaseSerializer(serializers.ModelSerializer):
     """功能测试用例序列化器（与 AI 结构一致）"""
