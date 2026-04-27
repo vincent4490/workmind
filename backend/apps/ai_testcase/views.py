@@ -654,7 +654,6 @@ async def generate_stream_view(request):
 
         def _find_existing():
             qs = AiTestcaseGeneration.objects.filter(
-                created_by=user,
                 generation_mode='direct',
                 idempotency_key=idempotency_key,
                 status='success',
@@ -878,7 +877,7 @@ async def regenerate_module_stream_view(request):
     from asgiref.sync import sync_to_async
 
     try:
-        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id, created_by=user)
+        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id)
     except AiTestcaseGeneration.DoesNotExist:
         return _add_cors_headers(HttpResponse(f'记录不存在: id={record_id}', status=404), request)
 
@@ -1081,7 +1080,7 @@ async def regenerate_function_stream_view(request):
     from asgiref.sync import sync_to_async
 
     try:
-        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id, created_by=user)
+        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id)
     except AiTestcaseGeneration.DoesNotExist:
         return _add_cors_headers(HttpResponse(f'记录不存在: id={record_id}', status=404), request)
 
@@ -1231,7 +1230,7 @@ def update_case_view(request):
             'steps': data.get('steps') or '',
             'expected': data.get('expected') or '',
         }
-        record = AiTestcaseGeneration.objects.get(id=record_id, created_by=user)
+        record = AiTestcaseGeneration.objects.get(id=record_id)
         if not record.result_json or not record.result_json.get('modules'):
             return _add_cors_headers(Response(
                 {'error': '该记录无有效用例数据'},
@@ -1315,7 +1314,7 @@ async def review_stream_view(request):
     from asgiref.sync import sync_to_async
 
     try:
-        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id, created_by=user)
+        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id)
     except AiTestcaseGeneration.DoesNotExist:
         return _add_cors_headers(HttpResponse(f'记录不存在: id={record_id}', status=404), request)
 
@@ -1476,7 +1475,7 @@ async def apply_review_stream_view(request):
     from asgiref.sync import sync_to_async
 
     try:
-        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id, created_by=user)
+        record = await sync_to_async(AiTestcaseGeneration.objects.get)(id=record_id)
     except AiTestcaseGeneration.DoesNotExist:
         return _add_cors_headers(HttpResponse(f'记录不存在: id={record_id}', status=404), request)
 
@@ -1628,7 +1627,7 @@ async def generation_events_stream_view(request, record_id: int):
         after = 0
 
     def _get_record():
-        return AiTestcaseGeneration.objects.get(id=record_id, created_by=user)
+        return AiTestcaseGeneration.objects.get(id=record_id)
 
     try:
         record = await sync_to_async(_get_record)()
@@ -1746,11 +1745,7 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_destroy(self, instance):
-        """历史列表对全员可见，删除仍仅限本人或管理员。"""
-        user = self.request.user
-        if not (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
-            if instance.created_by_id != getattr(user, 'id', None):
-                raise PermissionDenied('只能删除自己的生成记录')
+        """删除生成记录。"""
         super().perform_destroy(instance)
 
     @action(detail=True, methods=['post'], url_path='cancel')
@@ -1761,10 +1756,6 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         POST /api/ai_testcase/generations/{id}/cancel/
         """
         record = self.get_object()
-        user = request.user
-        if not (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)):
-            if record.created_by_id != getattr(user, 'id', None):
-                return Response({'error': '无权取消他人的任务'}, status=status.HTTP_403_FORBIDDEN)
         if record.status != 'generating':
             return Response({'error': f'当前状态为 {record.status}，无法取消'}, status=status.HTTP_400_BAD_REQUEST)
         record.mark_cancelled()
@@ -1807,7 +1798,6 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         reuse_window_s = int(getattr(settings, 'AI_TESTCASE_IDEMPOTENCY_REUSE_WINDOW_SECONDS', 60) or 0)
         reuse_after = timezone.now() - timedelta(seconds=reuse_window_s) if reuse_window_s > 0 else None
         existing_qs = AiTestcaseGeneration.objects.filter(
-            created_by=request.user,
             generation_mode='direct',
             idempotency_key=idempotency_key,
             status='success',
@@ -1959,7 +1949,6 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         reuse_window_s = int(getattr(settings, 'AI_TESTCASE_IDEMPOTENCY_REUSE_WINDOW_SECONDS', 60) or 0)
         reuse_after = timezone.now() - timedelta(seconds=reuse_window_s) if reuse_window_s > 0 else None
         existing_qs = AiTestcaseGeneration.objects.filter(
-            created_by=user,
             generation_mode='direct',
             idempotency_key=idempotency_key,
             status='success',
@@ -2056,7 +2045,6 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         reuse_window_s = int(getattr(settings, 'AI_TESTCASE_IDEMPOTENCY_REUSE_WINDOW_SECONDS', 60) or 0)
         reuse_after = timezone.now() - timedelta(seconds=reuse_window_s) if reuse_window_s > 0 else None
         existing_qs = AiTestcaseGeneration.objects.filter(
-            created_by=user,
             generation_mode='agent',
             idempotency_key=idempotency_key,
             status='success',
@@ -2274,7 +2262,6 @@ async def agent_generate_stream_view(request):
 
         def _find_existing():
             qs = AiTestcaseGeneration.objects.filter(
-                created_by=user,
                 generation_mode='agent',
                 idempotency_key=idempotency_key,
                 status='success',
