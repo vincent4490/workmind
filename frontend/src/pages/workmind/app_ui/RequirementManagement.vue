@@ -543,7 +543,7 @@ const applyRouteQueryToSearchForm = () => {
 // 状态、标签、测试团队与「新增需求」表单一致，固定枚举（不随数据计划）
 const STATUS_OPTIONS = ['未开始', '已评审', '开发中', '已暂停', '测试中', '已测试', '验收中', '已验收', '已上线']
 const TAG_OPTIONS = ['正常', '提测延期', '测试延期']
-const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌']
+const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌', 'H5组']
 
 // 方法
 const getDefaultForm = () => ({

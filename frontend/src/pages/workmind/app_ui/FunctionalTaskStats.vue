@@ -18,6 +18,22 @@
                         clearable
                     />
                 </el-form-item>
+                <el-form-item label="测试团队">
+                    <el-select
+                        v-model="filters.test_team"
+                        placeholder="请选择测试团队"
+                        clearable
+                        filterable
+                        style="width: 140px;"
+                    >
+                        <el-option
+                            v-for="item in TEST_TEAM_OPTIONS"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                </el-form-item>
                 <el-form-item label="测试人员">
                     <el-select
                         v-model="filters.tester"
@@ -71,6 +87,7 @@
                 <el-tab-pane label="需求统计" name="requirements">
                     <el-table :data="requirementStats" v-loading="loadingReq" style="width: 100%;" max-height="520">
                         <el-table-column prop="tester_display" label="测试人员" min-width="160" show-overflow-tooltip />
+                        <el-table-column prop="test_team" label="测试团队" min-width="140" show-overflow-tooltip />
                         <el-table-column prop="test_days" label="测试时间(天)" width="120">
                             <template #default="scope">
                                 {{ formatDays(scope.row.test_days) }}
@@ -99,6 +116,7 @@
                 <el-tab-pane label="任务统计" name="tasks">
                     <el-table :data="taskStats" v-loading="loadingTask" style="width: 100%;" max-height="520">
                         <el-table-column prop="owner_display" label="任务负责人" min-width="160" show-overflow-tooltip />
+                        <el-table-column prop="test_team" label="测试团队" min-width="140" show-overflow-tooltip />
                         <el-table-column prop="task_days" label="任务时间(天)" width="120">
                             <template #default="scope">
                                 {{ formatDays(scope.row.task_days) }}
@@ -141,8 +159,12 @@ const activeTab = ref('requirements')
 
 const userList = ref([])
 
+// 与需求管理/任务管理保持一致
+const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌', 'H5组']
+
 const filters = ref({
     date_range: null,
+    test_team: '',
     tester: '',
 })
 
@@ -185,6 +207,7 @@ const buildStatsParams = () => {
         test_time_before: before,
         task_time_after: after,
         task_time_before: before,
+        test_team: filters.value.test_team || undefined,
         tester: filters.value.tester || undefined,
         // tester 在任务侧同时用于匹配负责人（一期合并输入）
         owner: filters.value.tester || undefined,
@@ -222,6 +245,7 @@ const loadRequirements = async () => {
     try {
         // 需求统计按测试人员聚合，需要一次拉取较多数据（一期先简单处理）
         const params = { page: 1, page_size: 2000 }
+        if (filters.value.test_team) params.test_team = filters.value.test_team
         if (filters.value.tester) params.testers = filters.value.tester
         const { after, before } = getDateRangeParams()
         if (after) params.test_time_after = after
@@ -322,6 +346,7 @@ const goRequirementDetail = (testerUsername) => {
         name: 'RequirementManagement',
         query: {
             testers: testerUsername,
+            test_team: filters.value.test_team || undefined,
             test_time_after: after || undefined,
             test_time_before: before || undefined,
         }
@@ -333,6 +358,7 @@ const loadTasks = async () => {
     try {
         // 任务统计按负责人聚合，需要一次拉取较多数据（一期先简单处理）
         const params = { page: 1, page_size: 2000 }
+        if (filters.value.test_team) params.test_team = filters.value.test_team
         // tester 在任务侧同时用于匹配负责人（一期合并输入）
         if (filters.value.tester) params.owner = filters.value.tester
         const { after, before } = getDateRangeParams()
@@ -366,13 +392,15 @@ const aggregateTasksByOwner = (rows) => {
     const map = new Map()
     for (const r of rows || []) {
         const owners = parsePersonField(r.owner)
+        const team = (r.test_team || '').trim()
         const days = parseDays(r.man_days)
         if (!owners.length) continue
         for (const o of owners) {
             if (!map.has(o)) {
-                map.set(o, { owner: o, task_days: 0 })
+                map.set(o, { owner: o, testTeams: new Set(), task_days: 0 })
             }
             const item = map.get(o)
+            if (team) item.testTeams.add(team)
             item.task_days += days
         }
     }
@@ -381,6 +409,7 @@ const aggregateTasksByOwner = (rows) => {
         out.push({
             owner_username: v.owner,
             owner_display: usernameToDisplay(v.owner),
+            test_team: Array.from(v.testTeams).join('、') || '-',
             task_days: Math.round(v.task_days * 10) / 10,
         })
     }
@@ -395,6 +424,7 @@ const goTaskDetail = (ownerUsername) => {
         name: 'TaskManagement',
         query: {
             owner: ownerUsername,
+            test_team: filters.value.test_team || undefined,
             task_time_after: after || undefined,
             task_time_before: before || undefined,
         }
@@ -413,6 +443,7 @@ const handleSearch = async () => {
 const handleReset = async () => {
     filters.value = {
         date_range: null,
+        test_team: '',
         tester: '',
     }
     await handleSearch()

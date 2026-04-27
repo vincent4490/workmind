@@ -35,6 +35,23 @@
                     />
                 </el-select>
             </el-form-item>
+            <el-form-item label="测试团队">
+                <el-select
+                    v-model="searchForm.test_team"
+                    placeholder="请选择测试团队"
+                    clearable
+                    filterable
+                    style="width: 140px;"
+                    @change="loadTasks"
+                >
+                    <el-option
+                        v-for="item in TEST_TEAM_OPTIONS"
+                        :key="item"
+                        :label="item"
+                        :value="item"
+                    />
+                </el-select>
+            </el-form-item>
             <el-form-item label="任务负责人">
                 <el-select
                     v-model="searchForm.owner"
@@ -110,6 +127,7 @@
             <el-table-column type="index" label="序号" width="60" />
             <el-table-column prop="name" label="任务名称" min-width="140" show-overflow-tooltip />
             <el-table-column prop="requirement_name" label="所属需求" width="120" show-overflow-tooltip />
+            <el-table-column prop="test_team" label="测试团队" width="100" show-overflow-tooltip />
             <el-table-column prop="owner" label="任务负责人" width="100" show-overflow-tooltip>
                 <template #default="scope">
                     {{ personFieldToDisplay(scope.row.owner) || '-' }}
@@ -174,6 +192,22 @@
                     >
                         <el-option
                             v-for="item in requirementOptions"
+                            :key="item"
+                            :label="item"
+                            :value="item"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="测试团队" prop="test_team">
+                    <el-select
+                        v-model="taskFormData.test_team"
+                        placeholder="请选择测试团队"
+                        clearable
+                        filterable
+                        style="width: 100%;"
+                    >
+                        <el-option
+                            v-for="item in TEST_TEAM_OPTIONS"
                             :key="item"
                             :label="item"
                             :value="item"
@@ -247,6 +281,9 @@ import {
 
 const route = useRoute()
 
+// 与需求管理保持一致
+const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌', 'H5组']
+
 const taskForm = ref(null)
 const loading = ref(false)
 const saving = ref(false)
@@ -266,6 +303,7 @@ const taskFormData = ref({
     id: null,
     name: '',
     requirement_name: '',
+    test_team: '',
     owner: [],
     status: '未开始',
     remark: '',
@@ -275,12 +313,14 @@ const taskFormData = ref({
 
 const taskRules = {
     name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-    requirement_name: [{ required: true, message: '请选择所属需求', trigger: 'change' }]
+    requirement_name: [{ required: true, message: '请选择所属需求', trigger: 'change' }],
+    test_team: [{ required: true, message: '请选择测试团队', trigger: 'change' }],
 }
 
 const searchForm = ref({
     name: '',
     requirement_name: '',
+    test_team: '',
     owner: [],
     status: '',
     created_at: null,
@@ -294,6 +334,9 @@ const applyRouteQueryToSearchForm = () => {
     }
     if (q.requirement_name != null && String(q.requirement_name).trim() !== '') {
         searchForm.value.requirement_name = String(q.requirement_name)
+    }
+    if (q.test_team != null && String(q.test_team).trim() !== '') {
+        searchForm.value.test_team = String(q.test_team)
     }
     if (q.owner != null && String(q.owner).trim() !== '') {
         // 任务管理 owner 是多选，这里按单值回填
@@ -316,6 +359,7 @@ const getDefaultForm = () => ({
     id: null,
     name: '',
     requirement_name: '',
+    test_team: '',
     owner: [],
     status: '未开始',
     remark: '',
@@ -351,6 +395,7 @@ const loadTasks = () => {
     const params = { page: currentPage.value, page_size: pageSize.value }
     if (searchForm.value.name) params.name = searchForm.value.name
     if (searchForm.value.requirement_name) params.requirement_name = searchForm.value.requirement_name
+    if (searchForm.value.test_team) params.test_team = searchForm.value.test_team
     if (searchForm.value.owner && searchForm.value.owner.length) params.owner = formatPersonField(searchForm.value.owner)
     if (searchForm.value.status) params.status = searchForm.value.status
     if (searchForm.value.created_at && searchForm.value.created_at.length === 2) {
@@ -385,6 +430,7 @@ const loadTasks = () => {
 const resetSearch = () => {
     searchForm.value.name = ''
     searchForm.value.requirement_name = ''
+    searchForm.value.test_team = ''
     searchForm.value.owner = []
     searchForm.value.status = ''
     searchForm.value.created_at = null
@@ -546,6 +592,7 @@ const editTask = (row) => {
         id: row.id,
         name: row.name,
         requirement_name: row.requirement_name || '',
+        test_team: row.test_team || '',
         owner: parsePersonField(row.owner),
         status: row.status || '未开始',
         remark: row.remark || '',
@@ -580,6 +627,7 @@ const saveTask = () => {
         const params = {
             name: taskFormData.value.name,
             requirement_name: taskFormData.value.requirement_name || '',
+            test_team: taskFormData.value.test_team || '',
             owner: formatPersonField(taskFormData.value.owner),
             status: taskFormData.value.status || '未开始',
             remark: taskFormData.value.remark || '',
