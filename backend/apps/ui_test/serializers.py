@@ -3,7 +3,7 @@ from rest_framework import serializers
 from .models import (
     Device, UiTestConfig, UiTestCase,
     FunctionalRequirement, FunctionalTestCase, Task,
-    TestPlan, TestPlanCase, TestPlanCaseOperationLog,
+    TestPlan, TestPlanCase, TestPlanCaseOperationLog, TestPlanCaseOperationAttachment,
     UiComponentDefinition, UiCustomComponentDefinition, UiComponentPackage,
     UiTestExecution, AppPackage, UiElement
 )
@@ -179,11 +179,32 @@ class TestPlanCaseOperationLogSerializer(serializers.ModelSerializer):
     """测试计划用例操作记录序列化器"""
     operator_username = serializers.CharField(source='operator.username', read_only=True)
     test_case_name = serializers.CharField(source='plan_case.test_case.name', read_only=True)
+    attachments = serializers.SerializerMethodField()
 
     class Meta:
         model = TestPlanCaseOperationLog
         fields = '__all__'
         read_only_fields = ['created_at', 'operator']
+
+    def get_attachments(self, obj):
+        request = self.context.get('request')
+        items = []
+        for att in getattr(obj, 'attachments', []).all():
+            url = att.file.url if att.file else ''
+            if request and url:
+                try:
+                    url = request.build_absolute_uri(url)
+                except Exception:
+                    pass
+            items.append({
+                'id': att.id,
+                'url': url,
+                'name': att.original_name or (att.file.name if att.file else ''),
+                'content_type': att.content_type,
+                'size': att.size,
+                'created_at': att.created_at,
+            })
+        return items
 
 
 class UiTestExecutionSerializer(serializers.ModelSerializer):

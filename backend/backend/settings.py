@@ -251,6 +251,10 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 # collectstatic 之后的文件存放路径
 STATIC_ROOT = os.path.join(BASE_DIR, "static_root")
 
+# Media files (uploads)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
 # 配置 loguru 日志
 # 注意：在 Windows 上，如果文件被其他进程占用，轮转可能会失败
 # 使用按大小轮转，并添加延迟初始化，避免启动时的文件冲突

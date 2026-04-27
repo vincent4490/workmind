@@ -333,6 +333,31 @@ class TestPlanCaseOperationLog(models.Model):
         return f"{self.plan_case} - {self.status}"
 
 
+class TestPlanCaseOperationAttachment(models.Model):
+    """测试计划用例操作记录附件（图片等）"""
+
+    log = models.ForeignKey(
+        TestPlanCaseOperationLog,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        verbose_name='操作记录',
+    )
+    file = models.FileField(upload_to='test_plan_logs/%Y/%m/%d/', verbose_name='附件文件')
+    original_name = models.CharField(max_length=255, blank=True, default='', verbose_name='原文件名')
+    content_type = models.CharField(max_length=100, blank=True, default='', verbose_name='文件类型')
+    size = models.BigIntegerField(default=0, verbose_name='文件大小(字节)')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='上传时间')
+
+    class Meta:
+        db_table = 'test_plan_case_log_attachment'
+        verbose_name = '测试计划用例操作附件'
+        verbose_name_plural = verbose_name
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.log_id} - {self.original_name or self.file.name}"
+
+
 class UiTestExecution(models.Model):
     """UI测试执行记录"""
     STATUS_CHOICES = [

@@ -20,7 +20,7 @@ import uuid
 from backend.utils import pagination
 from ..models import (
     FunctionalRequirement, FunctionalTestCase, Task,
-    TestPlan, TestPlanCase, TestPlanCaseOperationLog
+    TestPlan, TestPlanCase, TestPlanCaseOperationLog, TestPlanCaseOperationAttachment
 )
 from ..serializers import (
     FunctionalRequirementSerializer, FunctionalTestCaseSerializer, TaskSerializer,
@@ -982,7 +982,7 @@ class TestPlanViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='cases/mark')
     def mark_case(self, request, pk=None):
-        """标记测试计划用例执行结果（不生成执行记录）"""
+        """标记测试计划用例执行结果（生成操作记录，支持多图上传）"""
         test_plan = self.get_object()
         case_id = request.data.get('case_id')
         case_status = request.data.get('status')
@@ -1012,17 +1012,37 @@ class TestPlanViewSet(viewsets.ModelViewSet):
             plan_case.marked_at = timezone.now()
             with transaction.atomic():
                 plan_case.save()
-                TestPlanCaseOperationLog.objects.create(  # type: ignore[attr-defined]
+                op_log = TestPlanCaseOperationLog.objects.create(  # type: ignore[attr-defined]
                     plan_case=plan_case,
                     status=case_status,
                     message=message or '',
                     operator=request.user
                 )
+                files = []
+                try:
+                    files = request.FILES.getlist('files') or request.FILES.getlist('files[]')
+                except Exception:
+                    files = []
+                if files:
+                    for f in files:
+                        ct = getattr(f, 'content_type', '') or ''
+                        if ct and not ct.startswith('image/'):
+                            raise ValueError('仅支持上传图片文件')
+                        TestPlanCaseOperationAttachment.objects.create(  # type: ignore[attr-defined]
+                            log=op_log,
+                            file=f,
+                            original_name=getattr(f, 'name', '') or '',
+                            content_type=ct,
+                            size=int(getattr(f, 'size', 0) or 0),
+                        )
 
             return Response({
                 'code': 0,
                 'msg': '更新成功',
-                'data': TestPlanCaseSerializer(plan_case).data
+                'data': {
+                    'plan_case': TestPlanCaseSerializer(plan_case).data,
+                    'log': TestPlanCaseOperationLogSerializer(op_log, context={'request': request}).data,
+                }
             })
         except Exception as e:
             logger.error(f"标记用例结果失败: {e}", exc_info=True)
@@ -1085,12 +1105,12 @@ class TestPlanViewSet(viewsets.ModelViewSet):
 
         logs = TestPlanCaseOperationLog.objects.filter(  # type: ignore[attr-defined]
             plan_case__test_plan=test_plan
-        ).select_related('plan_case', 'operator', 'plan_case__test_case')
+        ).select_related('plan_case', 'operator', 'plan_case__test_case').prefetch_related('attachments')
 
         if case_id:
             logs = logs.filter(plan_case__test_case_id=case_id)
 
-        serializer = TestPlanCaseOperationLogSerializer(logs.order_by('-created_at'), many=True)
+        serializer = TestPlanCaseOperationLogSerializer(logs.order_by('-created_at'), many=True, context={'request': request})
         return Response({
             'code': 0,
             'msg': 'success',

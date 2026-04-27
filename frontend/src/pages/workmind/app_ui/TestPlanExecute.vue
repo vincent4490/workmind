@@ -80,6 +80,7 @@
             v-model="markDialogVisible"
             :title="isBatchMark ? '批量标记执行结果' : '标记执行结果'"
             width="440px"
+            append-to-body
             @close="resetMarkForm"
         >
             <el-form :model="markForm" label-width="90px">
@@ -98,6 +99,48 @@
                         placeholder="失败或跳过时必填"
                     />
                 </el-form-item>
+                <el-form-item v-if="!isBatchMark" label="图片">
+                    <div class="upload-row">
+                        <div v-if="markFileList.length" class="upload-preview-grid">
+                            <div v-for="f in markFileList" :key="f.uid" class="upload-preview-item">
+                                <el-image
+                                    :src="getUploadPreviewUrl(f)"
+                                    :preview-src-list="markFileList.map(x => getUploadPreviewUrl(x))"
+                                    :preview-teleported="true"
+                                    :z-index="4000"
+                                    fit="cover"
+                                    class="upload-preview-img"
+                                />
+                                <el-button
+                                    class="upload-preview-remove"
+                                    circle
+                                    size="small"
+                                    @click="removeUploadFile(f)"
+                                >
+                                    <el-icon><Close /></el-icon>
+                                </el-button>
+                            </div>
+                        </div>
+
+                        <el-upload
+                            v-if="markFileList.length < 9"
+                            v-model:file-list="markFileList"
+                            list-type="picture"
+                            drag
+                            :auto-upload="false"
+                            :show-file-list="false"
+                            :limit="9"
+                            accept="image/*"
+                            :on-exceed="handleUploadExceed"
+                            :before-upload="beforeUpload"
+                        >
+                            <div class="upload-plus-wrap">
+                                <el-icon><Plus /></el-icon>
+                                <div class="upload-plus-caption">支持上传 / 拖拽 / 复制粘贴</div>
+                            </div>
+                        </el-upload>
+                    </div>
+                </el-form-item>
             </el-form>
             <template #footer>
                 <el-button @click="markDialogVisible = false">取消</el-button>
@@ -110,6 +153,7 @@
             v-model="logDialogVisible"
             title="执行记录"
             width="560px"
+            append-to-body
         >
             <el-table :data="logList" style="width: 100%;" max-height="400">
                 <el-table-column prop="operator_username" label="操作人" width="100" />
@@ -121,6 +165,24 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="message" label="备注" min-width="160" show-overflow-tooltip />
+                <el-table-column label="图片" width="120">
+                    <template #default="scope">
+                        <div v-if="scope.row.attachments && scope.row.attachments.length" class="log-attachments">
+                            <el-image
+                                v-for="att in scope.row.attachments"
+                                :key="att.id"
+                                :src="att.url"
+                                :preview-src-list="scope.row.attachments.map(a => a.url)"
+                                :preview-teleported="true"
+                                :z-index="4000"
+                                :initial-index="0"
+                                fit="cover"
+                                style="width: 32px; height: 32px; margin-right: 6px; border-radius: 4px;"
+                            />
+                        </div>
+                        <span v-else>-</span>
+                    </template>
+                </el-table-column>
                 <el-table-column prop="created_at" label="时间" width="160">
                     <template #default="scope">
                         {{ formatLogTime(scope.row.created_at) }}
@@ -135,10 +197,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useGlobalProperties } from '@/composables'
+import { Plus, Close } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -155,6 +218,7 @@ const markForm = ref({ status: 'passed', message: '' })
 const markLoading = ref(false)
 const isBatchMark = ref(false)
 const currentMarkRow = ref(null)
+const markFileList = ref([])
 const logDialogVisible = ref(false)
 const logList = ref([])
 const currentLogCase = ref(null)
@@ -203,10 +267,113 @@ const executeAll = () => {
 }
 
 const resetMarkForm = () => {
+    // revoke blob urls to avoid memory leak
+    try {
+        ;(markFileList.value || []).forEach((f) => {
+            if (f?.url && String(f.url).startsWith('blob:')) {
+                URL.revokeObjectURL(f.url)
+            }
+        })
+    } catch (e) {}
     markForm.value = { status: 'passed', message: '' }
     currentMarkRow.value = null
     isBatchMark.value = false
+    markFileList.value = []
 }
+
+const handleUploadExceed = () => {
+    ElMessage.warning('最多上传 9 张图片')
+}
+
+const beforeUpload = (file) => {
+    if (!file) return false
+    if (!String(file.type || '').startsWith('image/')) {
+        ElMessage.error('仅支持图片文件')
+        return false
+    }
+    return true
+}
+
+const getUploadPreviewUrl = (file) => {
+    return file?.url || ''
+}
+
+const removeUploadFile = (file) => {
+    const uid = file?.uid
+    if (!uid) return
+    const idx = (markFileList.value || []).findIndex(x => x.uid === uid)
+    if (idx >= 0) {
+        const f = markFileList.value[idx]
+        if (f?.url && String(f.url).startsWith('blob:')) {
+            try { URL.revokeObjectURL(f.url) } catch (e) {}
+        }
+        markFileList.value.splice(idx, 1)
+    }
+}
+
+const addFilesToUploadList = (files) => {
+    const list = markFileList.value || []
+    const remain = Math.max(0, 9 - list.length)
+    if (remain <= 0) {
+        ElMessage.warning('最多上传 9 张图片')
+        return
+    }
+    const toAdd = Array.from(files || []).slice(0, remain)
+    let added = 0
+    toAdd.forEach((raw) => {
+        if (!raw) return
+        if (!String(raw.type || '').startsWith('image/')) return
+        const url = URL.createObjectURL(raw)
+        list.push({
+            name: raw.name || `paste_${Date.now()}.png`,
+            url,
+            raw,
+            uid: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+            status: 'ready',
+        })
+        added += 1
+    })
+    markFileList.value = list
+    if (added > 0) {
+        ElMessage.success(`已添加 ${added} 张图片`)
+    }
+}
+
+const handlePaste = (event) => {
+    if (!markDialogVisible.value || isBatchMark.value) return
+    const items = event?.clipboardData?.items
+    if (!items || items.length === 0) return
+
+    const files = []
+    for (const item of items) {
+        if (item?.kind === 'file' && String(item.type || '').startsWith('image/')) {
+            const f = item.getAsFile?.()
+            if (f) files.push(f)
+        }
+    }
+    if (files.length) {
+        // If clipboard also includes text, don't block normal paste into inputs/textarea.
+        const types = Array.from(event?.clipboardData?.types || [])
+        const hasText = types.includes('text/plain') || types.includes('text/html')
+        if (!hasText) {
+            event.preventDefault()
+        }
+        addFilesToUploadList(files)
+    }
+}
+
+watch(markDialogVisible, async (visible) => {
+    if (visible) {
+        window.addEventListener('paste', handlePaste)
+        await nextTick()
+    } else {
+        window.removeEventListener('paste', handlePaste)
+    }
+})
+
+onUnmounted(() => {
+    window.removeEventListener('paste', handlePaste)
+})
 
 const confirmMark = async () => {
     const { status, message } = markForm.value
@@ -233,7 +400,8 @@ const confirmMark = async () => {
                 ElMessage.error('用例信息异常')
                 return
             }
-            const res = await $api.markPlanCaseStatus(planId.value, caseId, status, message || '')
+            const files = (markFileList.value || []).map(i => i.raw).filter(Boolean)
+            const res = await $api.markPlanCaseStatusWithFiles(planId.value, caseId, status, message || '', files)
             if (res.code === 0) {
                 ElMessage.success('标记成功')
                 markDialogVisible.value = false
@@ -322,4 +490,86 @@ onMounted(() => {
     align-items: center;
 }
 
+.log-attachments {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.upload-tip {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 16px;
+    margin-top: 6px;
+}
+
+/* 拖拽框在弹窗里更紧凑些 */
+:deep(.el-upload) {
+    display: inline-block;
+}
+
+:deep(.el-upload-dragger) {
+    width: 112px;
+    height: 112px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+:deep(.el-upload-dragger .el-icon) {
+    font-size: 22px;
+    margin: 0;
+}
+
+.upload-plus-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.upload-plus-caption {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--el-text-color-secondary);
+    user-select: none;
+}
+
+.upload-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.upload-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.upload-preview-item {
+    position: relative;
+    width: 112px;
+    height: 112px;
+}
+
+.upload-preview-img {
+    width: 112px;
+    height: 112px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--el-border-color-lighter);
+}
+
+.upload-preview-remove {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    padding: 0;
+    width: 22px;
+    height: 22px;
+}
 </style>

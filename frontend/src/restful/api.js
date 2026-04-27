@@ -394,6 +394,22 @@ export const markPlanCaseStatus = (planId, caseId, status, message = '') => {
     }).then(res => res.data);
 };
 
+// 标记执行结果（支持图片上传）
+export const markPlanCaseStatusWithFiles = (planId, caseId, status, message = '', files = []) => {
+    const formData = new FormData();
+    formData.append('case_id', String(caseId));
+    formData.append('status', String(status));
+    formData.append('message', message || '');
+    (files || []).forEach((f) => {
+        if (f) formData.append('files', f);
+    });
+    return axios.post(`/api/ui_test/test-plans/${planId}/cases/mark/`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    }).then(res => res.data);
+};
+
 export const batchMarkPlanCaseStatus = (planId, caseIds, status, message = '') => {
     return axios.post(`/api/ui_test/test-plans/${planId}/cases/batch-mark/`, {
         case_ids: caseIds,

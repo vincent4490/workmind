@@ -71,6 +71,7 @@ urlpatterns = [
 # 生产环境应使用 nginx 或其他 Web 服务器提供静态文件
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(getattr(settings, "MEDIA_URL", "/media/"), document_root=getattr(settings, "MEDIA_ROOT", None))
     
     # Allure 报告静态文件服务
     import os
