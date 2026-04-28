@@ -45,6 +45,153 @@ def _infer_dedupe_key(case: dict, *, module: str, function: str) -> str:
     return f"{module}|{function}|{scenario}|{expected_class}|{expected_sig}"
 
 
+def _has_any(text: str, words: list[str]) -> bool:
+    return any(w in text for w in words)
+
+
+def _semantic_signature(case: dict, *, module: str, function: str) -> str | None:
+    """
+    高置信跨模块语义签名。
+
+    只覆盖很明确、低误删风险的重复动作；模糊场景仍交给评审/人工处理。
+    """
+    text = _norm_text(" ".join([
+        module,
+        function,
+        case.get("name", ""),
+        case.get("steps", ""),
+        case.get("expected", ""),
+        case.get("dedupe_key", ""),
+    ])).lower()
+
+    negative_markers = ["失败", "异常", "不可见", "隐藏", "权限", "未登录", "丢失", "超时", "取消"]
+
+    # 升级入口点击后跳转定价/套餐页的成功场景。
+    if (
+        "升级" in text
+        and _has_any(text, ["定价", "套餐", "订阅", "付费"])
+        and _has_any(text, ["跳转", "打开", "进入", "访问", "加载"])
+        and not _has_any(text, negative_markers)
+    ):
+        return "upgrade_entry|navigate|pricing_page|success"
+
+    # 退出登录成功执行场景。排除 token/API/后退/刷新/多端等安全专项验证，避免误删。
+    logout_negative = negative_markers + ["token", "api", "后退", "刷新", "多端", "重复", "网络"]
+    if (
+        _has_any(text, ["退出登录", "登出", "注销登录"])
+        and _has_any(text, ["成功", "清除", "清理", "跳转", "未登录", "登录页"])
+        and not _has_any(text, logout_negative)
+    ):
+        return "logout|execute|success"
+
+    return None
+
+
+def _semantic_rank(signature: str, entry: dict) -> tuple[int, int, int, int]:
+    """选择更适合作为代表的用例：专用模块优先，其次高优先级和信息完整度。"""
+    module = entry["module"]
+    function = entry["function"]
+    case = entry["case"]
+    text = f"{module} {function} {case.get('name', '')}"
+
+    dedicated = 0
+    if signature.startswith("upgrade_entry") and _has_any(text, ["升级", "定价", "套餐"]):
+        dedicated = -1
+    elif signature.startswith("logout") and _has_any(text, ["退出登录", "登出", "注销"]):
+        dedicated = -1
+
+    pr = _norm_text(case.get("priority")) or "P1"
+    pr_rank = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}.get(pr, 9)
+    coverage_count = len(case.get("coverage_points") or []) if isinstance(case.get("coverage_points"), list) else 0
+    detail_len = len(_norm_text(case.get("steps"))) + len(_norm_text(case.get("expected")))
+    return (dedicated, pr_rank, -coverage_count, -detail_len)
+
+
+def _apply_cross_module_semantic_dedupe(modules: list[dict], report: DedupeReport) -> list[dict]:
+    buckets: dict[str, list[dict]] = {}
+    for mod in modules:
+        mod_name = _norm_text(mod.get("name")) or "模块"
+        for func in mod.get("functions", []) or []:
+            if not isinstance(func, dict):
+                continue
+            func_name = _norm_text(func.get("name")) or "功能点"
+            for case in func.get("cases", []) or []:
+                if not isinstance(case, dict):
+                    continue
+                sig = _semantic_signature(case, module=mod_name, function=func_name)
+                if sig:
+                    buckets.setdefault(sig, []).append({
+                        "module": mod_name,
+                        "function": func_name,
+                        "case": case,
+                    })
+
+    remove_case_ids: set[int] = set()
+    semantic_removed = []
+    for sig, entries in buckets.items():
+        if len(entries) <= 1:
+            continue
+        ranked = sorted(entries, key=lambda e: _semantic_rank(sig, e))
+        keeper = ranked[0]
+        removed = ranked[1:]
+        keeper_case = keeper["case"]
+        merged_lines = []
+        for item in removed:
+            case = item["case"]
+            remove_case_ids.add(id(case))
+            semantic_removed.append({
+                "signature": sig,
+                "removed": {
+                    "module": item["module"],
+                    "function": item["function"],
+                    "case_name": _norm_text(case.get("name")),
+                },
+                "kept": {
+                    "module": keeper["module"],
+                    "function": keeper["function"],
+                    "case_name": _norm_text(keeper_case.get("name")),
+                },
+            })
+            merged_lines.append(
+                f"- [{item['module']} / {item['function']}] {_norm_text(case.get('name'))}"
+            )
+
+        if merged_lines:
+            base_expected = _norm_text(keeper_case.get("expected"))
+            keeper_case["expected"] = (
+                base_expected
+                + ("\n" if base_expected else "")
+                + "【跨模块语义去重合并】\n"
+                + "\n".join(merged_lines)
+            ).strip()
+
+    if not remove_case_ids:
+        return modules
+
+    for mod in modules:
+        for func in mod.get("functions", []) or []:
+            if not isinstance(func, dict):
+                continue
+            cases = func.get("cases")
+            if isinstance(cases, list):
+                func["cases"] = [c for c in cases if id(c) not in remove_case_ids]
+
+        mod["functions"] = [
+            f for f in (mod.get("functions", []) or [])
+            if isinstance(f, dict) and f.get("cases")
+        ]
+
+    modules = [m for m in modules if isinstance(m, dict) and m.get("functions")]
+    removed_count = len(remove_case_ids)
+    report.removed_as_duplicates += removed_count
+    report.merged_as_parameterized += removed_count
+    report.after_count = max(0, report.after_count - removed_count)
+
+    # 透传额外报告字段，便于前端/日志解释“为什么少了用例”。
+    report.semantic_removed = semantic_removed  # type: ignore[attr-defined]
+    return modules
+
+
 @dataclass
 class DedupeReport:
     before_count: int = 0
@@ -53,7 +200,7 @@ class DedupeReport:
     removed_as_duplicates: int = 0
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "before_count": self.before_count,
             "after_count": self.after_count,
             "merged_to_parameterized": self.merged_as_parameterized,
@@ -61,8 +208,13 @@ class DedupeReport:
             "notes": [
                 "优先使用 dedupe_key；缺失则使用启发式 key（模块/功能点/场景/预期类别/预期摘要）",
                 "同 key 重复用例合并为参数化说明（写入 expected），保留 1 条代表用例",
+                "对升级入口跳转、退出登录成功执行等高置信场景执行跨模块语义去重",
             ],
         }
+        semantic_removed = getattr(self, "semantic_removed", None)
+        if semantic_removed:
+            data["semantic_removed"] = semantic_removed
+        return data
 
 
 def dedupe_result_json(data: dict, *, mode: str = "comprehensive") -> tuple[dict, dict]:
@@ -158,6 +310,7 @@ def dedupe_result_json(data: dict, *, mode: str = "comprehensive") -> tuple[dict
         new_modules.append(new_mod)
 
     new_data = dict(data)
+    new_modules = _apply_cross_module_semantic_dedupe(new_modules, report)
     new_data["modules"] = new_modules
 
     meta = new_data.get("_meta") if isinstance(new_data.get("_meta"), dict) else {}

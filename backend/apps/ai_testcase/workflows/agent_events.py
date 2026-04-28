@@ -8,22 +8,22 @@ Agent 节点生命周期事件（与 LangGraph 解耦）
 from __future__ import annotations
 
 import asyncio
+from contextvars import ContextVar
 from typing import Optional
 
-_event_queue: Optional[asyncio.Queue] = None
+_event_queue: ContextVar[Optional[asyncio.Queue]] = ContextVar('agent_event_queue', default=None)
 
 
 def attach_event_queue(q: asyncio.Queue) -> None:
-    global _event_queue
-    _event_queue = q
+    _event_queue.set(q)
 
 
 def detach_event_queue() -> None:
-    global _event_queue
-    _event_queue = None
+    _event_queue.set(None)
 
 
 async def emit_node_start(node_name: str) -> None:
     """在节点内、调用 LLM 之前调用，通知「已进入该节点」。"""
-    if _event_queue is not None:
-        await _event_queue.put(('node_start', node_name))
+    q = _event_queue.get()
+    if q is not None:
+        await q.put(('node_start', node_name))

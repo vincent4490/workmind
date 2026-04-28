@@ -404,6 +404,8 @@ def run_ai_testcase_agent(record_id: int):
                         msg = '合并与评审（调用模型）'
                     elif node == 'refine_cases':
                         msg = '修订用例（调用模型）'
+                    elif node == 'reset_generation':
+                        msg = '评审仍未达标，升级策略后重新分模块生成'
                     elif node == 'finalize':
                         msg = '收尾处理'
                     else:
@@ -420,23 +422,28 @@ def run_ai_testcase_agent(record_id: int):
                     await _write_event_async(record, 'start', payload)
                 elif ev_type in ('agent_node_done', 'agent_refining'):
                     stage = payload.get('node') or payload.get('current_node') or 'agent_step'
+                    if ev_type == 'agent_refining':
+                        stage = 'refine_cases'
                     next_p = min(int(getattr(record, 'progress', 0) or 0) + 5, 95)
                     await _set_progress_async(record, stage, next_p)
                     await _write_event_async(record, 'progress', {
                         'stage': stage,
                         'percent': int(getattr(record, 'progress', next_p) or next_p),
                         'message': '智能体阶段推进',
-                        'data': payload.get('data', {}),
+                        'data': payload.get('data', {}) or {'changes_count': payload.get('changes_count')},
                         'iteration_count': payload.get('iteration_count'),
                     })
                 elif ev_type in ('agent_review',):
                     await _write_event_async(record, 'review', {
                         'score': payload.get('score'),
+                        'feedback': payload.get('feedback') or '',
+                        'issues': payload.get('issues') or [],
                         'issues_count': payload.get('issues_count'),
                         'iteration': payload.get('iteration'),
                         'model': payload.get('model'),
                         'usage': payload.get('usage', {}),
                         'cost_usd': payload.get('cost_usd'),
+                        'max': payload.get('max'),
                     })
                 elif ev_type in ('agent_done',):
                     await _set_progress_async(record, 'done', 100)

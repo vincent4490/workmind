@@ -70,6 +70,8 @@ async def _process_graph_update(
             if trace:
                 last = trace[-1]
                 display_node = last.get('node', node_name)
+        elif node_name == 'reset_generation':
+            display_node = 'generate_by_module'
 
         if node_name not in seen_nodes:
             seen_nodes.add(node_name)
@@ -368,6 +370,9 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
             last = trace[-1]
             changes_count = last.get('changes', 0)
         return {'changes_count': changes_count}
+
+    elif node_name == 'reset_generation':
+        return {'reset_module_progress': True}
 
     return {}
 

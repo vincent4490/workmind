@@ -1600,6 +1600,10 @@ async function handleAgentGenerate(formData) {
                 if (p.data && stage === 'plan_test_strategy') {
                     agentProgress.value.strategyData = p.data
                 }
+                if (p.data?.reset_module_progress) {
+                    agentProgress.value.moduleProgress = []
+                    appendAgentLog('🔁', '评审仍未达标，已升级策略并重新分模块生成', 'warn')
+                }
                 if (p.data && p.data.module_name) {
                     agentProgress.value.moduleProgress.push({
                         name: p.data.module_name,
@@ -1612,10 +1616,11 @@ async function handleAgentGenerate(formData) {
                 const scorePercent = (((p.score || 0) * 100)).toFixed(0)
                 agentProgress.value.review = {
                     score: p.score,
-                    feedback: '',
+                    feedback: p.feedback || '',
                     iteration: p.iteration,
-                    max: 3,
+                    max: p.max || 3,
                 }
+                agentProgress.value.reviewIssues = p.issues || []
                 if ((p.score || 0) >= 0.8) {
                     appendAgentLog('🎉', `评审通过！分数: ${scorePercent}分`, 'success')
                 } else {

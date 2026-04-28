@@ -87,6 +87,51 @@ def _accumulate_usage(state: dict, usage: dict) -> dict:
     }
 
 
+def _is_blocking_review_issue(issue: dict) -> bool:
+    """FOCUSED 策略下，高危重复/冗余问题必须修订，不能只因总分过线而结束。"""
+    if not isinstance(issue, dict):
+        return False
+    severity = str(issue.get('severity') or '').strip().lower()
+    issue_type = str(issue.get('type') or '').strip().lower()
+    return severity == 'high' and issue_type in {'duplicate', 'redundant'}
+
+
+def _has_blocking_review_issues(issues: list) -> bool:
+    return any(_is_blocking_review_issue(i) for i in (issues or []))
+
+
+def _changes_from_review_issue_targets(issues: list) -> list[dict]:
+    """
+    将评审输出中的精确 remove/remove_cases 目标转成确定性删除指令。
+
+    评审模型后续会被要求为重复问题输出 keep/remove；这里先消费 remove，
+    避免再让 refine 模型根据自然语言猜测要删哪条用例。
+    """
+    changes: list[dict] = []
+    for issue in issues or []:
+        if not isinstance(issue, dict):
+            continue
+        removals = issue.get('remove') or issue.get('remove_cases') or []
+        if isinstance(removals, dict):
+            removals = [removals]
+        if not isinstance(removals, list):
+            continue
+        for target in removals:
+            if not isinstance(target, dict):
+                continue
+            module = (target.get('module') or '').strip()
+            function = (target.get('function') or target.get('function_name') or '').strip()
+            case_name = (target.get('case_name') or target.get('name') or '').strip()
+            if module and function and case_name:
+                changes.append({
+                    'action': 'delete_case',
+                    'module': module,
+                    'function': function,
+                    'case_name': case_name,
+                })
+    return changes
+
+
 async def _run_validated_with_router(
     *,
     stage: str,
@@ -355,8 +400,8 @@ async def generate_by_module_node(state: TestcaseAgentState) -> dict:
             'elapsed_ms': elapsed,
             'status': 'ok' if result['success'] else 'error',
             'usage': result.get('usage', {}),
-                'model': result.get('model'),
-                'cost_usd': result.get('cost_usd'),
+            'model': result.get('model'),
+            'cost_usd': result.get('cost_usd'),
         }],
         'total_usage': _accumulate_usage(state, result['usage']),
     }
@@ -385,6 +430,7 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
             timeout=REVIEW_TIMEOUT,
         )
     except asyncio.TimeoutError:
+        iteration = (state.get('iteration_count') or 0) + 1
         return {
             'merged_result': merged,
             'review_score': 0.75,
@@ -393,7 +439,13 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
             'dedupe_report': None,
             'review_rubric': None,
             'review_dimension_scores': None,
-            'current_node': 'finalize',
+            'iteration_count': iteration,
+            'node_trace': (state.get('node_trace') or []) + [{
+                'node': 'merge_and_review',
+                'status': 'timeout',
+                'iteration': iteration,
+                'timeout_seconds': REVIEW_TIMEOUT,
+            }],
             'total_usage': state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
         }
 
@@ -401,6 +453,7 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
     logger.info(f"[Agent] merge_and_review 完成, 耗时 {elapsed}ms")
 
     if not result['success']:
+        iteration = (state.get('iteration_count') or 0) + 1
         return {
             'merged_result': merged,
             'review_score': 0.75,
@@ -409,8 +462,8 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
             'dedupe_report': None,
             'review_rubric': None,
             'review_dimension_scores': None,
-            'current_node': 'finalize',
-            'node_trace': (state.get('node_trace') or []) + [{'node': 'merge_and_review', 'elapsed_ms': elapsed, 'status': 'error'}],
+            'iteration_count': iteration,
+            'node_trace': (state.get('node_trace') or []) + [{'node': 'merge_and_review', 'elapsed_ms': elapsed, 'status': 'error', 'iteration': iteration}],
             'total_usage': _accumulate_usage(state, result['usage']),
         }
 
@@ -445,7 +498,7 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
             effective_mode = 'comprehensive'
             switch_reason = f"auto_upgrade: requested=focused score={score:.2f} dup_ratio={dup_ratio:.2f} removed={dedupe_removed}"
 
-    return {
+    next_state = {
         'merged_result': merged_out,
         'review_score': score,
         'review_feedback': summary,
@@ -471,6 +524,18 @@ async def merge_and_review_node(state: TestcaseAgentState) -> dict:
         'total_usage': _accumulate_usage(state, result['usage']),
     }
 
+    has_actionable_issues = bool(issues)
+    has_blocking_issues = _has_blocking_review_issues(issues)
+    needs_more_work = (
+        has_actionable_issues
+        and (score < REVIEW_THRESHOLD or has_blocking_issues)
+        and iteration < MAX_REVISIONS
+    )
+    if needs_more_work and iteration == 1:
+        next_state['quality_tier'] = 'strong'
+
+    return next_state
+
 
 # ============ 节点 5：修订 ============
 
@@ -482,9 +547,29 @@ async def refine_cases_node(state: TestcaseAgentState) -> dict:
     issues = state.get('review_issues', [])
 
     if not issues:
-        return {'current_node': 'finalize'}
+        return {'current_node': 'merge_and_review'}
 
     await emit_node_start('refine_cases')
+
+    targeted_changes = _changes_from_review_issue_targets(issues)
+    if targeted_changes:
+        try:
+            new_data, apply_summary = _apply_review_changes(merged, targeted_changes)
+            logger.info(f"[Agent] refine_cases 应用评审精确目标: {apply_summary}")
+            merged = new_data
+        except Exception as e:
+            logger.warning(f"[Agent] refine_cases 应用评审精确目标失败: {e}")
+        else:
+            return {
+                'merged_result': merged,
+                'current_node': 'merge_and_review',
+                'node_trace': (state.get('node_trace') or []) + [{
+                    'node': 'refine_cases',
+                    'changes': len(targeted_changes),
+                    'status': 'targeted',
+                }],
+                'total_usage': state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            }
 
     mode_for_refine = state.get('effective_mode') or state.get('mode') or 'comprehensive'
     messages = build_refine_messages(merged, issues, mode=mode_for_refine)
@@ -499,7 +584,8 @@ async def refine_cases_node(state: TestcaseAgentState) -> dict:
         )
     except asyncio.TimeoutError:
         return {
-            'current_node': 'finalize',
+            'merged_result': merged,
+            'current_node': 'merge_and_review',
             'total_usage': state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
         }
 
@@ -555,22 +641,51 @@ def route_after_review(state: TestcaseAgentState) -> str:
     score = state.get('review_score', 1.0)
     iteration = state.get('iteration_count', 0)
 
-    if score >= REVIEW_THRESHOLD or iteration >= MAX_REVISIONS:
+    # 若评审没有给出可执行的改进点，则不进入修订循环，直接结束
+    issues = state.get('review_issues') or []
+    if not issues:
+        return 'finalize'
+
+    if iteration >= MAX_REVISIONS:
+        return 'finalize'
+
+    if score >= REVIEW_THRESHOLD and not _has_blocking_review_issues(issues):
         return 'finalize'
 
     # 质量闭环策略升级：
     # - 第 1 轮低分：升级 refine（强模型/思考）
     # - 第 2 轮仍低：强制重新分模块生成（强模型/思考），再进入评审
     if iteration == 1:
-        state['quality_tier'] = 'strong'
         return 'refine_cases'
     if iteration >= 2:
-        state['force_strong_generate'] = True
-        state['modules_generated'] = []
-        state['generation_errors'] = []
-        state['current_module_index'] = 0
-        return 'generate_by_module'
+        return 'reset_generation'
     return 'refine_cases'
+
+
+async def reset_generation_node(state: TestcaseAgentState) -> dict:
+    """
+    第二轮评审仍低分时重置生成中间态，再回到分模块生成。
+
+    条件路由函数不能可靠地修改 LangGraph state；把重置动作放到节点返回值里，
+    才能确保后续 generate_by_module 使用新一轮模块结果，而不是旧 merged_result。
+    """
+    return {
+        'force_strong_generate': True,
+        'modules_generated': [],
+        'generation_errors': [],
+        'current_module_index': 0,
+        'merged_result': None,
+        'review_score': None,
+        'review_feedback': None,
+        'review_issues': [],
+        'current_node': 'generate_by_module',
+        'node_trace': (state.get('node_trace') or []) + [{
+            'node': 'reset_generation',
+            'reason': 'low_score_after_refine',
+            'iteration': state.get('iteration_count', 0),
+        }],
+        'total_usage': state.get('total_usage') or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    }
 
 
 # ============ 终态节点 ============
@@ -594,6 +709,7 @@ def get_testcase_agent_workflow() -> StateGraph:
     workflow.add_node('generate_by_module', generate_by_module_node)
     workflow.add_node('merge_and_review', merge_and_review_node)
     workflow.add_node('refine_cases', refine_cases_node)
+    workflow.add_node('reset_generation', reset_generation_node)
     workflow.add_node('finalize', finalize_node)
 
     workflow.set_entry_point('analyze_requirement')
@@ -610,10 +726,15 @@ def get_testcase_agent_workflow() -> StateGraph:
     workflow.add_conditional_edges(
         'merge_and_review',
         route_after_review,
-        {'refine_cases': 'refine_cases', 'finalize': 'finalize'},
+        {
+            'refine_cases': 'refine_cases',
+            'reset_generation': 'reset_generation',
+            'finalize': 'finalize',
+        },
     )
 
     workflow.add_edge('refine_cases', 'merge_and_review')
+    workflow.add_edge('reset_generation', 'generate_by_module')
     workflow.add_edge('finalize', END)
 
     return workflow.compile()
