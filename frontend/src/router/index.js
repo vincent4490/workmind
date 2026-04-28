@@ -130,7 +130,7 @@ const router = createRouter({
                     path: "functional_task_stats",
                     component: FunctionalTaskStats,
                     meta: {
-                        title: "任务统计",
+                        title: "数据统计",
                         requireAuth: true
                     }
                 },

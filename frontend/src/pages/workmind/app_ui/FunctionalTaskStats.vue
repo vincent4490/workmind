@@ -1,7 +1,7 @@
 <template>
     <div class="functional-task-stats">
         <div class="page-header">
-            <h3>任务统计</h3>
+            <h3>数据统计</h3>
         </div>
 
         <el-card class="filters-card" shadow="never">
