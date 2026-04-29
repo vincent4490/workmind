@@ -4,9 +4,9 @@
 可根据项目需求调整用例生成策略
 """
 
-# ============ 用例数量配置 ============
+# ============ 用例预算配置 ============
 class TestcaseQuantityConfig:
-    """用例数量配置"""
+    """用例预算配置：范围是建议预算，不是硬性上下限。"""
     
     # 简单功能（如纯展示页面、简单查询）
     SIMPLE_MIN = 3
@@ -111,7 +111,7 @@ class SpecialScenarioConfig:
 # ============ 动态调整函数 ============
 def get_quantity_range(complexity: str = "medium") -> tuple:
     """
-    根据复杂度获取用例数量范围
+    根据复杂度获取用例建议预算范围
     
     Args:
         complexity: 复杂度级别 (simple/medium/complex/critical)
@@ -158,7 +158,7 @@ def get_coverage_dimensions(mode: str = None) -> list:
 
 def build_quantity_instruction(complexity: str = "medium") -> str:
     """
-    构建用例数量指导语句
+    构建用例预算指导语句
     
     Args:
         complexity: 复杂度级别
@@ -170,9 +170,13 @@ def build_quantity_instruction(complexity: str = "medium") -> str:
     mode = TestcaseQualityConfig.CURRENT_MODE
     
     if mode == TestcaseQualityConfig.MODE_FOCUSED:
-        return f"每个功能点生成 {min_count}-{max_count} 个用例，聚焦核心功能与业务规则，控制总量"
+        return (
+            f"建议预算 {min_count}-{max_count} 个代表性用例；聚焦核心功能与业务规则，"
+            "覆盖优先，不为凑数量生成低价值重复用例"
+        )
     return (
-        f"每个功能点生成 {min_count}-{max_count} 个用例，追求全面覆盖，复杂功能可超过 {max_count} 条"
+        f"建议预算 {min_count}-{max_count} 个用例；追求全面覆盖，复杂/高风险功能可超过预算，"
+        "低风险场景可少写，预算不是硬性上下限"
     )
 
 

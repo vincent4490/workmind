@@ -308,8 +308,7 @@ def _extract_node_data(node_name: str, node_output: dict) -> dict:
                     {
                         'module_name': s.get('module_name', ''),
                         'methods': s.get('methods', []),
-                        'case_count_target': s.get('case_count_target'),
-                        'case_count_range': s.get('case_count_range', []),
+                        'case_budget': s.get('case_budget') or {},
                         'coverage_targets': s.get('coverage_targets', []),
                         'priority_distribution': s.get('priority_distribution', {}),
                         'dedupe_policy': s.get('dedupe_policy', {}),

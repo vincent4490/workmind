@@ -191,9 +191,9 @@
                                     <el-tag v-for="m in row.methods" :key="m" size="small" type="info" class="method-tag">{{ m }}</el-tag>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="用例数" width="90">
+                            <el-table-column label="用例预算" width="110">
                                 <template #default="{ row }">
-                                    {{ row.case_count_range?.[0] || '?' }}-{{ row.case_count_range?.[1] || '?' }}
+                                    {{ formatCaseBudget(row) }}
                                 </template>
                             </el-table-column>
                             <el-table-column prop="special_focus" label="重点关注" show-overflow-tooltip />
@@ -1334,6 +1334,30 @@ function appendAgentLog(icon, text, level = 'info', duration = '') {
     })
 }
 
+function formatCaseBudget(row) {
+    const budget = row?.case_budget || {}
+    const range = budget.suggested_range || []
+    const target = budget.target
+    if (range.length >= 2 && target) {
+        return `${range[0]}-${range[1]}（建议 ${target}）`
+    }
+    if (range.length >= 2) {
+        return `${range[0]}-${range[1]}（建议）`
+    }
+    if (target) {
+        return `建议 ${target}`
+    }
+    return '按风险动态'
+}
+
+function hasBlockingReviewIssues(issues = []) {
+    return issues.some(issue => {
+        const severity = String(issue?.severity || '').toLowerCase()
+        const type = String(issue?.type || '').toLowerCase()
+        return severity === 'high' && ['duplicate', 'redundant'].includes(type)
+    })
+}
+
 const jsonPreview = computed(() => {
     if (!currentResult.value?.data) return ''
     return JSON.stringify(currentResult.value.data, null, 2)
@@ -1621,10 +1645,10 @@ async function handleAgentGenerate(formData) {
                     max: p.max || 3,
                 }
                 agentProgress.value.reviewIssues = p.issues || []
-                if ((p.score || 0) >= 0.8) {
+                if ((p.score || 0) >= 0.8 && !hasBlockingReviewIssues(p.issues || [])) {
                     appendAgentLog('🎉', `评审通过！分数: ${scorePercent}分`, 'success')
                 } else {
-                    appendAgentLog('⚠️', `评审分数: ${scorePercent}分，未达标，将自动修订/升级策略`, 'warn')
+                    appendAgentLog('⚠️', `评审分数: ${scorePercent}分，仍有待修订问题，将自动定向修订`, 'warn')
                 }
             } else if (ev.type === 'done') {
                 stopTimer()

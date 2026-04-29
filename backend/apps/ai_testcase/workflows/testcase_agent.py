@@ -652,13 +652,8 @@ def route_after_review(state: TestcaseAgentState) -> str:
     if score >= REVIEW_THRESHOLD and not _has_blocking_review_issues(issues):
         return 'finalize'
 
-    # 质量闭环策略升级：
-    # - 第 1 轮低分：升级 refine（强模型/思考）
-    # - 第 2 轮仍低：强制重新分模块生成（强模型/思考），再进入评审
-    if iteration == 1:
-        return 'refine_cases'
-    if iteration >= 2:
-        return 'reset_generation'
+    # 未达标时优先做定向修订，避免把已经生成的大部分有效用例清空重来。
+    # 达到 MAX_REVISIONS 后上面的保护会 finalize，防止无限循环。
     return 'refine_cases'
 
 

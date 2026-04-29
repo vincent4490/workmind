@@ -7,7 +7,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 from apps.ai_testcase.workflows.testcase_agent import route_after_review
 
 
-def test_route_after_review_regeneration_branch_is_pure():
+def test_route_after_review_keeps_refining_after_second_iteration():
     state = {
         "review_score": 0.5,
         "iteration_count": 2,
@@ -20,7 +20,7 @@ def test_route_after_review_regeneration_branch_is_pure():
     }
     before = deepcopy(state)
 
-    assert route_after_review(state) == "reset_generation"
+    assert route_after_review(state) == "refine_cases"
     assert state == before
 
 
