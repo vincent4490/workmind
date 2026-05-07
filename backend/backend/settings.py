@@ -446,10 +446,9 @@ except Exception as e:
     logger.error("   请确保 Redis 服务正在运行，WebSocket 功能将不可用")
 
 # ==================== Kimi AI 配置 ====================
-# KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-4y1Q6cMuga6L7Gdu3E10xSw8DIoRo42WbQHltL0vcu8oH7eT")
-KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "sk-6i7MZc9qTrnLxLfYTRTEFVisMBAs6qXyTAYgSSWbZWhzRgXP")
-# Moonshot OpenAI-compatible base URL（官方文档为 api.moonshot.ai）
-KIMI_BASE_URL = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.ai/v1")
+# 须在环境变量或项目根目录 .env 中配置 KIMI_API_KEY，勿在仓库中写死密钥
+KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "").strip()
+KIMI_BASE_URL = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
 KIMI_MODEL = os.environ.get("KIMI_MODEL", "kimi-k2.5")
 
 # ==================== DeepSeek AI 配置（需求智能体备选/增强）====================

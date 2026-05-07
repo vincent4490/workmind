@@ -153,13 +153,13 @@
                     v-model="inputText"
                     type="textarea"
                     :rows="3"
-                    placeholder="输入问题，按 Ctrl+Enter 发送..."
+                    placeholder="输入问题，按 Enter 发送，Shift+Enter 换行..."
                     resize="none"
                     :disabled="streaming"
-                    @keydown.ctrl.enter="handleSend"
+                    @keydown.enter="handleEnterKey"
                 />
                 <div class="input-actions">
-                    <span class="input-tip">Ctrl + Enter 发送</span>
+                    <span class="input-tip">Enter 发送 · Shift+Enter 换行</span>
                     <el-button
                         type="primary"
                         :loading="streaming"
@@ -317,6 +317,12 @@ const clearMessages = async () => {
 
 const sendQuestion = (q) => {
     inputText.value = q
+    handleSend()
+}
+
+const handleEnterKey = (e) => {
+    if (e.shiftKey) return
+    e.preventDefault()
     handleSend()
 }
 
