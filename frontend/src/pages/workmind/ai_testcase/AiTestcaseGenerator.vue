@@ -97,6 +97,35 @@
                         />
                     </div>
 
+                    <!-- 引用知识库 -->
+                    <div class="kb-reference-section">
+                        <div class="kb-reference-header" @click="kbExpanded = !kbExpanded">
+                            <el-icon><Collection /></el-icon>
+                            <span>引用知识库</span>
+                            <span v-if="selectedKbDocIds.length" class="kb-selected-count">
+                                已选 {{ selectedKbDocIds.length }} 个文档
+                            </span>
+                            <span v-else class="kb-reference-tip">（可选，选择后 AI 将结合知识库内容生成用例）</span>
+                            <el-icon class="kb-expand-icon" :class="{ expanded: kbExpanded }"><ArrowDown /></el-icon>
+                        </div>
+                        <div v-if="kbExpanded" class="kb-doc-list">
+                            <el-empty v-if="kbDocs.length === 0" description="暂无已处理的知识库文档" :image-size="40" />
+                            <el-checkbox-group v-else v-model="selectedKbDocIds">
+                                <div v-for="doc in kbDocs" :key="doc.id" class="kb-doc-item">
+                                    <el-checkbox :label="doc.id">
+                                        <span class="kb-doc-name">{{ doc.title }}</span>
+                                        <el-tag size="small" type="info" style="margin-left:6px">
+                                            {{ { requirement: '需求', tech_design: '技术', test_case: '用例', business: '业务', generated: 'AI生成', other: '其他' }[doc.category] || doc.category }}
+                                        </el-tag>
+                                    </el-checkbox>
+                                </div>
+                            </el-checkbox-group>
+                            <div v-if="selectedKbDocIds.length" style="text-align:right;margin-top:6px">
+                                <el-button size="small" link @click="selectedKbDocIds = []">清空选择</el-button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 生成模式选择 -->
                     <div class="mode-selection">
                         <div class="mode-label">
@@ -641,6 +670,14 @@
                                 <span v-if="item.total_tokens">
                                     Token: {{ item.total_tokens }}
                                 </span>
+                                <el-tag
+                                    v-if="item.agent_state && item.agent_state.kb_result && item.agent_state.kb_result.chunks_count > 0"
+                                    size="small" type="primary" effect="plain"
+                                    class="kb-ref-tag"
+                                >
+                                    <el-icon><Collection /></el-icon>
+                                    知识库 {{ item.agent_state.kb_result.chunks_count }} 片段
+                                </el-tag>
                             </div>
                             <div class="history-actions">
                                 <el-button
@@ -650,6 +687,14 @@
                                 >
                                     <el-icon><View /></el-icon>
                                     查看/调整
+                                </el-button>
+                                <el-button
+                                    v-if="item.agent_state && item.agent_state.kb_result && item.agent_state.kb_result.chunks_count > 0"
+                                    text type="primary" size="small"
+                                    @click="openKbDetail(item)"
+                                >
+                                    <el-icon><Collection /></el-icon>
+                                    引用详情
                                 </el-button>
                                 <el-button
                                     v-if="item.status === 'success'"
@@ -1110,6 +1155,88 @@
                 </div>
             </template>
         </el-dialog>
+
+        <!-- 知识库引用详情 Drawer -->
+        <el-drawer
+            v-model="kbDetailVisible"
+            title="知识库引用详情"
+            direction="rtl"
+            size="480px"
+            :append-to-body="true"
+        >
+            <div v-if="kbDetailData" class="kb-detail-drawer">
+                <!-- 统计概览 -->
+                <div class="kb-detail-overview">
+                    <div class="kb-detail-stats">
+                        共命中 <strong>{{ kbDetailData.chunks_count }}</strong> 个片段，
+                        引用内容约 <strong>{{ kbDetailData.context_len }}</strong> 字
+                    </div>
+                    <div class="kb-detail-docs">
+                        <div
+                            v-for="doc in kbDetailData.docs_used"
+                            :key="doc.id"
+                            class="kb-detail-doc-item"
+                        >
+                            <el-icon><Document /></el-icon>
+                            <span class="kb-detail-doc-title">{{ doc.title }}</span>
+                            <el-tag size="small" type="info">
+                                {{ { requirement: '需求', tech_design: '技术', test_case: '用例', business: '业务', generated: 'AI生成', other: '其他' }[doc.category] || doc.category }}
+                            </el-tag>
+                            <span class="kb-detail-doc-type">{{ doc.file_type?.toUpperCase() }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <el-divider content-position="left">
+                    <span style="font-size:13px;color:#909399">引用片段（{{ kbDetailData.chunks.length }}）</span>
+                </el-divider>
+
+                <!-- Chunk 列表 -->
+                <div class="kb-detail-chunks">
+                    <div
+                        v-for="(chunk, idx) in kbDetailData.chunks"
+                        :key="idx"
+                        class="kb-detail-chunk"
+                    >
+                        <div class="kb-detail-chunk-header">
+                            <span class="kb-detail-chunk-source">
+                                <el-icon><Document /></el-icon>
+                                {{ chunk.doc_title }}
+                            </span>
+                            <span v-if="chunk.page_num" class="kb-detail-chunk-page">
+                                第 {{ chunk.page_num }} 页
+                            </span>
+                            <span class="kb-detail-chunk-score">
+                                相关度 {{ Math.round((chunk.score || 0) * 100) }}%
+                            </span>
+                            <div class="kb-detail-chunk-actions">
+                                <!-- PDF：查看原页 -->
+                                <a
+                                    v-if="chunk.file_type === 'pdf' && chunk.page_num && chunk.file_url"
+                                    :href="`${chunk.file_url}#page=${chunk.page_num}`"
+                                    target="_blank"
+                                    class="kb-view-page-link"
+                                    title="在新标签页打开 PDF 原页"
+                                >
+                                    <el-icon><Link /></el-icon> 查看原页
+                                </a>
+                                <!-- 复制 -->
+                                <el-button
+                                    size="small" link
+                                    title="复制片段内容"
+                                    @click="copyChunkContent(chunk.content, idx)"
+                                >
+                                    <el-icon><CopyDocument /></el-icon>
+                                    {{ copiedChunkIdx === idx ? '已复制' : '复制' }}
+                                </el-button>
+                            </div>
+                        </div>
+                        <div class="kb-detail-chunk-content">{{ chunk.content }}</div>
+                    </div>
+                </div>
+            </div>
+            <el-empty v-else description="暂无引用数据" :image-size="60" />
+        </el-drawer>
     </div>
 </template>
 
@@ -1120,7 +1247,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
     Edit, MagicStick, Document, Download, View,
     Clock, Refresh, Delete, Folder, UploadFilled, Paperclip,
-    EditPen, CircleCheck, Search, Select, Warning, Setting, User
+    EditPen, CircleCheck, Search, Select, Warning, Setting, User,
+    Collection, ArrowDown, CopyDocument, Link
 } from '@element-plus/icons-vue'
 import {
     startAiTestcaseGeneration,
@@ -1135,7 +1263,8 @@ import {
     previewAiTestcase,
     downloadAiTestcaseXmind,
     getAiTestcaseConfigStatus,
-    getUserList
+    getUserList,
+    knowledgeDocumentList,
 } from '@/restful/api'
 import { formatCreatorOptionLabel } from '@/utils/creatorLabel.js'
 
@@ -1147,6 +1276,40 @@ const requirement = ref('')
 const useThinking = ref(false)
 const generationMode = ref('comprehensive')  // 新增：生成模式
 const useAgentMode = ref(false)
+
+// 知识库引用（生成时选择文档）
+const kbDocs = ref([])
+const selectedKbDocIds = ref([])
+const kbExpanded = ref(false)
+
+// 知识库引用详情 Drawer
+const kbDetailVisible = ref(false)
+const kbDetailData = ref(null)
+const copiedChunkIdx = ref(-1)
+
+function openKbDetail(item) {
+    kbDetailData.value = item.agent_state?.kb_result || null
+    kbDetailVisible.value = true
+}
+
+async function copyChunkContent(content, idx) {
+    try {
+        await navigator.clipboard.writeText(content)
+        copiedChunkIdx.value = idx
+        setTimeout(() => { copiedChunkIdx.value = -1 }, 2000)
+    } catch (e) {
+        ElMessage.warning('复制失败，请手动选择文本')
+    }
+}
+
+async function fetchKbDocs() {
+    try {
+        const res = await knowledgeDocumentList({ status: 'ready', page_size: 100 })
+        kbDocs.value = res.data.results || res.data || []
+    } catch (e) {
+        // ignore
+    }
+}
 const generating = ref(false)
 
 // Agent 进度状态
@@ -1464,6 +1627,9 @@ async function handleGenerate() {
     formData.append('requirement', requirement.value.trim())
     formData.append('use_thinking', useThinking.value)
     formData.append('mode', generationMode.value)
+    if (selectedKbDocIds.value.length > 0) {
+        formData.append('kb_doc_ids', JSON.stringify(selectedKbDocIds.value))
+    }
 
     // 添加文件
     for (const file of fileList.value) {
@@ -2337,6 +2503,7 @@ onMounted(async () => {
     await loadConfigStatus()
     await loadCreatorOptions()
     await loadHistory()
+    fetchKbDocs()
 
     // 从需求智能体结构直传跳转：打开指定 record_id 的生成结果
     const recordId = route.query.record_id
@@ -2592,6 +2759,210 @@ onUnmounted(() => {
 }
 
 /* 生成模式选择 */
+/* ====== 知识库引用标签（历史记录）====== */
+.kb-ref-tag {
+    cursor: default;
+}
+
+/* ====== 知识库引用详情 Drawer ====== */
+.kb-detail-drawer {
+    padding: 0 4px;
+}
+
+.kb-detail-overview {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 4px;
+}
+
+.kb-detail-stats {
+    font-size: 13px;
+    color: #606266;
+    margin-bottom: 10px;
+}
+
+.kb-detail-stats strong {
+    color: #409eff;
+}
+
+.kb-detail-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    font-size: 13px;
+    color: #1a2332;
+}
+
+.kb-detail-doc-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kb-detail-doc-type {
+    font-size: 11px;
+    color: #909399;
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.kb-detail-chunks {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.kb-detail-chunk {
+    border: 1px solid #ebeef5;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.kb-detail-chunk-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f5f7fa;
+    border-bottom: 1px solid #ebeef5;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+
+.kb-detail-chunk-source {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #409eff;
+    font-weight: 500;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kb-detail-chunk-page {
+    color: #909399;
+    background: #ecf5ff;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.kb-detail-chunk-score {
+    color: #67c23a;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.kb-detail-chunk-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.kb-view-page-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    color: #409eff;
+    text-decoration: none;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #c6e2ff;
+    background: #ecf5ff;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.kb-view-page-link:hover {
+    background: #409eff;
+    color: #fff;
+    border-color: #409eff;
+}
+
+.kb-detail-chunk-content {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #303133;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* ====== 知识库选择区（生成时）====== */
+.kb-reference-section {
+    margin-top: 16px;
+    border: 1px solid #e4e7ed;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.kb-reference-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #606266;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.kb-reference-header:hover {
+    background: #ecf5ff;
+    color: #409eff;
+}
+
+.kb-selected-count {
+    color: #409eff;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.kb-reference-tip {
+    font-size: 12px;
+    color: #909399;
+    font-weight: 400;
+}
+
+.kb-expand-icon {
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+
+.kb-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.kb-doc-list {
+    padding: 12px 14px;
+    max-height: 220px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+.kb-doc-item {
+    padding: 4px 0;
+}
+
+.kb-doc-name {
+    font-size: 13px;
+    color: #1a2332;
+}
+
 .mode-selection {
     margin-top: 16px;
     margin-bottom: 16px;

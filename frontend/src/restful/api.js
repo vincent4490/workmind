@@ -1452,3 +1452,104 @@ export const aiAgentGenerateTestcaseStream = async (data, callbacks) => {
         onError(err.message || '网络连接失败');
     }
 };
+
+// ==================== 知识库 API ====================
+
+export const knowledgeDocumentList = (params) =>
+    axios.get('/api/knowledge/documents/', { params });
+
+export const knowledgeDocumentCreate = (formData) =>
+    axios.post('/api/knowledge/documents/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+export const knowledgeDocumentDetail = (id) =>
+    axios.get(`/api/knowledge/documents/${id}/`);
+
+export const knowledgeDocumentDelete = (id) =>
+    axios.delete(`/api/knowledge/documents/${id}/`);
+
+export const knowledgeDocumentReprocess = (id) =>
+    axios.post(`/api/knowledge/documents/${id}/reprocess/`);
+
+export const knowledgeDocumentStats = () =>
+    axios.get('/api/knowledge/documents/stats/');
+
+export const knowledgeConversationList = (params) =>
+    axios.get('/api/knowledge/conversations/', { params });
+
+export const knowledgeConversationDetail = (id) =>
+    axios.get(`/api/knowledge/conversations/${id}/`);
+
+export const knowledgeConversationCreate = (data) =>
+    axios.post('/api/knowledge/conversations/', data);
+
+export const knowledgeConversationDelete = (id) =>
+    axios.delete(`/api/knowledge/conversations/${id}/`);
+
+export const knowledgeConversationClearMessages = (id) =>
+    axios.delete(`/api/knowledge/conversations/${id}/clear_messages/`);
+
+export const knowledgeChatStream = async (data, callbacks) => {
+    const token = getAuthToken();
+    const sseBase = sseBaseUrl || (import.meta.env.DEV ? 'http://127.0.0.1:8009' : '');
+    const { onConversationId, onChunk, onSources, onDone, onError } = callbacks;
+
+    try {
+        const response = await fetch(sseBase + '/api/knowledge/chat-stream/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            if (onError) onError(text || `HTTP ${response.status}`);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                try {
+                    const event = JSON.parse(line.slice(6));
+                    switch (event.type) {
+                        case 'conversation_id':
+                            if (onConversationId) onConversationId(event.conversation_id);
+                            break;
+                        case 'chunk':
+                            if (onChunk) onChunk(event.content);
+                            break;
+                        case 'sources':
+                            if (onSources) onSources(event.sources || []);
+                            break;
+                        case 'done':
+                            if (onDone) onDone();
+                            break;
+                        case 'error':
+                            if (onError) onError(event.message || '未知错误');
+                            break;
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+        }
+    } catch (err) {
+        if (onError) onError(err.message || '网络连接失败');
+    }
+};

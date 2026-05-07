@@ -51,6 +51,7 @@ urlpatterns = [
     path("api/ui_test/", include("apps.ui_test.urls")),  # UI测试API（包含设备管理）
     path("api/ai_testcase/", include("apps.ai_testcase.urls")),  # AI用例智能体
     path("api/ai_requirement/", include("apps.ai_requirement.urls")),  # AI需求智能体
+    path("api/knowledge/", include("apps.knowledge_base.urls")),  # 知识库
     # swagger
     re_path(
         r"^swagger(?P<format>\.json|\.yaml)$",

@@ -84,7 +84,9 @@ const side_menu = ref([
         children: [
             { name: "AI需求智能体", url: "AiRequirementAgent" },
             { name: "需求智能体看板", url: "AiRequirementDashboard" },
-            { name: "AI用例生成", url: "AiTestcaseGenerator" }
+            { name: "AI用例生成", url: "AiTestcaseGenerator" },
+            { name: "知识库", url: "KnowledgeBase" },
+            { name: "知识库问答", url: "KnowledgeChat" }
         ]
     }
 ])

@@ -161,6 +161,84 @@ def run_ai_testcase_direct(record_id: int):
         _set_progress(record, 'llm_generate', 10)
         _write_event(record, 'progress', {'stage': 'llm_generate', 'percent': 10, 'message': '开始生成用例'})
 
+        # 检索知识库上下文
+        knowledge_context = ''
+        kb_doc_ids = (record.agent_state or {}).get('kb_doc_ids') or []
+        if kb_doc_ids:
+            try:
+                from apps.knowledge_base.services.qdrant_service import search_chunks
+                kb_query = (record.requirement or '').strip()
+                if not kb_query and extracted_texts:
+                    kb_query = extracted_texts[0]['content'][:400]
+                if kb_query:
+                    kb_chunks = search_chunks(kb_query, doc_ids=kb_doc_ids, top_k=15)
+                    if kb_chunks:
+                        parts = []
+                        for c in kb_chunks:
+                            doc_title = c.get('doc_title', '知识库文档')
+                            content = c.get('content', '').strip()
+                            if content:
+                                parts.append(f"[{doc_title}]\n{content}")
+                        knowledge_context = '\n\n'.join(parts)
+                        logger.info(
+                            f"[ai_testcase] 知识库检索完成 record_id={record.id} "
+                            f"doc_ids={kb_doc_ids} chunks={len(kb_chunks)} context_len={len(knowledge_context)}"
+                        )
+                        _write_event(record, 'progress', {
+                            'stage': 'llm_generate', 'percent': 12,
+                            'message': f'知识库命中 {len(kb_chunks)} 个片段，正在生成用例'
+                        })
+
+                        # 持久化 KB 检索结果，供前端"引用详情"展示
+                        try:
+                            from apps.knowledge_base.models import KnowledgeDocument
+                            docs_map = {}
+                            for c in kb_chunks:
+                                doc_id = c.get('doc_id')
+                                if doc_id and doc_id not in docs_map:
+                                    doc_obj = KnowledgeDocument.objects.filter(id=doc_id).first()
+                                    docs_map[doc_id] = {
+                                        'id': doc_id,
+                                        'title': c.get('doc_title', ''),
+                                        'category': c.get('doc_category', ''),
+                                        'file_type': doc_obj.file_type if doc_obj else '',
+                                        'file_url': doc_obj.file.url if (doc_obj and doc_obj.file) else '',
+                                    }
+                            chunks_info = [
+                                {
+                                    'doc_id': c.get('doc_id'),
+                                    'doc_title': c.get('doc_title', ''),
+                                    'content': c.get('content', ''),
+                                    'page_num': c.get('page_num'),
+                                    'score': round(float(c.get('score', 0)), 3),
+                                    'file_type': docs_map.get(c.get('doc_id'), {}).get('file_type', ''),
+                                    'file_url': docs_map.get(c.get('doc_id'), {}).get('file_url', ''),
+                                }
+                                for c in kb_chunks
+                            ]
+                            state = dict(record.agent_state or {})
+                            state['kb_result'] = {
+                                'chunks_count': len(kb_chunks),
+                                'context_len': len(knowledge_context),
+                                'docs_used': list(docs_map.values()),
+                                'chunks': chunks_info,
+                            }
+                            record.agent_state = state
+                            _db_retry(
+                                lambda: record.save(update_fields=['agent_state']),
+                                op_name='save_kb_result'
+                            )
+                        except Exception as save_err:
+                            logger.warning(f"[ai_testcase] 保存知识库引用详情失败: {save_err}")
+                    else:
+                        logger.warning(f"[ai_testcase] 知识库检索无结果 record_id={record.id} doc_ids={kb_doc_ids}")
+                        _write_event(record, 'progress', {
+                            'stage': 'llm_generate', 'percent': 12,
+                            'message': '知识库未命中相关内容，使用需求文本生成'
+                        })
+            except Exception as kb_err:
+                logger.warning(f"[ai_testcase] 知识库检索失败(不影响生成): {kb_err}")
+
         router = TestcaseModelRouter()
         model = router.select_model('generate')
         usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -177,6 +255,7 @@ def run_ai_testcase_direct(record_id: int):
                     extracted_texts,
                     images,
                     normalize_case_strategy_mode(getattr(record, 'case_strategy_mode', None)),
+                    knowledge_context=knowledge_context,
                 )
 
                 extra_body = (
@@ -226,6 +305,7 @@ def run_ai_testcase_direct(record_id: int):
                 messages = get_testcase_prompt(
                     record.requirement or "",
                     normalize_case_strategy_mode(getattr(record, 'case_strategy_mode', None)),
+                    knowledge_context=knowledge_context,
                 )
                 extra_body = (
                     {"thinking": {"type": "enabled", "budget_tokens": 10000}}

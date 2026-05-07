@@ -596,6 +596,11 @@ async def generate_stream_view(request):
         use_thinking = _post.get('use_thinking', 'false').lower() in ('true', '1', 'yes')
         mode = _post.get('mode', 'comprehensive')  # 新增模式参数
         uploaded_files = _files.getlist('files')
+        import json as _json
+        try:
+            kb_doc_ids = _json.loads(_post.get('kb_doc_ids', '[]'))
+        except Exception:
+            kb_doc_ids = []
 
         # 处理上传的文件
         if uploaded_files:
@@ -620,6 +625,7 @@ async def generate_stream_view(request):
         requirement = body.get('requirement', '').strip()
         use_thinking = body.get('use_thinking', False)
         mode = body.get('mode', 'comprehensive')  # 新增模式参数
+        kb_doc_ids = body.get('kb_doc_ids') or []
 
     mode = normalize_case_strategy_mode(mode)
 
@@ -712,16 +718,55 @@ async def generate_stream_view(request):
         yield f"data: {json.dumps(start_data, ensure_ascii=False)}\n\n"
 
         try:
+            # 检索知识库上下文
+            knowledge_context = ''
+            kb_hit_count = 0
+            if kb_doc_ids:
+                try:
+                    from apps.knowledge_base.services.qdrant_service import search_chunks, get_embedding
+                    # 构造搜索 query：取需求文本或附件第一段，最多 400 字
+                    kb_query = (requirement or '').strip()
+                    if not kb_query and extracted_texts:
+                        kb_query = extracted_texts[0]['content'][:400]
+                    if kb_query:
+                        # 用例生成需要更多上下文，top_k 提高到 15
+                        kb_chunks = await sync_to_async(search_chunks)(
+                            kb_query, doc_ids=kb_doc_ids, top_k=15
+                        )
+                        if kb_chunks:
+                            parts = []
+                            for c in kb_chunks:
+                                doc_title = c.get('doc_title', '知识库文档')
+                                content = c.get('content', '').strip()
+                                if content:
+                                    parts.append(f"[{doc_title}]\n{content}")
+                            knowledge_context = '\n\n'.join(parts)
+                            kb_hit_count = len(kb_chunks)
+                            logger.info(
+                                f"[ai_testcase] 知识库检索完成 doc_ids={kb_doc_ids} "
+                                f"chunks={kb_hit_count} context_len={len(knowledge_context)}"
+                            )
+                        else:
+                            logger.warning(f"[ai_testcase] 知识库检索无结果 doc_ids={kb_doc_ids} query={kb_query[:60]}")
+                except Exception as kb_err:
+                    logger.warning(f"[ai_testcase] 知识库检索失败(不影响生成): {kb_err}")
+
+            # 将知识库命中情况发给前端
+            if kb_doc_ids:
+                yield f"data: {json.dumps({'type': 'kb_context', 'hit_count': kb_hit_count, 'doc_ids': kb_doc_ids, 'context_len': len(knowledge_context)}, ensure_ascii=False)}\n\n"
+
             client = KimiClient()
 
             # 根据是否有附件选择不同的生成方法
             if has_attachments:
                 gen = client.generate_testcases_multimodal_stream_async(
-                    requirement, extracted_texts, images, use_thinking=use_thinking, mode=mode
+                    requirement, extracted_texts, images, use_thinking=use_thinking, mode=mode,
+                    knowledge_context=knowledge_context
                 )
             else:
                 gen = client.generate_testcases_stream_async(
-                    requirement, use_thinking=use_thinking, mode=mode
+                    requirement, use_thinking=use_thinking, mode=mode,
+                    knowledge_context=knowledge_context
                 )
 
             async for event in gen:
@@ -1913,11 +1958,17 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
         mode = 'comprehensive'
 
         content_type = request.content_type or ''
+        kb_doc_ids = []
         if 'multipart' in content_type:
             requirement = (request.POST.get('requirement', '') or '').strip()
             use_thinking = (request.POST.get('use_thinking', 'false') or '').lower() in ('true', '1', 'yes')
             mode = (request.POST.get('mode', 'comprehensive') or 'comprehensive').strip()
             uploaded_files = request.FILES.getlist('files')
+            try:
+                import json as _json
+                kb_doc_ids = _json.loads(request.POST.get('kb_doc_ids', '[]') or '[]')
+            except Exception:
+                kb_doc_ids = []
             if uploaded_files:
                 try:
                     processor = FileProcessor()
@@ -1932,6 +1983,7 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
             requirement = serializer.validated_data['requirement']
             use_thinking = serializer.validated_data.get('use_thinking', False)
             mode = serializer.validated_data.get('mode', 'comprehensive')
+            kb_doc_ids = request.data.get('kb_doc_ids') or []
 
         mode = normalize_case_strategy_mode(mode)
 
@@ -1968,6 +2020,7 @@ class AiTestcaseViewSet(viewsets.ModelViewSet):
             idempotency_key=idempotency_key,
             prompt_version=prompt_version,
             case_strategy_mode=mode,
+            agent_state={'kb_doc_ids': kb_doc_ids} if kb_doc_ids else None,
         )
 
         if uploaded_files:

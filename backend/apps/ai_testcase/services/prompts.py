@@ -779,13 +779,14 @@ def get_apply_review_prompt(result_json: dict, selected_items: list) -> list:
     ]
 
 
-def get_testcase_prompt(requirement: str, mode: str = 'comprehensive') -> list:
+def get_testcase_prompt(requirement: str, mode: str = 'comprehensive', knowledge_context: str = '') -> list:
     """
     构建用例生成的消息列表（纯文本场景）
-    
+
     Args:
         requirement: 需求描述
         mode: 生成模式 ('comprehensive', 'focused')
+        knowledge_context: 从知识库检索到的相关上下文（可选）
     """
     mode_prompts = {
         'comprehensive': TESTCASE_SYSTEM_PROMPT_COMPREHENSIVE,
@@ -793,10 +794,15 @@ def get_testcase_prompt(requirement: str, mode: str = 'comprehensive') -> list:
     }
 
     system_prompt = mode_prompts.get(mode, TESTCASE_SYSTEM_PROMPT_COMPREHENSIVE)
-    
+
+    kb_block = (
+        f"\n\n【知识库参考资料】\n以下内容来自项目知识库，请结合这些背景知识生成更贴合项目实际的测试用例：\n{knowledge_context.strip()}\n【知识库参考资料结束】"
+        if knowledge_context and knowledge_context.strip() else ""
+    )
+
     return [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": f"请基于以下需求生成测试用例。要求：①严格围绕需求描述的功能范围；②挖掘需求中隐含但合理的业务规则或业务场景及影响范围；③不要凭空臆造需求未涉及的功能模块。\n\n{requirement}"}
+        {"role": "user", "content": f"请基于以下需求生成测试用例。要求：①严格围绕需求描述的功能范围；②挖掘需求中隐含但合理的业务规则或业务场景及影响范围；③不要凭空臆造需求未涉及的功能模块。\n\n{requirement}{kb_block}"}
     ]
 
 
@@ -804,7 +810,8 @@ def get_testcase_prompt_multimodal(
     requirement: str,
     extracted_texts: list,
     images: list,
-    mode: str = 'comprehensive'
+    mode: str = 'comprehensive',
+    knowledge_context: str = '',
 ) -> list:
     """
     构建多模态用例生成的消息列表（文字 + 图片）
@@ -814,6 +821,7 @@ def get_testcase_prompt_multimodal(
         extracted_texts: [{"source": "文件名", "content": "提取的文字"}]
         images: [{"source": "文件名", "data": "base64", "mime": "image/jpeg"}]
         mode: 生成模式 ('comprehensive', 'focused')
+        knowledge_context: 从知识库检索到的相关上下文（可选）
 
     Returns:
         OpenAI 格式的 messages 列表
@@ -859,6 +867,13 @@ def get_testcase_prompt_multimodal(
                     "url": f"data:{img['mime']};base64,{img['data']}"
                 }
             })
+
+    # 5. 知识库上下文
+    if knowledge_context and knowledge_context.strip():
+        content_parts.append({
+            "type": "text",
+            "text": f"\n【知识库参考资料】\n以下内容来自项目知识库，请结合这些背景知识生成更贴合项目实际的测试用例：\n{knowledge_context.strip()}\n【知识库参考资料结束】"
+        })
 
     return [
         {"role": "system", "content": system_prompt},

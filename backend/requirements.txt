@@ -51,6 +51,7 @@ reportlab==4.2.5
 PyMuPDF==1.27.1
 Pillow==11.3.0
 openai==2.20.0
+qdrant-client>=1.9.0
 json-repair==0.40.0
 
 # AI需求智能体-结构化输出验证
@@ -59,3 +60,6 @@ instructor>=1.7.0
 # AI需求智能体-LangGraph工作流引擎（持久化 Checkpointer）
 langgraph>=1.0.0
 langgraph-checkpoint-sqlite>=2.0.0
+
+# 知识库-混合检索 BM25 重排序
+rank-bm25>=0.2.2

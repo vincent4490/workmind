@@ -16,6 +16,8 @@ import TestPlanExecute from "@/pages/workmind/app_ui/TestPlanExecute";
 import AiTestcaseGenerator from "@/pages/workmind/ai_testcase/AiTestcaseGenerator";
 import AiRequirementAgent from "@/pages/workmind/ai_requirement/AiRequirementAgent";
 import AiRequirementDashboard from "@/pages/workmind/ai_requirement/AiRequirementDashboard";
+import KnowledgeBase from "@/pages/workmind/knowledge/KnowledgeBase";
+import KnowledgeChat from "@/pages/workmind/knowledge/KnowledgeChat";
 import Redirect from "@/pages/redirect/Redirect";
 
 const router = createRouter({
@@ -185,6 +187,24 @@ const router = createRouter({
                     component: AiRequirementDashboard,
                     meta: {
                         title: "需求智能体看板",
+                        requireAuth: true
+                    }
+                },
+                {
+                    name: "KnowledgeBase",
+                    path: "knowledge_base",
+                    component: KnowledgeBase,
+                    meta: {
+                        title: "知识库",
+                        requireAuth: true
+                    }
+                },
+                {
+                    name: "KnowledgeChat",
+                    path: "knowledge_chat",
+                    component: KnowledgeChat,
+                    meta: {
+                        title: "知识库问答",
                         requireAuth: true
                     }
                 },

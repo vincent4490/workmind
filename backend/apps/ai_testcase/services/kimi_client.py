@@ -114,7 +114,7 @@ class KimiClient:
                 "error": str(e)
             }
 
-    async def generate_testcases_stream_async(self, requirement: str, use_thinking: bool = False, mode: str = 'comprehensive'):
+    async def generate_testcases_stream_async(self, requirement: str, use_thinking: bool = False, mode: str = 'comprehensive', knowledge_context: str = ''):
         """
         异步流式调用 Kimi API 生成测试用例
 
@@ -122,15 +122,16 @@ class KimiClient:
             requirement: 功能需求描述
             use_thinking: 是否启用思考模式
             mode: 生成模式 ('comprehensive', 'focused')
+            knowledge_context: 知识库检索到的相关上下文（可选）
 
         Yields:
             dict: {"type": "chunk", "content": "..."} 或
                   {"type": "done", "content": "完整内容", "usage": {...}} 或
                   {"type": "error", "error": "..."}
         """
-        logger.info(f"[Kimi] 开始流式生成用例, 模式: {mode}, 需求: {requirement[:100]}...")
+        logger.info(f"[Kimi] 开始流式生成用例, 模式: {mode}, 知识库上下文={'有' if knowledge_context else '无'}, 需求: {requirement[:100]}...")
 
-        messages = get_testcase_prompt(requirement, mode)
+        messages = get_testcase_prompt(requirement, mode, knowledge_context=knowledge_context)
 
         if use_thinking:
             extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
@@ -176,7 +177,8 @@ class KimiClient:
         extracted_texts: list,
         images: list,
         use_thinking: bool = False,
-        mode: str = 'comprehensive'
+        mode: str = 'comprehensive',
+        knowledge_context: str = '',
     ):
         """
         多模态流式生成测试用例（文字 + 图片）
@@ -187,18 +189,19 @@ class KimiClient:
             images: [{"source": "文件名", "data": "base64", "mime": "image/jpeg"}]
             use_thinking: 是否启用思考模式
             mode: 生成模式 ('comprehensive', 'focused')
+            knowledge_context: 知识库检索到的相关上下文（可选）
 
         Yields:
             dict: {"type": "chunk"/"done"/"error", ...}
         """
         # 根据是否有附件选择不同的 prompt
         if extracted_texts or images:
-            messages = get_testcase_prompt_multimodal(requirement, extracted_texts, images, mode)
+            messages = get_testcase_prompt_multimodal(requirement, extracted_texts, images, mode, knowledge_context=knowledge_context)
             text_summary = requirement[:50] if requirement else (extracted_texts[0]['source'] if extracted_texts else 'images')
-            logger.info(f"[Kimi] 开始多模态流式生成, 模式: {mode}, 文本数={len(extracted_texts)}, 图片数={len(images)}, 摘要: {text_summary}...")
+            logger.info(f"[Kimi] 开始多模态流式生成, 模式: {mode}, 知识库上下文={'有' if knowledge_context else '无'}, 文本数={len(extracted_texts)}, 图片数={len(images)}, 摘要: {text_summary}...")
         else:
-            messages = get_testcase_prompt(requirement, mode)
-            logger.info(f"[Kimi] 开始流式生成用例 (纯文本), 模式: {mode}, 需求: {requirement[:100]}...")
+            messages = get_testcase_prompt(requirement, mode, knowledge_context=knowledge_context)
+            logger.info(f"[Kimi] 开始流式生成用例 (纯文本), 模式: {mode}, 知识库上下文={'有' if knowledge_context else '无'}, 需求: {requirement[:100]}...")
 
         if use_thinking:
             extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}

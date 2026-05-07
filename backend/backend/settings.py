@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "apps.ui_test",  # UI测试应用（包含设备管理）
     "apps.ai_testcase",  # AI用例智能体
     "apps.ai_requirement",  # AI需求智能体
+    "apps.knowledge_base",  # 知识库
 ]
 
 MIDDLEWARE = [
@@ -504,3 +505,15 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 AI_REQUIREMENT_EMBEDDING_MODEL = os.environ.get("AI_REQUIREMENT_EMBEDDING_MODEL", "text-embedding-3-small")
 AI_REQUIREMENT_RAG_TOP_K = int(os.environ.get("AI_REQUIREMENT_RAG_TOP_K", "5"))
 AI_REQUIREMENT_RAG_MAX_CHARS = int(os.environ.get("AI_REQUIREMENT_RAG_MAX_CHARS", "8000"))
+
+# ==================== 知识库配置 ====================
+# Qdrant 向量数据库（推荐部署：docker run -d -p 6333:6333 qdrant/qdrant）
+QDRANT_HOST = os.environ.get("QDRANT_HOST", "127.0.0.1")
+QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333") or 6333)
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
+# 知识库 Embedding 模型（使用 Kimi API）
+KNOWLEDGE_EMBEDDING_KEY = os.environ.get("KNOWLEDGE_EMBEDDING_KEY", "")
+KNOWLEDGE_EMBEDDING_BASE_URL = os.environ.get("KNOWLEDGE_EMBEDDING_BASE_URL", "")
+KNOWLEDGE_EMBEDDING_MODEL = os.environ.get("KNOWLEDGE_EMBEDDING_MODEL", "moonshot-v1-embedding")
+# RAG 检索 Top-K
+KNOWLEDGE_RAG_TOP_K = int(os.environ.get("KNOWLEDGE_RAG_TOP_K", "5") or 5)

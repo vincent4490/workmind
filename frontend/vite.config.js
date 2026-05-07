@@ -34,6 +34,19 @@ export default defineConfig({
           })
         }
       },
+      '/api/knowledge/documents': {
+        target: 'http://127.0.0.1:8009',
+        changeOrigin: true,
+        // 文件上传走流式转发，不在 Node.js 里缓冲请求体，防止大文件撑爆 Vite 进程内存
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // 直接管道转发，不做任何 body 缓冲
+            if (req.headers['content-type']?.includes('multipart/form-data')) {
+              proxyReq.setHeader('connection', 'keep-alive')
+            }
+          })
+        }
+      },
       '/api': {
         target: 'http://127.0.0.1:8009',
         changeOrigin: true,
