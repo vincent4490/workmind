@@ -157,9 +157,10 @@
                     {{ formatDate(scope.row.created_at) }}
                 </template>
             </el-table-column>
-            <el-table-column label="操作" width="140" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
                 <template #default="scope">
                     <el-button link size="small" @click="editTask(scope.row)">编辑</el-button>
+                    <el-button link size="small" @click="copyTask(scope.row)">复制</el-button>
                     <el-button link size="small" style="color: #f56c6c;" @click="deleteTask(scope.row)">删除</el-button>
                 </template>
             </el-table-column>
@@ -266,7 +267,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
@@ -582,7 +583,25 @@ const formatTimeRange = (value) => {
 const showAddDialog = () => {
     dialogTitle.value = '新建任务'
     isEdit.value = false
+    taskFormData.value = getDefaultForm()
     dialogVisible.value = true
+    nextTick(() => {
+        taskForm.value?.clearValidate()
+    })
+}
+
+/** 复制：打开新建对话框，仅预填所属需求 */
+const copyTask = (row) => {
+    dialogTitle.value = '新建任务'
+    isEdit.value = false
+    taskFormData.value = {
+        ...getDefaultForm(),
+        requirement_name: row.requirement_name || ''
+    }
+    dialogVisible.value = true
+    nextTick(() => {
+        taskForm.value?.clearValidate()
+    })
 }
 
 const editTask = (row) => {
