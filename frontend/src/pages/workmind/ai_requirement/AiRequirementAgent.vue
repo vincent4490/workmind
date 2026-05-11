@@ -92,7 +92,7 @@
                                     拖拽文件到此处，或 <em>点击上传</em>
                                 </div>
                                 <div class="upload-drag-tip">
-                                    .docx / .pdf / .txt / .md / .png / .jpg / .webp / .mp4 / .webm，文档与图片单文件 10MB，视频单文件 100MB
+                                    .docx / .pdf / .txt / .md / .png / .jpg / .webp / .mp4 / .webm，单文件最大 300MB，最多 10 个
                                 </div>
                             </div>
                         </el-upload>

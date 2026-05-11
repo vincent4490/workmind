@@ -27,7 +27,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 SUPPORTED_VIDEO_EXTS = {'.mp4', '.avi', '.mov', '.webm', '.mkv'}
-MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_VIDEO_SIZE = 300 * 1024 * 1024  # 300MB
 MAX_KEYFRAMES = 10
 KEYFRAME_MAX_DIMENSION = 1024
 KEYFRAME_QUALITY = 80

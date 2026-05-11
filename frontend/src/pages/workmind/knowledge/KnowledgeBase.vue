@@ -163,7 +163,7 @@
                         </div>
                         <template #tip>
                             <div class="el-upload__tip">
-                                支持 PDF / Word / Excel / Markdown / 图片，单文件不超过 100MB
+                                支持 PDF / Word / Excel / Markdown / 图片，单文件不超过 300MB
                             </div>
                         </template>
                     </el-upload>
