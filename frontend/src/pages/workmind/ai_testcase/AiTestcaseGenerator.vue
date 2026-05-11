@@ -27,7 +27,8 @@
                                 <el-icon><Edit /></el-icon>
                                 需求描述
                             </span>
-                            <div style="margin-left: auto; display: flex; align-items: center; gap: 16px;">
+                            <!-- 隐藏入口：保留 v-model（useAgentMode / useThinking）与生成逻辑不变 -->
+                            <div class="ai-mode-toggles-hidden">
                                 <el-switch
                                     v-model="useAgentMode"
                                     active-text="Agent 生成"
@@ -793,7 +794,7 @@
                     />
                 </div>
 
-                <div class="regenerate-options">
+                <div class="regenerate-options ai-mode-toggles-hidden">
                     <el-switch
                         v-model="regenerateUseThinking"
                         active-text="思考模式"
@@ -881,7 +882,7 @@
                         show-word-limit
                     />
                 </div>
-                <div class="regenerate-options">
+                <div class="regenerate-options ai-mode-toggles-hidden">
                     <el-switch v-model="regenerateFunctionUseThinking" active-text="思考模式" inactive-text="" />
                 </div>
             </div>
@@ -980,6 +981,18 @@
                             AI 将分 4 个维度逐一深入扫描所有用例：重复、冗余、归属、缺失场景。
                         </template>
                     </el-alert>
+                </div>
+
+                <div
+                    v-if="!reviewing && !applyingReview && !applyReviewStreamContent"
+                    class="review-thinking-row"
+                >
+                    <el-switch
+                        v-model="reviewUseThinking"
+                        active-text="思考模式（深度评审）"
+                        inactive-text=""
+                    />
+                    <span class="review-thinking-tip">默认关闭；开启后各维度评审启用模型思考，更慢、消耗更多 token</span>
                 </div>
 
                 <!-- 评审进行中：维度进度 -->
@@ -1413,7 +1426,8 @@ const applyReviewStreamContent = ref('')
 const applyReviewStreamRef = ref(null)
 const applyReviewElapsedTime = ref(0)
 let applyReviewTimerInterval = null
-const reviewUseThinking = ref(true)
+/** 与 POST /api/ai_testcase/review-stream/ 的 use_thinking 对齐；默认关，弹窗内可开 */
+const reviewUseThinking = ref(false)
 
 // 维度进度
 const reviewDimensions = ref([])     // [{key, label}]
@@ -2222,7 +2236,8 @@ async function handleStartReview() {
 
     await aiReviewTestcaseStream(
         {
-            record_id: currentResult.value.id
+            record_id: currentResult.value.id,
+            use_thinking: reviewUseThinking.value
         },
         // onChunk
         (content) => {
@@ -2622,6 +2637,11 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* 隐藏「Agent 生成 / 思考模式」等开关：不卸载节点，v-model 与 ref 默认值、提交参数不变 */
+.ai-mode-toggles-hidden {
+    display: none !important;
 }
 
 .history-card-header {
@@ -3392,6 +3412,22 @@ onUnmounted(() => {
 /* ============ 评审弹窗 ============ */
 .review-intro {
     margin-bottom: 8px;
+}
+
+.review-thinking-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 12px;
+    padding: 4px 0;
+}
+
+.review-thinking-tip {
+    font-size: 12px;
+    color: #909399;
+    line-height: 1.45;
+    flex: 1 1 200px;
 }
 
 .review-options {

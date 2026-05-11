@@ -1324,7 +1324,9 @@ async def review_stream_view(request):
     SSE 流式用例评审（分维度逐项扫描）
 
     POST /api/ai_testcase/review-stream/
-    {"record_id": 1}
+    {"record_id": 1, "use_thinking": false}
+
+    use_thinking: 可选，默认 false；为 true 时各维度流式评审启用模型思考模式（更慢、更耗 token）。
 
     SSE 事件类型：
     - start: 评审开始，含 dimensions 列表
@@ -1352,6 +1354,11 @@ async def review_stream_view(request):
         return _add_cors_headers(HttpResponse('Invalid JSON', status=400), request)
 
     record_id = body.get('record_id')
+    _ut = body.get('use_thinking', False)
+    if isinstance(_ut, str):
+        use_thinking = _ut.strip().lower() in ('true', '1', 'yes')
+    else:
+        use_thinking = bool(_ut)
 
     if not record_id:
         return _add_cors_headers(HttpResponse('缺少 record_id', status=400), request)
@@ -1403,6 +1410,7 @@ async def review_stream_view(request):
                     extracted_texts=extracted_texts,
                     images=images,
                     requirement=record.requirement,
+                    use_thinking=use_thinking,
                 )
 
                 async for event in gen:

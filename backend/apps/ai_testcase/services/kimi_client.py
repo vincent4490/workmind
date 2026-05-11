@@ -464,9 +464,13 @@ class KimiClient:
         extracted_texts: list = None,
         images: list = None,
         requirement: str = '',
+        use_thinking: bool = False,
     ):
         """
-        单维度评审 — 异步流式（不启用思考模式以加速，每个维度 Prompt 已经很聚焦）
+        单维度评审 — 异步流式。
+
+        use_thinking: 与全局评审请求对齐；关闭时走 Kimi thinking disabled（更快、省 token），
+        开启时为深度推理（budget_tokens 与 run_validated_async 一致）。
         """
         extracted_texts = extracted_texts or []
         images = images or []
@@ -480,10 +484,12 @@ class KimiClient:
         else:
             messages = get_dimension_review_prompt(dimension_key, result_json, requirement)
 
-        logger.info(f"[Kimi] 开始维度评审: {dimension_key}, 多模态={has_attachments}")
+        logger.info(f"[Kimi] 开始维度评审: {dimension_key}, 多模态={has_attachments}, use_thinking={use_thinking}")
 
-        # 维度评审默认启用思考模式（深入分析）
-        extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
+        if use_thinking:
+            extra_body = {"thinking": {"type": "enabled", "budget_tokens": 10000}}
+        else:
+            extra_body = {"thinking": {"type": "disabled"}}
 
         try:
             stream = await self.async_client.chat.completions.create(
@@ -529,12 +535,12 @@ class KimiClient:
         Args:
             result_json: 当前完整的用例 JSON
             selected_items: 用户选定要采纳的评审项列表
-            use_thinking: 是否启用思考模式
+            use_thinking: 保留与 API 一致；采纳流式输出为结构化变更，当前实现固定关闭 Kimi thinking（忽略该参数）。
         """
         messages = get_apply_review_prompt(result_json, selected_items)
-        logger.info(f"[Kimi] 开始采纳评审意见, 选中 {len(selected_items)} 项")
+        logger.info(f"[Kimi] 开始采纳评审意见, 选中 {len(selected_items)} 项 (use_thinking 请求值={use_thinking}, 实际固定 disabled)")
 
-        # 采纳步骤强制关闭思考模式：输出是结构化变更指令，不需要深度推理
+        # 采纳步骤固定关闭思考模式：输出是结构化变更指令
         extra_body = {"thinking": {"type": "disabled"}}
 
         try:
