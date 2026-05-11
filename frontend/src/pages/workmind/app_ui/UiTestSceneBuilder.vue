@@ -14,7 +14,7 @@
                 <el-button type="success" icon="el-icon-picture-outline" @click="openToolDialog">
                     坐标/截图工具
                 </el-button>
-                <el-button icon="el-icon-refresh" @click="resetScene">
+                <el-button type="info" :icon="Refresh" @click="resetScene">
                     重置
                 </el-button>
             </div>
@@ -921,7 +921,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Download, FolderAdd, DocumentCopy, Check, Search, Link } from '@element-plus/icons-vue'
+import { Upload, Download, FolderAdd, DocumentCopy, Check, Search, Link, Refresh } from '@element-plus/icons-vue'
 import draggable from "vuedraggable"
 import { useGlobalProperties } from '@/composables'
 

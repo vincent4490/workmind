@@ -177,17 +177,46 @@ class UiTestConfigViewSet(viewsets.ModelViewSet):
 
         try:
             result = subprocess.run(
-                [adb_path, '-s', device_id, 'exec-out', 'screencap', '-p'],
+                [adb_path, "-s", device_id, "exec-out", "screencap", "-p"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=True
+                check=True,
+                timeout=20,
             )
+        except FileNotFoundError:
+            # adb 未安装/未配置属于可预期环境问题，不应作为 5xx 报错刷屏
+            return Response(
+                {
+                    "code": 1,
+                    "msg": "adb 不存在或不可执行，请检查 UiTestConfig.adb_path 配置或系统 PATH",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except subprocess.TimeoutExpired:
+            return Response(
+                {
+                    "code": 1,
+                    "msg": "设备截图超时（adb screencap 无响应），请检查设备连接状态",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except subprocess.CalledProcessError as e:
+            stderr = ""
+            try:
+                stderr = (e.stderr or b"").decode("utf-8", errors="ignore").strip()
+            except Exception:
+                stderr = ""
+            msg = "设备截图失败"
+            if stderr:
+                msg = f"{msg}: {stderr}"
+            # 常见：device offline / unauthorized / not found / no permissions
+            return Response({"code": 1, "msg": msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"设备截图失败: {e}", exc_info=True)
-            return Response({
-                'code': 1,
-                'msg': f'设备截图失败: {str(e)}'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"code": 1, "msg": f"设备截图失败: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         if not result.stdout:
             return Response({

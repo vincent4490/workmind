@@ -75,7 +75,7 @@
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :icon="Search" @click="loadCases">搜索</el-button>
-                    <el-button :icon="Refresh" @click="resetSearch">重置</el-button>
+                    <el-button type="info" :icon="Refresh" @click="resetSearch">重置</el-button>
                 </el-form-item>
             </el-form>
         </el-card>

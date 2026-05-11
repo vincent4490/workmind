@@ -8,8 +8,11 @@
             </div>
         </div>
 
-        <el-form :inline="true" size="small" style="margin-bottom: 10px;">
-            <el-form-item label="任务名称">
+        <el-form :inline="true" size="small" class="search-filter-form" style="margin-bottom: 10px;">
+            <el-form-item
+                label="任务名称"
+                :class="{ 'filter-form-item--active': !!(searchForm.name && String(searchForm.name).trim()) }"
+            >
                 <el-input
                     v-model="searchForm.name"
                     placeholder="请输入任务名称"
@@ -18,7 +21,10 @@
                     @keyup.enter="loadTasks"
                 />
             </el-form-item>
-            <el-form-item label="所属需求">
+            <el-form-item
+                label="所属需求"
+                :class="{ 'filter-form-item--active': !!searchForm.requirement_name }"
+            >
                 <el-select
                     v-model="searchForm.requirement_name"
                     placeholder="请选择所属需求"
@@ -35,7 +41,10 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="测试团队">
+            <el-form-item
+                label="测试团队"
+                :class="{ 'filter-form-item--active': !!searchForm.test_team }"
+            >
                 <el-select
                     v-model="searchForm.test_team"
                     placeholder="请选择测试团队"
@@ -52,7 +61,13 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="任务负责人">
+            <el-form-item
+                label="任务负责人"
+                :class="{
+                    'filter-form-item--active':
+                        Array.isArray(searchForm.owner) && searchForm.owner.length > 0
+                }"
+            >
                 <el-select
                     v-model="searchForm.owner"
                     placeholder="请选择负责人"
@@ -72,7 +87,10 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="任务状态">
+            <el-form-item
+                label="任务状态"
+                :class="{ 'filter-form-item--active': !!searchForm.status }"
+            >
                 <el-select
                     v-model="searchForm.status"
                     placeholder="请选择状态"
@@ -85,7 +103,15 @@
                     <el-option label="已完成" value="已完成" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="创建时间">
+            <el-form-item
+                label="创建时间"
+                :class="{
+                    'filter-form-item--active':
+                        Array.isArray(searchForm.created_at) &&
+                        searchForm.created_at.length === 2 &&
+                        !!(searchForm.created_at[0] && searchForm.created_at[1])
+                }"
+            >
                 <el-date-picker
                     v-model="searchForm.created_at"
                     type="daterange"
@@ -97,7 +123,15 @@
                     @change="loadTasks"
                 />
             </el-form-item>
-            <el-form-item label="任务时间">
+            <el-form-item
+                label="任务时间"
+                :class="{
+                    'filter-form-item--active':
+                        Array.isArray(searchForm.task_time) &&
+                        searchForm.task_time.length === 2 &&
+                        !!(searchForm.task_time[0] && searchForm.task_time[1])
+                }"
+            >
                 <el-date-picker
                     v-model="searchForm.task_time"
                     type="daterange"
@@ -111,7 +145,7 @@
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" @click="loadTasks">查询</el-button>
-                <el-button :icon="Refresh" @click="resetSearch">重置</el-button>
+                <el-button type="info" :icon="Refresh" @click="resetSearch">重置</el-button>
             </el-form-item>
         </el-form>
 
@@ -160,7 +194,7 @@
             <el-table-column label="操作" width="180" fixed="right">
                 <template #default="scope">
                     <el-button link size="small" @click="editTask(scope.row)">编辑</el-button>
-                    <el-button link size="small" @click="copyTask(scope.row)">复制</el-button>
+                    <el-button link type="primary" size="small" @click="copyTask(scope.row)">复制</el-button>
                     <el-button link size="small" style="color: #f56c6c;" @click="deleteTask(scope.row)">删除</el-button>
                 </template>
             </el-table-column>
@@ -268,7 +302,7 @@
 
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
@@ -281,6 +315,7 @@ import {
 } from '@/restful/api'
 
 const route = useRoute()
+const router = useRouter()
 
 // 与需求管理保持一致
 const TEST_TEAM_OPTIONS = ['slots', '国际棋牌', '大厅', '捕鱼', '本地棋牌', 'H5组']
@@ -328,6 +363,15 @@ const searchForm = ref({
     task_time: null,
 })
 
+/** 路由 query 中的负责人：支持逗号/中文逗号/顿号分隔多个用户名 */
+const splitOwnerQueryToUsernames = (val) => {
+    if (val == null) return []
+    if (Array.isArray(val)) return val.map(String).map(s => s.trim()).filter(Boolean)
+    const s = String(val).trim()
+    if (!s) return []
+    return s.split(/[,，、]/).map(x => x.trim()).filter(Boolean)
+}
+
 const applyRouteQueryToSearchForm = () => {
     const q = route.query || {}
     if (q.name != null && String(q.name).trim() !== '') {
@@ -340,8 +384,8 @@ const applyRouteQueryToSearchForm = () => {
         searchForm.value.test_team = String(q.test_team)
     }
     if (q.owner != null && String(q.owner).trim() !== '') {
-        // 任务管理 owner 是多选，这里按单值回填
-        searchForm.value.owner = [String(q.owner)]
+        const parts = splitOwnerQueryToUsernames(q.owner)
+        searchForm.value.owner = parts.length ? parts : []
     }
     if (q.status != null && String(q.status).trim() !== '') {
         searchForm.value.status = String(q.status)
@@ -370,14 +414,44 @@ const getDefaultForm = () => ({
 
 /** 需求名称下拉（与需求管理、用例管理一致：page_size 2000，保证能搜到全部需求） */
 const loadRequirementOptions = () => {
-    getFunctionalRequirements({ page: 1, page_size: 2000 }).then(res => {
+    return getFunctionalRequirements({ page: 1, page_size: 2000 }).then(res => {
         if (res.code === 0) {
             const list = res.data?.results || res.data || []
             requirementOptions.value = Array.isArray(list) ? list.map(item => item.name).filter(Boolean) : []
         } else {
             requirementOptions.value = []
         }
-    }).catch(() => { requirementOptions.value = [] })
+    }).catch(() => {
+        requirementOptions.value = []
+    })
+}
+
+/** 从需求管理「拆任务」进入：URL 带 open_create=1 时打开新建任务弹窗并预填所属需求 */
+const clearOpenCreateQuery = () => {
+    if (String(route.query.open_create || '') !== '1') return
+    const q = { ...route.query }
+    delete q.open_create
+    router.replace({ path: route.path, query: q }).catch(() => {})
+}
+
+const tryOpenCreateFromRoute = () => {
+    if (String(route.query.open_create || '') !== '1') return
+    const rn = route.query.requirement_name != null ? String(route.query.requirement_name).trim() : ''
+    const tt = route.query.test_team != null ? String(route.query.test_team).trim() : ''
+    const owners = splitOwnerQueryToUsernames(route.query.owner)
+    dialogTitle.value = '新建任务'
+    isEdit.value = false
+    taskFormData.value = {
+        ...getDefaultForm(),
+        requirement_name: rn,
+        test_team: tt,
+        owner: owners
+    }
+    dialogVisible.value = true
+    nextTick(() => {
+        taskForm.value?.clearValidate()
+        clearOpenCreateQuery()
+    })
 }
 
 const loadUserList = () => {
@@ -436,7 +510,10 @@ const resetSearch = () => {
     searchForm.value.status = ''
     searchForm.value.created_at = null
     searchForm.value.task_time = null
+    currentPage.value = 1
     loadTasks()
+    // 与表单同步：清空地址栏 query（否则从「拆任务」等带入的参数会一直留在 URL 上）
+    router.replace({ path: route.path, query: {} }).catch(() => {})
 }
 
 const handleSizeChange = (size) => {
@@ -590,13 +667,16 @@ const showAddDialog = () => {
     })
 }
 
-/** 复制：打开新建对话框，仅预填所属需求 */
+/** 复制：打开新建对话框，预填任务名称、所属需求、测试团队、任务负责人 */
 const copyTask = (row) => {
     dialogTitle.value = '新建任务'
     isEdit.value = false
     taskFormData.value = {
         ...getDefaultForm(),
-        requirement_name: row.requirement_name || ''
+        name: row.name || '',
+        requirement_name: row.requirement_name || '',
+        test_team: row.test_team || '',
+        owner: parsePersonField(row.owner)
     }
     dialogVisible.value = true
     nextTick(() => {
@@ -730,9 +810,9 @@ const formatDisplayDate = (dateStr) => {
 
 onMounted(() => {
     loadUserList()
-    loadRequirementOptions()
     applyRouteQueryToSearchForm()
     loadTasks()
+    loadRequirementOptions().then(() => tryOpenCreateFromRoute())
 })
 
 watch(
@@ -740,6 +820,7 @@ watch(
     () => {
         applyRouteQueryToSearchForm()
         loadTasks()
+        loadRequirementOptions().then(() => tryOpenCreateFromRoute())
     }
 )
 </script>
@@ -749,4 +830,21 @@ watch(
 .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .task-header h3 { margin: 0; }
 .task-management .el-table .cell { white-space: normal; word-break: break-all; }
+
+/* 筛选项有值时高亮（方案 B：琥珀描边 + 浅橙底，与主蓝区分更明显） */
+.task-management :deep(.filter-form-item--active .el-input__wrapper),
+.task-management :deep(.filter-form-item--active .el-select__wrapper) {
+    box-shadow: 0 0 0 1px #e6a23c inset;
+    background-color: #fdf6ec;
+}
+.task-management :deep(.filter-form-item--active .el-input__wrapper:hover),
+.task-management :deep(.filter-form-item--active .el-select__wrapper:hover) {
+    box-shadow: 0 0 0 1px #e6a23c inset;
+    background-color: #fdf6ec;
+}
+.task-management :deep(.filter-form-item--active .el-input__wrapper.is-focus),
+.task-management :deep(.filter-form-item--active .el-select__wrapper.is-focused) {
+    box-shadow: 0 0 0 1px #e6a23c inset;
+    background-color: #fdf6ec;
+}
 </style>

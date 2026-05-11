@@ -29,8 +29,11 @@
             </div>
         </div>
 
-        <el-form :inline="true" size="small" style="margin-bottom: 10px;">
-            <el-form-item label="需求名称">
+        <el-form :inline="true" size="small" class="search-filter-form" style="margin-bottom: 10px;">
+            <el-form-item
+                label="需求名称"
+                :class="{ 'filter-form-item--active': !!searchForm.name }"
+            >
                 <el-select
                     v-model="searchForm.name"
                     placeholder="请选择需求名称"
@@ -47,7 +50,10 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="测试团队">
+            <el-form-item
+                label="测试团队"
+                :class="{ 'filter-form-item--active': !!searchForm.test_team }"
+            >
                 <el-select
                     v-model="searchForm.test_team"
                     placeholder="请选择测试团队"
@@ -64,7 +70,10 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="测试人员">
+            <el-form-item
+                label="测试人员"
+                :class="{ 'filter-form-item--active': !!searchForm.testers }"
+            >
                 <el-select
                     v-model="searchForm.testers"
                     placeholder="请选择测试人员"
@@ -81,7 +90,10 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="状态">
+            <el-form-item
+                label="状态"
+                :class="{ 'filter-form-item--active': !!searchForm.status }"
+            >
                 <el-select
                     v-model="searchForm.status"
                     placeholder="请选择状态"
@@ -97,7 +109,10 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="标签">
+            <el-form-item
+                label="标签"
+                :class="{ 'filter-form-item--active': !!searchForm.tags }"
+            >
                 <el-select
                     v-model="searchForm.tags"
                     placeholder="请选择标签"
@@ -114,7 +129,15 @@
                     />
                 </el-select>
             </el-form-item>
-            <el-form-item label="创建时间">
+            <el-form-item
+                label="创建时间"
+                :class="{
+                    'filter-form-item--active':
+                        Array.isArray(searchForm.created_at) &&
+                        searchForm.created_at.length === 2 &&
+                        !!(searchForm.created_at[0] && searchForm.created_at[1])
+                }"
+            >
                 <el-date-picker
                     v-model="searchForm.created_at"
                     type="daterange"
@@ -126,7 +149,15 @@
                     @change="loadRequirements"
                 />
             </el-form-item>
-            <el-form-item label="测试时间">
+            <el-form-item
+                label="测试时间"
+                :class="{
+                    'filter-form-item--active':
+                        Array.isArray(searchForm.test_time) &&
+                        searchForm.test_time.length === 2 &&
+                        !!(searchForm.test_time[0] && searchForm.test_time[1])
+                }"
+            >
                 <el-date-picker
                     v-model="searchForm.test_time"
                     type="daterange"
@@ -140,7 +171,7 @@
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" :icon="Search" @click="loadRequirements">搜索</el-button>
-                <el-button :icon="Refresh" @click="resetSearch">重置</el-button>
+                <el-button type="info" :icon="Refresh" @click="resetSearch">重置</el-button>
             </el-form-item>
         </el-form>
 
@@ -223,10 +254,13 @@
                     {{ formatDate(scope.row.created_at) }}
                 </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="240" fixed="right">
                 <template #default="scope">
                     <el-button link size="small" @click="editRequirement(scope.row)">
                         编辑
+                    </el-button>
+                    <el-button link type="primary" size="small" @click="splitTaskFromRequirement(scope.row)">
+                        拆任务
                     </el-button>
                     <el-button
                         link
@@ -414,7 +448,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search, Download } from '@element-plus/icons-vue'
 import {
@@ -427,6 +461,7 @@ import {
 } from '@/restful/api'
 
 const route = useRoute()
+const router = useRouter()
 
 
 // refs
@@ -642,6 +677,7 @@ const resetSearch = () => {
     searchForm.value.created_at = null
     searchForm.value.test_time = null
     loadRequirements()
+    router.replace({ path: route.path, query: {} }).catch(() => {})
 }
 
 const handleExport = () => {
@@ -758,6 +794,45 @@ const editRequirement = (row) => {
         test_time: parseTimeRange(row.test_time)
     }
     dialogVisible.value = true
+}
+
+/** 需求的测试人员 → 任务负责人 query（逗号分隔用户名，与任务管理解析一致） */
+const testersToOwnerQuery = (row) => {
+    const t = row?.testers
+    if (!t) return ''
+    let parts = []
+    if (Array.isArray(t)) {
+        parts = t.filter(Boolean).map(String)
+    } else {
+        parts = String(t)
+            .replace(/，/g, ',')
+            .replace(/、/g, ',')
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean)
+    }
+    return parts.join(',')
+}
+
+/** 跳转任务管理并打开「新建任务」，预填所属需求、测试团队、任务负责人 */
+const splitTaskFromRequirement = (row) => {
+    const name = (row && row.name != null ? String(row.name) : '').trim()
+    if (!name) {
+        ElMessage.warning('需求名称为空，无法拆任务')
+        return
+    }
+    const query = {
+        open_create: '1',
+        requirement_name: name
+    }
+    const team = row && row.test_team != null ? String(row.test_team).trim() : ''
+    if (team) query.test_team = team
+    const owners = testersToOwnerQuery(row)
+    if (owners) query.owner = owners
+    router.push({
+        name: 'TaskManagement',
+        query
+    })
 }
 
 const deleteRequirement = (row) => {
@@ -1105,6 +1180,23 @@ watch(
 .requirement-management .el-table .cell {
     white-space: normal;
     word-break: break-all;
+}
+
+/* 筛选项有值时高亮（方案 B：琥珀描边 + 浅橙底，与主蓝区分更明显） */
+.requirement-management :deep(.filter-form-item--active .el-input__wrapper),
+.requirement-management :deep(.filter-form-item--active .el-select__wrapper) {
+    box-shadow: 0 0 0 1px #e6a23c inset;
+    background-color: #fdf6ec;
+}
+.requirement-management :deep(.filter-form-item--active .el-input__wrapper:hover),
+.requirement-management :deep(.filter-form-item--active .el-select__wrapper:hover) {
+    box-shadow: 0 0 0 1px #e6a23c inset;
+    background-color: #fdf6ec;
+}
+.requirement-management :deep(.filter-form-item--active .el-input__wrapper.is-focus),
+.requirement-management :deep(.filter-form-item--active .el-select__wrapper.is-focused) {
+    box-shadow: 0 0 0 1px #e6a23c inset;
+    background-color: #fdf6ec;
 }
 </style>
 

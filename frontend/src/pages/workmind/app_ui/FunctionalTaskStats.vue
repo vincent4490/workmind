@@ -52,7 +52,7 @@
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="loadingStats" @click="handleSearch">查询</el-button>
-                    <el-button @click="handleReset">重置</el-button>
+                    <el-button type="info" :icon="Refresh" @click="handleReset">重置</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -141,6 +141,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { useGlobalProperties } from '@/composables'
 import { useRouter } from 'vue-router'
 
