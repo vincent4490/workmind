@@ -448,6 +448,7 @@ except Exception as e:
 # ==================== Kimi AI 配置 ====================
 # 须在环境变量或项目根目录 .env 中配置 KIMI_API_KEY，勿在仓库中写死密钥
 KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "").strip()
+# Moonshot OpenAI 兼容网关；也可用 https://api.moonshot.ai/v1（见官方文档）
 KIMI_BASE_URL = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1")
 KIMI_MODEL = os.environ.get("KIMI_MODEL", "kimi-k2.5")
 
